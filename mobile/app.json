@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "WISP",
+    "slug": "tuxtell-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/logo-wisp.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "android": {
+      "package": "com.tuxtell.isp",
+      "softwareKeyboardLayoutMode": "pan",
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.tuxtell.isp"
+    },
+    "scheme": "wisp",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "WISP necesita la cámara para escanear el código de barras de los equipos (MAC / N° de serie GPON)."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "WISP necesita la cámara para tomar la foto de la fachada de la vivienda al registrar un cliente."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "WISP necesita tu ubicación para marcar dónde está la vivienda del cliente al registrarlo."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0aedacf7-f1df-4468-a9ef-e85144348c19"
+      }
+    }
+  }
+}

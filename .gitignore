@@ -1,0 +1,39 @@
+# Entorno
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# WhatsApp sesión (no subir — se genera en el VPS)
+whatsapp/.wwebjs_auth/
+whatsapp/.wwebjs_cache/
+whatsapp/node_modules/
+
+# Docker
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

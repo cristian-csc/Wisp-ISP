@@ -1,0 +1,92 @@
+services:
+  # ── Base de datos ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: tuxtell_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"   # solo localhost — backend host lo accede directamente
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend FastAPI ───────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tuxtell_backend
+    restart: unless-stopped
+    network_mode: host          # comparte red del host → accede a wg0 (10.10.0.x) y localhost:5432
+    cap_add:
+      - NET_ADMIN               # necesario para wg set / wg show
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      WHATSAPP_API_URL: ${WHATSAPP_API_URL}
+      SSH_KEY_PATH: ${SSH_KEY_PATH}
+      SSH_USER: ${SSH_USER}
+      WG_CONFIG_PATH: ${WG_CONFIG_PATH}
+      VPS_WG_PUBKEY: ${VPS_WG_PUBKEY}
+      VPS_IP: ${VPS_IP}
+    volumes:
+      - ./backend:/app
+      - /root/.ssh:/root/.ssh:ro              # llave SSH para MikroTik
+      - /etc/wireguard:/etc/wireguard:rw      # gestión WireGuard
+      - /opt/tuxtell-isp/backups:/backups     # backups PostgreSQL
+      - /opt/tuxtell-isp/media:/media         # evidencias/fotos y comprobantes
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── WhatsApp ──────────────────────────────────────────────────────────────────
+  whatsapp:
+    build:
+      context: ./whatsapp
+      dockerfile: Dockerfile
+    container_name: tuxtell_whatsapp
+    restart: unless-stopped
+    network_mode: host          # accesible en 127.0.0.1:3001 desde el backend
+    volumes:
+      - whatsapp_session:/app/.wwebjs_auth
+    environment:
+      PORT: "3001"
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+
+  # ── Frontend React ────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tuxtell_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+
+  # ── Nginx reverse-proxy ───────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: tuxtell_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # resuelve al host → backend puerto 8000
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - frontend
+
+volumes:
+  postgres_data:
+  whatsapp_session:
