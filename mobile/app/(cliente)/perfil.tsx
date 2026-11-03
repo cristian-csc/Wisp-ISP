@@ -13,15 +13,15 @@ export default function PerfilScreen() {
 
   async function handleCambiarPin() {
     if (!pinActual || !pinNuevo || !pinConfirm) { Alert.alert('Campos requeridos', 'Completa todos los campos.'); return; }
-    if (pinNuevo.length !== 4 || !/^\d{4}$/.test(pinNuevo)) { Alert.alert('PIN inválido', 'El PIN debe tener exactamente 4 dígitos.'); return; }
-    if (pinNuevo !== pinConfirm) { Alert.alert('PIN no coincide', 'El PIN nuevo y la confirmación no son iguales.'); return; }
+    if (pinNuevo.length < 8) { Alert.alert('Contraseña inválida', 'La contraseña nueva debe tener al menos 8 caracteres.'); return; }
+    if (pinNuevo !== pinConfirm) { Alert.alert('No coincide', 'La contraseña nueva y la confirmación no son iguales.'); return; }
     setSaving(true);
     try {
       await cambiarPin(pinActual, pinNuevo);
       setPinActual(''); setPinNuevo(''); setPinConfirm('');
-      Alert.alert('PIN actualizado', 'Tu PIN fue cambiado correctamente.');
+      Alert.alert('Contraseña actualizada', 'Tu contraseña fue cambiada correctamente.');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo cambiar el PIN');
+      Alert.alert('Error', e.message ?? 'No se pudo cambiar la contraseña');
     } finally { setSaving(false); }
   }
 
@@ -41,13 +41,13 @@ export default function PerfilScreen() {
       </View>
 
       <View style={s.card}>
-        <Text style={s.cardTitle}>CAMBIAR PIN</Text>
-        <Text style={s.hint}>Tu PIN por defecto es la fecha de instalación en formato DDMM. Puedes cambiarlo por uno de 4 dígitos.</Text>
+        <Text style={s.cardTitle}>CAMBIAR CONTRASEÑA</Text>
+        <Text style={s.hint}>Tu contraseña por defecto es tu mismo DNI. Puedes cambiarla por otra de al menos 8 caracteres.</Text>
 
         {[
-          { label: 'PIN actual', value: pinActual, set: setPinActual },
-          { label: 'PIN nuevo (4 dígitos)', value: pinNuevo, set: setPinNuevo },
-          { label: 'Confirmar PIN nuevo', value: pinConfirm, set: setPinConfirm },
+          { label: 'Contraseña actual', value: pinActual, set: setPinActual },
+          { label: 'Contraseña nueva', value: pinNuevo, set: setPinNuevo },
+          { label: 'Confirmar contraseña nueva', value: pinConfirm, set: setPinConfirm },
         ].map(({ label, value, set }) => (
           <View key={label}>
             <Text style={s.inputLabel}>{label.toUpperCase()}</Text>
@@ -55,17 +55,17 @@ export default function PerfilScreen() {
               style={s.input}
               value={value}
               onChangeText={set}
-              placeholder="••••"
+              placeholder="••••••••"
               placeholderTextColor="#CBD5E1"
               secureTextEntry
-              keyboardType="numeric"
-              maxLength={4}
+              keyboardType="default"
+              maxLength={100}
             />
           </View>
         ))}
 
         <TouchableOpacity style={[s.btn, saving && s.btnDisabled]} onPress={handleCambiarPin} disabled={saving}>
-          {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.btnText}>GUARDAR PIN</Text>}
+          {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.btnText}>GUARDAR CONTRASEÑA</Text>}
         </TouchableOpacity>
       </View>
 

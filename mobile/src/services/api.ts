@@ -58,7 +58,17 @@ export async function loginAdmin(
 }
 
 export type RolStaff = 'super_admin' | 'admin' | 'subadmin' | 'tecnico' | 'vendedor_campo' | 'vendedor_tienda';
-export type UsuarioMe = { id: number; nombre: string; email: string; rol: RolStaff; activo: boolean };
+export type UsuarioMe = {
+  id: number;
+  nombre: string;
+  email: string;
+  rol: RolStaff;
+  activo: boolean;
+  telefono: string | null;
+  dni: string | null;
+  direccion: string | null;
+  fecha_ingreso: string | null;
+};
 
 /** Trae el usuario autenticado — se usa justo después de loginAdmin para saber
  * su rol real y a qué sección del app enrutarlo (login no lo devuelve).
@@ -73,6 +83,26 @@ export async function getMeWithToken(token: string): Promise<UsuarioMe> {
     throw new Error(err.detail ?? 'No se pudo obtener el usuario');
   }
   return res.json();
+}
+
+/** Igual que arriba, pero para cuando ya hay sesión activa (pantalla de
+ * cuenta) — usa el token guardado en vez de pedirlo por parámetro. */
+export async function getMe(): Promise<UsuarioMe> {
+  return request('/auth/me');
+}
+
+/** Autoservicio — cualquier usuario puede actualizar su propio teléfono y
+ * dirección. Nombre, DNI, fecha de ingreso, rol y activo los controla solo
+ * el administrador desde la web. */
+export async function actualizarMiPerfil(data: { telefono?: string; direccion?: string }): Promise<UsuarioMe> {
+  return request('/auth/me', { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function cambiarPassword(passwordActual: string, passwordNueva: string): Promise<void> {
+  await request('/auth/password', {
+    method: 'PUT',
+    body: JSON.stringify({ password_actual: passwordActual, password_nueva: passwordNueva }),
+  });
 }
 
 export async function loginCliente(
@@ -174,6 +204,7 @@ export async function getClientes(params?: {
   search?: string;
   estado?: string;
   zona_id?: number;
+  solo_mis_instalaciones?: boolean;
 }): Promise<{ items: ClienteListItem[]; total: number; pages: number }> {
   const q = new URLSearchParams({
     page: String(params?.page ?? 1),
@@ -181,6 +212,7 @@ export async function getClientes(params?: {
     ...(params?.search ? { search: params.search } : {}),
     ...(params?.estado ? { estado: params.estado } : {}),
     ...(params?.zona_id ? { zona_id: String(params.zona_id) } : {}),
+    ...(params?.solo_mis_instalaciones ? { solo_mis_instalaciones: 'true' } : {}),
   });
   return request(`/clientes?${q}`);
 }
@@ -200,8 +232,14 @@ export async function getCliente(id: number): Promise<ClienteDetalle> {
 /** Registro de captación (vendedor/técnico en campo). El usuario/clave PPPoE
  * se derivan del DNI en el backend — acá no se envían. Queda `pendiente_aprobacion`. */
 export type ClienteRegistroInput = {
+  /** Razón social cuando el cliente es una empresa */
   nombre: string;
+  tipo_documento?: 'dni' | 'ruc';
+  /** DNI del que salen las credenciales PPPoE: del titular si es persona,
+   *  del responsable si es empresa. Nunca el RUC, que es público. */
   dni: string;
+  ruc?: string | null;
+  responsable_nombre?: string | null;
   telefono?: string | null;
   telefono_whatsapp?: string | null;
   direccion?: string | null;
@@ -467,6 +505,32 @@ export async function subirFotoFachada(clienteId: number, fotoUri: string, descr
   }
 }
 
+/** Sube una foto de evidencia de la instalación (power meter, caja NAP con
+ * precinto, router) — queda como respaldo visual de los datos que el
+ * técnico escribió a mano (potencia, N° de precinto, etc). */
+export async function subirEvidenciaInstalacion(clienteId: number, fotoUri: string, descripcion: string): Promise<void> {
+  const token = await getToken();
+  const form = new FormData();
+  form.append('tipo', 'instalacion');
+  form.append('cliente_id', String(clienteId));
+  form.append('descripcion', descripcion);
+  form.append('archivo', {
+    uri: fotoUri,
+    name: 'instalacion.jpg',
+    type: 'image/jpeg',
+  } as any);
+
+  const res = await fetch(`${BASE_URL}/evidencias`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'No se pudo subir la foto' }));
+    throw new Error(err.detail ?? 'No se pudo subir la foto');
+  }
+}
+
 export type Evidencia = {
   id: number;
   averia_id: number | null;
@@ -558,6 +622,9 @@ export type OrdenRetiro = {
   // La ONU/router hoy instalado en el cliente — el backend la calcula para
   // que el técnico sepa cuál recoger sin tener que adivinar el ID.
   onu_actual: Onu | null;
+  /** Resultado del mensaje de despedida al cliente. Solo viene al completar. */
+  whatsapp_enviado?: boolean | null;
+  whatsapp_detalle?: string | null;
 };
 
 export async function getOrdenesRetiro(estado?: EstadoOrdenRetiro): Promise<OrdenRetiro[]> {
@@ -568,11 +635,16 @@ export async function getOrdenRetiro(id: number): Promise<OrdenRetiro> {
   return request(`/ordenes-retiro/${id}`);
 }
 
+/** Cierra el retiro. De paso deja al día los datos del cliente: el número es
+ *  importante porque ahí le llega el mensaje de despedida. */
 export async function completarOrdenRetiro(id: number, data: {
   onu_retirada_id?: number;
   retiro_roseta: boolean;
   retiro_patchcord: boolean;
   observaciones?: string;
+  telefono?: string;
+  telefono_whatsapp?: string;
+  direccion?: string;
 }): Promise<OrdenRetiro> {
   return request(`/ordenes-retiro/${id}/completar`, { method: 'POST', body: JSON.stringify(data) });
 }
@@ -601,3 +673,72 @@ export async function subirEvidenciaRetiro(ordenId: number, fotoUri: string, des
     throw new Error(err.detail ?? 'No se pudo subir la foto');
   }
 }
+
+// ── Jornadas de vendedor de campo ──────────────────────────────────────────────
+
+export type UbicacionVendedor = { lat: number; lng: number; registrado_en: string };
+
+export type Jornada = {
+  id: number;
+  vendedor: { id: number; nombre: string } | null;
+  zona: { id: number; nombre: string } | null;
+  estado: 'activa' | 'finalizada';
+  lat_inicio: number;
+  lng_inicio: number;
+  monto_pasaje: number | null;
+  monto_reclamado: number | null;
+  nota_reclamo: string | null;
+  reclamo_reintegrado: boolean;
+  lat_fin: number | null;
+  lng_fin: number | null;
+  iniciado_en: string;
+  finalizado_en: string | null;
+  ultima_ubicacion: UbicacionVendedor | null;
+};
+
+export async function iniciarJornada(lat: number, lng: number, zonaId?: number | null): Promise<Jornada> {
+  return request('/jornadas/iniciar', {
+    method: 'POST',
+    body: JSON.stringify({ lat, lng, zona_id: zonaId ?? null }),
+  });
+}
+
+export async function pingJornada(lat: number, lng: number): Promise<UbicacionVendedor> {
+  return request('/jornadas/ping', { method: 'POST', body: JSON.stringify({ lat, lng }) });
+}
+
+export async function finalizarJornada(lat: number, lng: number): Promise<Jornada> {
+  return request('/jornadas/finalizar', { method: 'POST', body: JSON.stringify({ lat, lng }) });
+}
+
+export async function getMiJornadaActiva(): Promise<Jornada | null> {
+  return request('/jornadas/mi-jornada-activa');
+}
+
+export async function reportarReclamoPasaje(jornadaId: number, montoReclamado: number, nota?: string): Promise<Jornada> {
+  return request(`/jornadas/${jornadaId}/reclamo-pasaje`, {
+    method: 'PUT',
+    body: JSON.stringify({ monto_reclamado: montoReclamado, nota: nota || undefined }),
+  });
+}
+
+
+export type ConsultaDocumento = {
+  encontrado: boolean;
+  nombre: string | null;
+  origen: 'sistema' | 'proveedor' | 'formato' | 'sin_token' | 'sin_cuota' | 'no_existe' | 'sin_respuesta' | 'error_proveedor';
+  motivo: string | null;
+  cliente_id?: number;
+  estado?: string | null;
+  uso: { usadas: number; limite: number; restantes: number; aviso: boolean; agotado: boolean };
+};
+
+/** Busca el nombre de un DNI o la razon social de un RUC. La consulta la hace
+ *  el backend: el token del proveedor nunca viaja dentro de la app. */
+export async function consultarDocumento(
+  tipo: 'dni' | 'ruc',
+  numero: string,
+): Promise<ConsultaDocumento> {
+  return request(`/consultas/documento?tipo=${tipo}&numero=${encodeURIComponent(numero)}`);
+}
+

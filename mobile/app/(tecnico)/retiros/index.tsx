@@ -65,7 +65,7 @@ export default function RetirosScreen() {
   useEffect(() => { load(); }, [load]);
 
   const header = (
-    <Stack.Screen options={{ title: 'Órdenes de retiro', headerTintColor: COLORS.primary }} />
+    <Stack.Screen options={{ title: 'Órdenes de retiro', headerLeft: () => null }} />
   );
 
   if (loading) return (

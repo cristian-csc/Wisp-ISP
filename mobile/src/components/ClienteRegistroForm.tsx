@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { crearCliente, subirFotoFachada, getZonas, getPlanes } from '@/services/api';
+import { crearCliente, subirFotoFachada, getZonas, getPlanes, consultarDocumento} from '@/services/api';
 import { useSession } from '@/hooks/useSession';
 import { UbicacionPickerModal } from './UbicacionPickerModal';
 import { COLORS } from '@/theme/colors';
@@ -79,8 +79,19 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
   const [planes, setPlanes] = useState<Opcion[]>([]);
   const [saving, setSaving] = useState(false);
 
+  const [tipoDoc,   setTipoDoc]   = useState<'dni' | 'ruc'>('dni');
   const [nombre,    setNombre]    = useState('');
   const [dni,       setDni]       = useState('');
+  const [ruc,       setRuc]       = useState('');
+  const [responsable, setResponsable] = useState('');
+  // Aviso de la consulta automatica: nunca bloquea el registro
+  const [avisoDni,  setAvisoDni]  = useState<string | null>(null);
+  const [avisoRuc,  setAvisoRuc]  = useState<string | null>(null);
+  const [buscando,  setBuscando]  = useState<'dni' | 'ruc' | null>(null);
+  // Si el nombre lo trajo la consulta, al cambiar el documento se reemplaza.
+  // Si lo escribio el vendedor, se respeta y no se pisa.
+  const [nombreAuto, setNombreAuto] = useState(false);
+  const [responsableAuto, setResponsableAuto] = useState(false);
   const [telefono,  setTelefono]  = useState('');
   const [direccion, setDireccion] = useState('');
 
@@ -114,14 +125,72 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
     }
   }
 
+  /** Al completar el documento se busca el nombre. Si falla, se escribe el
+   *  motivo y el campo queda para llenarlo a mano: el registro no se detiene. */
+  async function buscarNombre(tipo: 'dni' | 'ruc', numero: string) {
+    const poner = tipo === 'dni' ? setAvisoDni : setAvisoRuc;
+    setBuscando(tipo);
+    poner('Buscando el nombre…');
+    try {
+      const r = await consultarDocumento(tipo, numero);
+      // Se sobrescribe solo lo que puso una consulta anterior: si el vendedor
+      // escribio el nombre a mano, se queda como lo dejo. Y si el documento
+      // cambio y el nuevo no se encontro, se limpia en vez de dejarlo desfasado.
+      const alResponsable = tipo === 'dni' && tipoDoc === 'ruc';
+      const ponerNombre = alResponsable ? setResponsable : setNombre;
+      const marcarAuto = alResponsable ? setResponsableAuto : setNombreAuto;
+      const eraAuto = alResponsable ? responsableAuto : nombreAuto;
+      const valorActual = alResponsable ? responsable : nombre;
+
+      if (r.encontrado && r.nombre) {
+        const traido = r.nombre;
+        if (eraAuto || !valorActual.trim()) {
+          ponerNombre(traido);
+          marcarAuto(true);
+        }
+      } else if (eraAuto) {
+        ponerNombre('');
+        marcarAuto(false);
+      }
+      poner(
+        r.origen === 'sistema'
+          ? r.motivo
+          : r.encontrado
+            ? 'Nombre traído automáticamente' + (r.uso?.aviso ? ` · quedan ${r.uso.restantes} consultas` : '')
+            : r.motivo ?? 'No se pudo consultar',
+      );
+    } catch {
+      poner('No se pudo consultar. Escribe el nombre a mano.');
+    } finally {
+      setBuscando(null);
+    }
+  }
+
   async function guardar() {
+    const esEmpresa = tipoDoc === 'ruc';
+
     if (!nombre.trim() || !dni.trim() || !zonaId || !planId) {
-      Alert.alert('Campos requeridos', 'Completa: Nombre, DNI, Zona y Plan.');
+      Alert.alert(
+        'Campos requeridos',
+        esEmpresa
+          ? 'Completa: Razón social, DNI del responsable, Zona y Plan.'
+          : 'Completa: Nombre, DNI, Zona y Plan.',
+      );
       return;
     }
     if (dni.trim().length !== 8) {
       Alert.alert('DNI inválido', 'El DNI debe tener 8 dígitos.');
       return;
+    }
+    if (esEmpresa) {
+      if (!/^(10|15|17|20)\d{9}$/.test(ruc.trim())) {
+        Alert.alert('RUC inválido', 'El RUC debe tener 11 dígitos y empezar en 10, 15, 17 o 20.');
+        return;
+      }
+      if (!responsable.trim()) {
+        Alert.alert('Falta el responsable', 'Indica quién es el responsable del servicio en la empresa.');
+        return;
+      }
     }
     if (fotoObligatoria && !fotoUri) {
       Alert.alert('Falta la foto de la fachada', 'Como estás en campo, tienes que tomar la foto de la vivienda antes de registrar al cliente.');
@@ -131,7 +200,10 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
     try {
       const { cliente } = await crearCliente({
         nombre:          nombre.trim(),
+        tipo_documento:  tipoDoc,
         dni:             dni.trim(),
+        ruc:             esEmpresa ? ruc.trim() : null,
+        responsable_nombre: esEmpresa ? responsable.trim() : null,
         telefono:        telefono.trim() || null,
         telefono_whatsapp: telefono.trim() || null,
         direccion:       direccion.trim() || null,
@@ -162,21 +234,99 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
 
   return (
     <ScrollView style={f.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
-      <Section title="DATOS PERSONALES" icon="person-outline">
-        <Input label="Nombre completo" value={nombre} onChange={setNombre} placeholder="Juan Pérez" required />
+      <Section title={tipoDoc === 'ruc' ? 'DATOS DE LA EMPRESA' : 'DATOS PERSONALES'} icon={tipoDoc === 'ruc' ? 'business-outline' : 'person-outline'}>
+        {/* Tipo de cliente: cambia los campos que se piden debajo */}
+        <View style={f.campo}>
+          <Label text="Tipo de cliente" />
+          <View style={f.tipoFila}>
+            {([
+              { v: 'dni' as const, etiqueta: 'Persona', icono: 'person-outline' as const },
+              { v: 'ruc' as const, etiqueta: 'Empresa', icono: 'business-outline' as const },
+            ]).map((op) => (
+              <TouchableOpacity
+                key={op.v}
+                style={[f.tipoChip, tipoDoc === op.v && f.tipoChipActive]}
+                onPress={() => setTipoDoc(op.v)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: tipoDoc === op.v }}
+              >
+                <Ionicons
+                  name={op.icono}
+                  size={16}
+                  color={tipoDoc === op.v ? '#fff' : COLORS.primary}
+                />
+                <Text style={[f.tipoChipText, tipoDoc === op.v && f.tipoChipTextActive]}>
+                  {op.etiqueta}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <Input
+          label={tipoDoc === 'ruc' ? 'Razón social' : 'Nombre completo'}
+          value={nombre}
+          onChange={(v) => { setNombre(v); setNombreAuto(false); }}
+          placeholder={tipoDoc === 'ruc' ? 'Transportes del Sur S.A.C.' : undefined}
+          required
+        />
+
+        {tipoDoc === 'ruc' && (
+          <>
+            <Input
+              label="RUC"
+              value={ruc}
+              onChange={(v) => {
+                const n = v.replace(/\D/g, '');
+                setRuc(n);
+                setAvisoRuc(null);
+                if (n.length === 11) void buscarNombre('ruc', n);
+              }}
+              placeholder="11 dígitos"
+              keyboard="numeric"
+              required
+            />
+            {avisoRuc ? <Text style={f.avisoConsulta}>{avisoRuc}</Text> : null}
+            <Input
+              label="Responsable del servicio"
+              value={responsable}
+              onChange={(v) => { setResponsable(v); setResponsableAuto(false); }}
+              placeholder="Gerente o persona de contacto"
+              required
+            />
+          </>
+        )}
+
         <View style={f.row}>
           <View style={{ flex: 1 }}>
-            <Input label="DNI" value={dni} onChange={setDni} placeholder="8 dígitos" keyboard="numeric" required />
+            <Input
+              label={tipoDoc === 'ruc' ? 'DNI del responsable' : 'DNI'}
+              value={dni}
+              onChange={(v) => {
+                const n = v.replace(/\D/g, '');
+                setDni(n);
+                setAvisoDni(null);
+                if (n.length === 8) void buscarNombre('dni', n);
+              }}
+              placeholder="8 dígitos"
+              keyboard="numeric"
+              required
+            />
+            {avisoDni ? <Text style={f.avisoConsulta}>{avisoDni}</Text> : null}
           </View>
           <View style={{ width: 12 }} />
           <View style={{ flex: 1 }}>
-            <Input label="WhatsApp / Teléfono" value={telefono} onChange={setTelefono} placeholder="9XXXXXXXX" keyboard="phone-pad" />
+            <Input label="WhatsApp / Teléfono" value={telefono} onChange={setTelefono} keyboard="phone-pad" />
           </View>
         </View>
-        <Input label="Dirección" value={direccion} onChange={setDireccion} placeholder="Jr. Lima 123" />
+        <Input label="Dirección" value={direccion} onChange={setDireccion} />
         <View style={f.pinHint}>
           <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} style={{ marginRight: 6, marginTop: 1 }} />
-          <Text style={f.pinHintText}>El usuario y contraseña PPPoE se generan automáticamente con el DNI. El cliente queda pendiente de aprobación por un administrador.</Text>
+          <Text style={f.pinHintText}>
+            {tipoDoc === 'ruc'
+              ? 'El usuario y contraseña PPPoE se generan con el DNI del responsable, no con el RUC. El cliente queda pendiente de aprobación por un administrador.'
+              : 'El usuario y contraseña PPPoE se generan automáticamente con el DNI. El cliente queda pendiente de aprobación por un administrador.'}
+          </Text>
         </View>
       </Section>
 
@@ -295,6 +445,38 @@ const f = StyleSheet.create({
   captureBtnText: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.primary },
   fotoPreview: { width: '100%', height: 160, borderRadius: 12, marginTop: 10, backgroundColor: COLORS.muted },
 
+  avisoConsulta: {
+    fontSize: 12,
+    color: COLORS.placeholder,
+    marginTop: -8,
+    marginBottom: 12,
+  },
+  tipoFila: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  tipoChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  tipoChipActive: {
+    backgroundColor: COLORS.primary,
+  },
+  tipoChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  tipoChipTextActive: {
+    color: '#fff',
+  },
   zonaChip: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginRight: 8, backgroundColor: COLORS.background },
   zonaChipActive: { borderColor: COLORS.info, backgroundColor: COLORS.lightinfo },
   zonaChipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },

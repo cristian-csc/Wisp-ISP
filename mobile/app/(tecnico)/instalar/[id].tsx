@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import {
   getCliente, getCajasNap, getOnus, instalarCliente,
-  getEvidenciasCliente, subirFotoFachada,
+  getEvidenciasCliente, subirFotoFachada, subirEvidenciaInstalacion,
   ClienteDetalle, CajaNap, Borne, Onu,
 } from '@/services/api';
 import { COLORS } from '@/theme/colors';
@@ -31,6 +31,10 @@ export default function InstalarScreen() {
   const [tieneFoto, setTieneFoto] = useState(true);
   const [fotoUri, setFotoUri] = useState<string | null>(null);
 
+  const [fotoPowerMeter, setFotoPowerMeter] = useState<string | null>(null);
+  const [fotoCajaNap, setFotoCajaNap] = useState<string | null>(null);
+  const [fotoRouter, setFotoRouter] = useState<string | null>(null);
+
   useEffect(() => {
     (async () => {
       try {
@@ -54,17 +58,19 @@ export default function InstalarScreen() {
     })();
   }, [id]);
 
-  async function tomarFoto() {
+  async function tomarFotoGenerica(setFoto: (uri: string) => void) {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso necesario', 'Activa el permiso de cámara para tomar la foto de la fachada.');
+      Alert.alert('Permiso necesario', 'Activa el permiso de cámara para tomar la foto.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: false });
     if (!result.canceled && result.assets?.[0]) {
-      setFotoUri(result.assets[0].uri);
+      setFoto(result.assets[0].uri);
     }
   }
+
+  const tomarFoto = () => tomarFotoGenerica(setFotoUri);
 
   const cajaSeleccionada = cajas.find(c => c.id === cajaId) ?? null;
   const bornesLibres: Borne[] = cajaSeleccionada?.bornes.filter(b => b.estado === 'libre') ?? [];
@@ -76,6 +82,14 @@ export default function InstalarScreen() {
     }
     if (!tieneFoto && !fotoUri) {
       Alert.alert('Falta la foto de la fachada', 'Este cliente se registró sin foto — tómala ahora antes de confirmar la instalación.');
+      return;
+    }
+    if (!fotoPowerMeter) {
+      Alert.alert('Falta la foto del power meter', 'Toma una foto de la lectura del power meter antes de confirmar.');
+      return;
+    }
+    if (!fotoCajaNap) {
+      Alert.alert('Falta la foto de la caja NAP', 'Toma una foto de la caja NAP con el precinto y el puerto usado antes de confirmar.');
       return;
     }
     setSaving(true);
@@ -94,6 +108,15 @@ export default function InstalarScreen() {
         } catch {
           // La instalación ya se guardó — la foto se puede reintentar después, no bloquea el flujo.
         }
+      }
+      try {
+        await subirEvidenciaInstalacion(Number(id), fotoPowerMeter, 'Power meter — lectura de potencia óptica');
+        await subirEvidenciaInstalacion(Number(id), fotoCajaNap, 'Caja NAP — precinto y puerto usado');
+        if (fotoRouter) {
+          await subirEvidenciaInstalacion(Number(id), fotoRouter, 'Router instalado');
+        }
+      } catch {
+        // La instalación ya se guardó — las fotos se pueden volver a subir después, no bloquea el flujo.
       }
       Alert.alert('✓ Instalación completada', `${cliente?.nombre} quedó activo.`, [
         { text: 'OK', onPress: () => router.replace('/(tecnico)') },
@@ -226,6 +249,32 @@ export default function InstalarScreen() {
         placeholderTextColor={COLORS.placeholder}
       />
 
+      <Text style={s.sectionTitle}>5. EVIDENCIA FOTOGRÁFICA</Text>
+
+      <TouchableOpacity style={[s.fotoBtn, fotoPowerMeter && s.fotoBtnDone]} onPress={() => tomarFotoGenerica(setFotoPowerMeter)}>
+        <Ionicons name={fotoPowerMeter ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoPowerMeter ? COLORS.success : COLORS.primary} />
+        <Text style={[s.fotoBtnText, fotoPowerMeter && { color: COLORS.success }]}>
+          {fotoPowerMeter ? 'Power meter — tocar para repetir' : 'Foto del power meter (obligatoria)'}
+        </Text>
+      </TouchableOpacity>
+      {fotoPowerMeter && <Image source={{ uri: fotoPowerMeter }} style={s.fotoPreview} />}
+
+      <TouchableOpacity style={[s.fotoBtn, fotoCajaNap && s.fotoBtnDone]} onPress={() => tomarFotoGenerica(setFotoCajaNap)}>
+        <Ionicons name={fotoCajaNap ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoCajaNap ? COLORS.success : COLORS.primary} />
+        <Text style={[s.fotoBtnText, fotoCajaNap && { color: COLORS.success }]}>
+          {fotoCajaNap ? 'Caja NAP — tocar para repetir' : 'Foto de la caja NAP con precinto y puerto usado (obligatoria)'}
+        </Text>
+      </TouchableOpacity>
+      {fotoCajaNap && <Image source={{ uri: fotoCajaNap }} style={s.fotoPreview} />}
+
+      <TouchableOpacity style={[s.fotoBtn, s.fotoBtnOpcional, fotoRouter && s.fotoBtnDone]} onPress={() => tomarFotoGenerica(setFotoRouter)}>
+        <Ionicons name={fotoRouter ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoRouter ? COLORS.success : '#64748B'} />
+        <Text style={[s.fotoBtnText, { color: fotoRouter ? COLORS.success : '#64748B' }]}>
+          {fotoRouter ? 'Router — tocar para repetir' : 'Foto del router instalado (opcional)'}
+        </Text>
+      </TouchableOpacity>
+      {fotoRouter && <Image source={{ uri: fotoRouter }} style={s.fotoPreview} />}
+
       <TouchableOpacity style={[s.confirmarBtn, saving && { opacity: 0.7 }]} onPress={confirmar} disabled={saving}>
         {saving ? <ActivityIndicator color={COLORS.white} /> : (
           <>
@@ -264,6 +313,7 @@ const s = StyleSheet.create({
   leyendaDot: { width: 8, height: 8, borderRadius: 4 },
   leyendaText: { fontSize: 11, color: COLORS.mutedForeground, fontWeight: '600' },
   fotoBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: COLORS.warning, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 13, paddingHorizontal: 14, backgroundColor: COLORS.lightwarning, marginBottom: 16 },
+  fotoBtnOpcional: { borderColor: COLORS.border, backgroundColor: COLORS.card },
   fotoBtnDone: { borderStyle: 'solid', borderColor: COLORS.success, backgroundColor: COLORS.lightsuccess },
   fotoBtnText: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.primary },
   fotoPreview: { width: '100%', height: 160, borderRadius: 12, marginBottom: 16, backgroundColor: COLORS.muted },

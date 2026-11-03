@@ -1,0 +1,23 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "src/views/landing/Hero.tsx"
+        ],
+        "createdAt": "2026-10-25T18:06:45.768Z",
+        "reason": "user's own reference file references/ejemplo.html uses this exact gradient-text treatment on the hero headline's accent word (TOTAL); replicating it per explicit 'diseña la pagina igual' instruction"
+      },
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "createdAt": "2026-10-25T18:44:05.726Z",
+        "reason": "user's own reference file references/ejemplo.html specifies Plus Jakarta Sans as the body font (alongside Outfit and Space Grotesk); added to globals.css to replicate that reference per explicit 'diseña la pagina igual' instruction"
+      }
+    ]
+  }
+}

@@ -73,7 +73,7 @@ export default function AveriasScreen() {
     <Stack.Screen
       options={{
         title: 'Averías',
-        headerTintColor: COLORS.primary,
+        headerLeft: () => null,
         headerRight: () => (
           <TouchableOpacity onPress={() => router.push('/(tecnico)/averias/nueva')} style={{ paddingHorizontal: 4 }}>
             <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />

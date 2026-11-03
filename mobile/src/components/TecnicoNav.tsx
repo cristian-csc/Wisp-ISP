@@ -34,10 +34,7 @@ export function TecnicoNav() {
           <TouchableOpacity
             key={t.id}
             style={s.tab}
-            onPress={() => {
-              if (t.id === 'ordenes') router.replace(t.path as any);
-              else router.push(t.path as any);
-            }}
+            onPress={() => router.replace(t.path as any)}
             activeOpacity={0.7}
           >
             <View style={[s.iconWrap, isActive && s.iconWrapActive]}>

@@ -1,11 +1,11 @@
 const express = require('express')
-const { Client, LocalAuth } = require('whatsapp-web.js')
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js')
 const qrcode = require('qrcode')
 const fs = require('fs')
 const path = require('path')
 
 const app = express()
-app.use(express.json())
+app.use(express.json({ limit: '25mb' }))
 
 const PORT = process.env.PORT || 3001
 const CHROMIUM = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium'
@@ -149,6 +149,45 @@ app.post('/send', async (req, res) => {
     )
     if (isPuppeteerError) {
       console.error('Error Puppeteer detectado, reiniciando cliente WhatsApp:', err.message)
+      isConnected = false
+      connectedPhone = null
+      try { await client.destroy() } catch {}
+      setTimeout(initClient, 5000)
+    }
+    res.status(500).json({ error: err.message })
+  }
+})
+
+/* Envia un archivo (el recibo en PDF) con un texto de descripcion. El archivo
+   llega en base64 para no depender de rutas compartidas entre contenedores. */
+app.post('/send-file', async (req, res) => {
+  const { phone, base64, filename, mimetype, caption } = req.body
+  if (!isConnected) return res.status(503).json({ error: 'WhatsApp no conectado' })
+  if (!phone || !base64 || !filename) {
+    return res.status(400).json({ error: 'Faltan: phone, base64 y filename' })
+  }
+
+  try {
+    const number = phone.replace(/[^0-9]/g, '')
+    const fullNumber = number.startsWith('51') ? number : `51${number}`
+
+    const numberId = await client.getNumberId(fullNumber)
+    if (!numberId) {
+      return res.status(404).json({ error: `El numero ${fullNumber} no tiene WhatsApp` })
+    }
+
+    const media = new MessageMedia(mimetype || 'application/pdf', base64, filename)
+    await client.sendMessage(numberId._serialized, media, { caption: caption || '' })
+    res.json({ ok: true, to: numberId._serialized, filename })
+  } catch (err) {
+    const isPuppeteerError = err.message && (
+      err.message.includes('detached Frame') ||
+      err.message.includes('Target closed') ||
+      err.message.includes('Session closed') ||
+      err.message.includes('Protocol error')
+    )
+    if (isPuppeteerError) {
+      console.error('Error Puppeteer al enviar archivo, reiniciando cliente:', err.message)
       isConnected = false
       connectedPhone = null
       try { await client.destroy() } catch {}

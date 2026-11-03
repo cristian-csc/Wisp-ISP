@@ -118,31 +118,27 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 @router.post("/cliente/login", response_model=schemas.ClienteTokenResponse)
 def cliente_login(data: schemas.ClienteLoginRequest, db: Session = Depends(get_db)):
-    """Login para clientes en la app móvil. Usa usuario_pppoe + DDMM de fecha_instalacion."""
-    usuario = data.usuario.strip().lower()
+    """Login para clientes en la app móvil. Usuario y contraseña son su DNI
+    por defecto; si el cliente cambió su contraseña desde la app, se valida
+    contra ese valor en vez del DNI."""
+    usuario = data.usuario.strip()
     cliente = db.query(models.Cliente).filter(
-        models.Cliente.usuario_pppoe.ilike(usuario)
+        models.Cliente.dni == usuario
     ).first()
 
     if not cliente:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario o PIN incorrecto",
-        )
-    if not cliente.fecha_instalacion:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sin fecha de instalación registrada",
+            detail="Usuario o contraseña incorrecta",
         )
     if cliente.pin_app:
-        # Cliente configuró un PIN personalizado
+        # Cliente configuró una contraseña personalizada
         if not pwd_context.verify(data.pin.strip(), cliente.pin_app):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o PIN incorrecto")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o contraseña incorrecta")
     else:
-        # PIN por defecto: DDMM de fecha de instalación
-        pin_esperado = cliente.fecha_instalacion.strftime("%d%m")
-        if data.pin.strip() != pin_esperado:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o PIN incorrecto")
+        # Por defecto, la contraseña es el mismo DNI
+        if not cliente.dni or data.pin.strip() != cliente.dni:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o contraseña incorrecta")
 
     if cliente.estado == models.EstadoCliente.anulado:
         raise HTTPException(
@@ -169,6 +165,23 @@ def get_me(current_user: models.Usuario = Depends(get_current_user)):
     return current_user
 
 
+@router.put("/me", response_model=schemas.UsuarioOut)
+def update_me(
+    data: schemas.UsuarioSelfUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user),
+):
+    """Autoservicio: cualquier usuario autenticado puede actualizar su propio
+    teléfono/dirección — son datos de contacto, la persona misma es quien
+    sabe que cambiaron. Nombre, DNI, fecha de ingreso, rol y activo quedan
+    fuera a propósito — eso lo controla solo el administrador."""
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(current_user, key, value)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
 @router.put("/password")
 def change_password(
     data: schemas.ChangePassword,
@@ -177,6 +190,8 @@ def change_password(
 ):
     if not verify_password(data.password_actual, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
+    if len(data.password_nueva) < 8:
+        raise HTTPException(status_code=400, detail="La contraseña nueva debe tener al menos 8 caracteres")
     current_user.hashed_password = get_password_hash(data.password_nueva)
     db.commit()
     return {"ok": True}
@@ -203,6 +218,10 @@ def create_usuario(
         email=data.email,
         hashed_password=get_password_hash(data.password),
         rol=data.rol,
+        telefono=data.telefono,
+        dni=data.dni,
+        direccion=data.direccion,
+        fecha_ingreso=data.fecha_ingreso,
     )
     db.add(user)
     db.commit()
@@ -228,3 +247,51 @@ def update_usuario(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.delete("/usuarios/{usuario_id}")
+def delete_usuario(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    """Solo se puede borrar un usuario que de verdad nunca hizo nada — si
+    tiene clientes, pagos, averías, etc. a su nombre, ese historial vale
+    demasiado para perderlo por error. Para esos casos basta con
+    desactivarlo (el switch de 'Activo'), nunca borrarlo."""
+    user = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="No puedes eliminar tu propio usuario")
+
+    referencias = []
+
+    def contar(query, etiqueta):
+        n = query.count()
+        if n:
+            referencias.append(f"{n} {etiqueta}")
+
+    contar(db.query(models.Cliente).filter(models.Cliente.vendedor_id == usuario_id), "cliente(s) registrados")
+    contar(db.query(models.Cliente).filter(models.Cliente.tecnico_instalador_id == usuario_id), "instalación(es) realizadas")
+    contar(db.query(models.Cliente).filter(models.Cliente.aprobado_por_id == usuario_id), "aprobación(es) de clientes")
+    contar(db.query(models.Pago).filter(models.Pago.registrado_por == usuario_id), "pago(s) registrados")
+    contar(db.query(models.Averia).filter(models.Averia.tecnico_asignado_id == usuario_id), "avería(s) atendidas")
+    contar(db.query(models.OrdenRetiro).filter(models.OrdenRetiro.tecnico_asignado_id == usuario_id), "retiro(s) de equipo")
+    contar(db.query(models.Historial).filter(models.Historial.usuario_id == usuario_id), "registro(s) de historial")
+    contar(db.query(models.Gasto).filter(models.Gasto.registrado_por == usuario_id), "gasto(s) registrados")
+    contar(db.query(models.Onu).filter(models.Onu.tecnico_id == usuario_id), "ONU(s) en su inventario")
+    contar(db.query(models.MensajeMasivo).filter(models.MensajeMasivo.creado_por_id == usuario_id), "mensaje(s) masivo(s) enviados")
+    contar(db.query(models.Evidencia).filter(models.Evidencia.subido_por_id == usuario_id), "evidencia(s) subidas")
+
+    if referencias:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar — tiene historial real asociado: " + ", ".join(referencias) +
+            ". Si ya no trabaja aquí, desactívalo en vez de eliminarlo.",
+        )
+
+    db.query(models.TecnicoZona).filter(models.TecnicoZona.tecnico_id == usuario_id).delete()
+    db.delete(user)
+    db.commit()
+    return {"ok": True}

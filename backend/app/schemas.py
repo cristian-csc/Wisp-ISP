@@ -1,16 +1,17 @@
 import re
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from typing import Optional, List
 from datetime import date, datetime
 from .models import (
     EstadoCliente, EstadoPago, TipoHistorial, TipoConexion, EstadoEquipo,
     RolUsuario, EstadoBorne, EstadoOnu, WifiVersion, EstadoOrdenRetiro,
-    EstadoAveria, TipoEvidencia, EstadoMensajeMasivo,
+    EstadoAveria, TipoEvidencia, EstadoMensajeMasivo, TipoDocumento,
 )
 
 _PPPOE_RE = re.compile(r'^[a-zA-Z0-9._@-]{1,100}$')
 _IPV4_RE = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
 _DNI_RE = re.compile(r'^\d{8}$')
+_RUC_RE = re.compile(r'^(10|15|17|20)\d{9}$')
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -29,12 +30,20 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     password: str
+    telefono: Optional[str] = None
+    dni: Optional[str] = None
+    direccion: Optional[str] = None
+    fecha_ingreso: Optional[date] = None
 
 class UsuarioOut(UsuarioBase):
     id: int
     activo: bool
     creado_en: datetime
     email: str  # se relaja el formato solo al leer: la creación (UsuarioCreate) sigue exigiendo EmailStr
+    telefono: Optional[str] = None
+    dni: Optional[str] = None
+    direccion: Optional[str] = None
+    fecha_ingreso: Optional[date] = None
     class Config:
         from_attributes = True
 
@@ -42,10 +51,19 @@ class UsuarioUpdate(BaseModel):
     nombre: Optional[str] = None
     rol: Optional[RolUsuario] = None
     activo: Optional[bool] = None
+    telefono: Optional[str] = None
+    dni: Optional[str] = None
+    direccion: Optional[str] = None
+    fecha_ingreso: Optional[date] = None
 
 class ChangePassword(BaseModel):
     password_actual: str
     password_nueva: str
+
+class UsuarioSelfUpdate(BaseModel):
+    """Lo único que un usuario puede cambiar de sí mismo — ver update_me()."""
+    telefono: Optional[str] = None
+    direccion: Optional[str] = None
 
 
 # ── Plan ──────────────────────────────────────────────────────────────────────
@@ -143,14 +161,22 @@ class TecnicoZonaOut(BaseModel):
 # aprobación + instalación, no se pueden setear al crear.
 
 class ClienteCreate(BaseModel):
+    # Razón social cuando el cliente es empresa
     nombre: str
+    tipo_documento: TipoDocumento = TipoDocumento.dni
+    # El DNI del que salen las credenciales PPPoE: del titular si es persona,
+    # del responsable si es empresa.
     dni: str
+    # Solo empresas
+    ruc: Optional[str] = None
+    responsable_nombre: Optional[str] = None
     telefono: Optional[str] = None
     telefono_whatsapp: Optional[str] = None
     direccion: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
-    zona_id: int
+    # Los satelitales no llevan zona; fibra e inalámbrico sí (se valida abajo)
+    zona_id: Optional[int] = None
     plan_id: int
     cantidad_tv: int = 0
     tipo_conexion: TipoConexion = TipoConexion.fibra_optica
@@ -163,9 +189,43 @@ class ClienteCreate(BaseModel):
             raise ValueError('DNI debe tener exactamente 8 dígitos')
         return v
 
+    @field_validator('ruc')
+    @classmethod
+    def validate_ruc(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == '':
+            return None
+        if not _RUC_RE.match(v):
+            raise ValueError('RUC debe tener 11 dígitos y empezar en 10, 15, 17 o 20')
+        return v
+
+    @model_validator(mode='after')
+    def validar_zona(self):
+        """La zona es obligatoria salvo para satelitales, que no pasan por
+        ningún MikroTik ni caja NAP y por eso no pertenecen a una zona."""
+        if self.tipo_conexion != TipoConexion.satelital and self.zona_id is None:
+            raise ValueError('Selecciona la zona del cliente')
+        if self.tipo_conexion == TipoConexion.satelital:
+            self.zona_id = None
+        return self
+
+    @model_validator(mode='after')
+    def validar_empresa(self):
+        """Una empresa necesita RUC y responsable; una persona no los lleva."""
+        if self.tipo_documento == TipoDocumento.ruc:
+            if not self.ruc:
+                raise ValueError('Para un cliente empresa el RUC es obligatorio')
+            if not (self.responsable_nombre or '').strip():
+                raise ValueError('Indica el nombre del responsable de la empresa')
+        else:
+            self.ruc = None
+            self.responsable_nombre = None
+        return self
+
 
 class ClienteUpdate(BaseModel):
     nombre: Optional[str] = None
+    ruc: Optional[str] = None
+    responsable_nombre: Optional[str] = None
     telefono: Optional[str] = None
     telefono_whatsapp: Optional[str] = None
     direccion: Optional[str] = None
@@ -247,7 +307,10 @@ class ClienteBorneOut(BaseModel):
 class ClienteOut(BaseModel):
     id: int
     nombre: str
+    tipo_documento: TipoDocumento = TipoDocumento.dni
     dni: Optional[str] = None
+    ruc: Optional[str] = None
+    responsable_nombre: Optional[str] = None
     telefono: Optional[str] = None
     telefono_whatsapp: Optional[str] = None
     direccion: Optional[str] = None
@@ -257,7 +320,7 @@ class ClienteOut(BaseModel):
     password_pppoe: str
     ip_estatica: Optional[str] = None
     pin_app: Optional[str] = None
-    zona_id: int
+    zona_id: Optional[int] = None
     plan_id: int
     cantidad_tv: int
     fecha_instalacion: Optional[date] = None
@@ -296,6 +359,8 @@ class ClienteOut(BaseModel):
 class ClienteListItem(BaseModel):
     id: int
     nombre: str
+    tipo_documento: TipoDocumento = TipoDocumento.dni
+    ruc: Optional[str] = None
     dni: Optional[str] = None
     telefono: Optional[str] = None
     usuario_pppoe: str
@@ -495,6 +560,11 @@ class OrdenRetiroCompletar(BaseModel):
     retiro_roseta: bool = False
     retiro_patchcord: bool = False
     observaciones: Optional[str] = None
+    # El técnico aprovecha la visita para dejar los datos al día. El número
+    # importa: es al que le llega el mensaje de despedida.
+    telefono: Optional[str] = None
+    telefono_whatsapp: Optional[str] = None
+    direccion: Optional[str] = None
 
 class OrdenRetiroOut(BaseModel):
     id: int
@@ -514,6 +584,10 @@ class OrdenRetiroOut(BaseModel):
     # está "instalado" en el cliente) y la asigna como atributo antes de serializar,
     # para que el técnico sepa cuál retirar sin tener que buscarla a mano.
     onu_actual: Optional[OnuOut] = None
+    # Resultado del mensaje de despedida — lo llena el router al completar, para
+    # que el técnico sepa en el acto si al cliente le llegó o no.
+    whatsapp_enviado: Optional[bool] = None
+    whatsapp_detalle: Optional[str] = None
     class Config:
         from_attributes = True
 
@@ -602,7 +676,14 @@ class PagoBase(BaseModel):
     notas: Optional[str] = None
 
 class PagoCreate(PagoBase):
-    pass
+    """`monto` es lo que se cobra EN TOTAL, ya con el descuento aplicado — es lo
+    que entra a caja. Con meses > 1 se reparte entre los meses cubiertos, para
+    que cada mes quede con lo que le toca y la suma sea exacta.
+
+    `descuento` es la rebaja que hizo la empresa, solo para dejar constancia:
+    no se vuelve a restar de nada."""
+    meses: int = Field(1, ge=1, le=12, description="Meses que paga de una vez")
+    descuento: Optional[float] = Field(None, ge=0, description="Rebaja aplicada, en soles")
 
 class ClienteNombre(BaseModel):
     id: int
@@ -610,10 +691,26 @@ class ClienteNombre(BaseModel):
     class Config:
         from_attributes = True
 
+class AdelantoResumen(BaseModel):
+    """Los meses que se cobraron juntos, para el recibo y el historial."""
+    # Número del recibo del grupo: el id del primer mes cobrado. Es el mismo
+    # que sale impreso en el PDF, se abra el recibo desde el mes que se abra.
+    numero: int
+    meses: int
+    desde: str
+    hasta: str
+    total: float
+    descuento: Optional[float] = None
+
+
 class PagoOut(PagoBase):
     id: int
     creado_en: datetime
     ruta_comprobante: Optional[str] = None
+    grupo_adelanto: Optional[str] = None
+    descuento: Optional[float] = None
+    # Solo viene con dato cuando el pago es parte de un cobro adelantado
+    adelanto: Optional[AdelantoResumen] = None
     cliente: Optional[ClienteNombre] = None
     registrador: Optional[UsuarioOut] = None
     class Config:
@@ -677,8 +774,8 @@ class IngresoMensual(BaseModel):
 # ── Auth cliente (app móvil) ──────────────────────────────────────────────────
 
 class ClienteLoginRequest(BaseModel):
-    usuario: str   # usuario_pppoe del cliente
-    pin: str       # DDMM de fecha_instalacion (ej. "2508")
+    usuario: str   # DNI del cliente
+    pin: str       # Contraseña: el mismo DNI por defecto, o la personalizada si la cambió
 
 class CambiarPinRequest(BaseModel):
     pin_actual: str
@@ -690,6 +787,14 @@ class ClienteTokenResponse(BaseModel):
     role: str
     cliente_id: int
     nombre: str
+
+class NotificacionOut(BaseModel):
+    tipo: str  # pendiente_aprobacion | instalado | no_instalado | averia_demorada | jornada_iniciada | whatsapp_desconectado
+    titulo: str
+    detalle: str
+    url: str  # ruta del frontend a la que navega al hacer clic
+    fecha: datetime
+
 
 class MiCuentaOut(BaseModel):
     id: int
@@ -727,3 +832,70 @@ class MensajeMasivoOut(BaseModel):
     finalizado_en: Optional[datetime] = None
     class Config:
         from_attributes = True
+
+
+# ── Jornadas de vendedor de campo ──────────────────────────────────────────────
+
+class UsuarioNombre(BaseModel):
+    id: int
+    nombre: str
+    class Config:
+        from_attributes = True
+
+class ZonaNombre(BaseModel):
+    id: int
+    nombre: str
+    class Config:
+        from_attributes = True
+
+class JornadaIniciarRequest(BaseModel):
+    lat: float
+    lng: float
+    zona_id: Optional[int] = None
+
+class JornadaPingRequest(BaseModel):
+    lat: float
+    lng: float
+
+class UbicacionVendedorOut(BaseModel):
+    lat: float
+    lng: float
+    registrado_en: datetime
+    class Config:
+        from_attributes = True
+
+class JornadaOut(BaseModel):
+    id: int
+    vendedor: Optional[UsuarioNombre] = None
+    zona: Optional[ZonaNombre] = None
+    estado: str
+    lat_inicio: float
+    lng_inicio: float
+    monto_pasaje: Optional[float] = None
+    monto_reclamado: Optional[float] = None
+    nota_reclamo: Optional[str] = None
+    reclamo_reintegrado: bool = False
+    lat_fin: Optional[float] = None
+    lng_fin: Optional[float] = None
+    iniciado_en: datetime
+    finalizado_en: Optional[datetime] = None
+    ultima_ubicacion: Optional[UbicacionVendedorOut] = None
+    class Config:
+        from_attributes = True
+
+class JornadaRecorridoOut(BaseModel):
+    jornada: JornadaOut
+    puntos: List[UbicacionVendedorOut]
+
+class JornadaPasajeUpdate(BaseModel):
+    monto_pasaje: Optional[float] = None
+
+class ReclamoPasajeRequest(BaseModel):
+    monto_reclamado: float
+    nota: Optional[str] = None
+
+class ResumenPasajeVendedor(BaseModel):
+    vendedor_id: int
+    nombre: str
+    total_jornadas: int
+    total_pasajes: float

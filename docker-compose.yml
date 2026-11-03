@@ -61,7 +61,17 @@ services:
       PORT: "3001"
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
 
-  # ── Frontend React ────────────────────────────────────────────────────────────
+  # ── Sitio público (estático) ──────────────────────────────────────────────────
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: tuxtell_web
+    restart: unless-stopped
+    ports:
+      - "3002:80"   # el 3001 lo ocupa el servicio de WhatsApp (network_mode: host)
+
+  # ── Panel interno React ───────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -85,6 +95,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
+      - web
       - frontend
 
 volumes:

@@ -1,0 +1,162 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router';
+import { Icon } from '@iconify/react';
+import CardBox from 'src/components/shared/CardBox';
+import { Badge } from 'src/components/ui/badge';
+import { Button } from 'src/components/ui/button';
+import { Input } from 'src/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from 'src/components/ui/table';
+import {
+  FieldIcon,
+  FormActions,
+  FormCallout,
+  FormDialog,
+  FormField,
+  FormGrid,
+} from 'src/components/shared/form';
+import { listZonas, createZona, type Zona } from 'src/lib/zonas';
+import { getMe, type Usuario } from 'src/lib/api';
+
+const Zonas = () => {
+  const navigate = useNavigate();
+  const [zonas, setZonas] = useState<Zona[]>([]);
+  const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
+  const [open, setOpen] = useState(false);
+  const [nombre, setNombre] = useState('');
+  const [ipWireguard, setIpWireguard] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const esSuperAdmin = currentUser?.rol === 'super_admin';
+
+  async function reload() {
+    setZonas(await listZonas());
+  }
+
+  useEffect(() => {
+    reload();
+    getMe().then(setCurrentUser).catch(() => {});
+  }, []);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await createZona({ nombre, ip_wireguard: ipWireguard });
+      setOpen(false);
+      setNombre('');
+      setIpWireguard('');
+      reload();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'No se pudo crear la zona');
+    }
+  }
+
+  return (
+    <CardBox>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Zonas</h2>
+        {esSuperAdmin && <Button onClick={() => setOpen(true)}>Agregar zona</Button>}
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nombre</TableHead>
+            <TableHead>IP WireGuard</TableHead>
+            <TableHead>Router MikroTik</TableHead>
+            <TableHead>Clientes</TableHead>
+            <TableHead>Estado</TableHead>
+            <TableHead className="text-end">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {zonas.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                No hay zonas registradas.
+              </TableCell>
+            </TableRow>
+          )}
+          {zonas.map((z) => (
+            <TableRow key={z.id}>
+              <TableCell className="font-medium">{z.nombre}</TableCell>
+              <TableCell>{z.ip_wireguard}</TableCell>
+              <TableCell>{z.router_mikrotik ?? '—'}</TableCell>
+              <TableCell>
+                {z.clientes_activos} / {z.total_clientes}
+              </TableCell>
+              <TableCell>
+                <Badge className={z.activo ? 'bg-lightsuccess text-success' : 'bg-muted text-muted-foreground'}>
+                  {z.activo ? 'Activa' : 'Inactiva'}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-end">
+                <Button variant="ghost" size="icon" onClick={() => navigate(`/zonas/${z.id}`)}>
+                  <Icon icon="tabler:eye" height={18} />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <FormDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Agregar zona"
+        subtitle="Registra una nueva zona de cobertura"
+        icon="tabler:map-pin-plus"
+        size="md"
+        footer={
+          <FormActions
+            onCancel={() => setOpen(false)}
+            submitLabel="Guardar"
+            submitForm="zona-create-form"
+          />
+        }
+      >
+        <form id="zona-create-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <FormGrid>
+            <FormField label="Nombre" icon="tabler:map-pin" htmlFor="nombreZona" required>
+              <FieldIcon icon="tabler:map-pin">
+                <Input
+                  id="nombreZona"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  required
+                />
+              </FieldIcon>
+            </FormField>
+            <FormField
+              label="IP WireGuard"
+              icon="tabler:shield-lock"
+              htmlFor="ipWg"
+              required
+              hint="Dirección del túnel con el MikroTik de la zona."
+            >
+              <FieldIcon icon="tabler:network">
+                <Input
+                  id="ipWg"
+                  placeholder="10.10.0.5"
+                  value={ipWireguard}
+                  onChange={(e) => setIpWireguard(e.target.value)}
+                  required
+                />
+              </FieldIcon>
+            </FormField>
+          </FormGrid>
+          {error && <FormCallout tone="error">{error}</FormCallout>}
+        </form>
+      </FormDialog>
+    </CardBox>
+  );
+};
+
+export default Zonas;

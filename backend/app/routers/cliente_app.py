@@ -26,22 +26,20 @@ def cambiar_pin(
     db: Session = Depends(get_db),
     cliente: models.Cliente = Depends(get_current_cliente),
 ):
-    """Cambia el PIN del cliente en la app móvil."""
-    # Verificar PIN actual (pin_app personalizado o DDMM por defecto)
+    """Cambia la contraseña del cliente en la app móvil."""
+    # Verificar contraseña actual (personalizada, o el DNI por defecto)
     if cliente.pin_app:
         valido = _pwd.verify(data.pin_actual, cliente.pin_app)
     else:
-        if not cliente.fecha_instalacion:
-            raise HTTPException(400, "Sin fecha de instalación registrada")
-        valido = data.pin_actual == cliente.fecha_instalacion.strftime("%d%m")
+        valido = bool(cliente.dni) and data.pin_actual == cliente.dni
 
     if not valido:
-        raise HTTPException(400, "PIN actual incorrecto")
+        raise HTTPException(400, "Contraseña actual incorrecta")
 
-    if len(data.pin_nuevo) != 4 or not data.pin_nuevo.isdigit():
-        raise HTTPException(400, "El PIN nuevo debe tener exactamente 4 dígitos")
+    if len(data.pin_nuevo.strip()) < 8:
+        raise HTTPException(400, "La contraseña nueva debe tener al menos 8 caracteres")
 
-    cliente.pin_app = _pwd.hash(data.pin_nuevo)
+    cliente.pin_app = _pwd.hash(data.pin_nuevo.strip())
     db.commit()
     return {"ok": True}
 

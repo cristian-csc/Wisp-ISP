@@ -45,6 +45,15 @@ class TipoHistorial(str, enum.Enum):
     nota = "nota"
 
 
+class TipoDocumento(str, enum.Enum):
+    """Con qué documento se da de alta al cliente. El RUC identifica a la
+    empresa, pero NUNCA es credencial: el usuario y la contraseña de PPPoE
+    salen siempre del DNI (del titular, o del responsable si es empresa),
+    porque un RUC es información pública y cualquiera podría consultarlo."""
+    dni = "dni"
+    ruc = "ruc"
+
+
 class TipoConexion(str, enum.Enum):
     inalambrico = "inalambrico"
     fibra_optica = "fibra_optica"
@@ -105,6 +114,14 @@ class Usuario(Base):
     rol = Column(SAEnum(RolUsuario), nullable=False)
     activo = Column(Boolean, default=True)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Ficha de personal — informativo, no mueve ninguna lógica del sistema.
+    telefono = Column(String(20))
+    dni = Column(String(15))
+    direccion = Column(Text)
+    # Distinto de creado_en: cuándo entró a trabajar en la empresa, no cuándo
+    # se le creó la cuenta (casi siempre antes — el negocio ya existía).
+    fecha_ingreso = Column(Date)
 
     zonas_asignadas = relationship("TecnicoZona", back_populates="tecnico")
 
@@ -242,8 +259,14 @@ class Cliente(Base):
     __tablename__ = "clientes"
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(150), nullable=False)
+    nombre = Column(String(150), nullable=False)  # razón social si es empresa
+    tipo_documento = Column(SAEnum(TipoDocumento), default=TipoDocumento.dni, nullable=False)
+    # El DNI que genera las credenciales: del titular si es persona, del
+    # responsable si es empresa. De aquí salen usuario_pppoe y password_pppoe.
     dni = Column(String(15), unique=True, index=True)
+    # Solo para empresas
+    ruc = Column(String(11), unique=True, index=True)
+    responsable_nombre = Column(String(150))
     telefono = Column(String(20))
     telefono_whatsapp = Column(String(20))
     direccion = Column(Text)
@@ -252,7 +275,10 @@ class Cliente(Base):
     usuario_pppoe = Column(String(100), unique=True, nullable=False)
     password_pppoe = Column(String(100), nullable=False)
     ip_estatica = Column(String(20))
-    zona_id = Column(Integer, ForeignKey("zonas.id"), nullable=False)
+    # Opcional: los clientes satelitales no pertenecen a ninguna zona — su
+    # servicio no pasa por un MikroTik ni por una caja NAP. Para fibra e
+    # inalámbrico sigue siendo obligatoria, y eso lo valida el esquema.
+    zona_id = Column(Integer, ForeignKey("zonas.id"), nullable=True)
     plan_id = Column(Integer, ForeignKey("planes.id"), nullable=False)
     cantidad_tv = Column(Integer, default=0, nullable=False)
     fecha_instalacion = Column(Date)
@@ -389,6 +415,13 @@ class Pago(Base):
     estado = Column(SAEnum(EstadoPago), default=EstadoPago.pagado)
     ruta_comprobante = Column(String(500))
     notas = Column(Text)
+    # Un adelanto de varios meses se guarda como un pago por mes (así los
+    # informes mensuales siguen cuadrando), pero todos comparten este código
+    # para saber que se cobraron juntos y poder emitir un solo recibo.
+    grupo_adelanto = Column(String(36), index=True)
+    # Rebaja que hizo la empresa por pagar adelantado, en soles. Se guarda
+    # solo en el primer pago del grupo: es del cobro completo, no del mes.
+    descuento = Column(Float)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     registrado_por = Column(Integer, ForeignKey("usuarios.id"))
 
@@ -478,3 +511,64 @@ class MensajeMasivoEnvio(Base):
     enviado_en = Column(DateTime(timezone=True))
 
     cliente = relationship("Cliente")
+
+
+class EstadoJornada(str, enum.Enum):
+    activa = "activa"
+    finalizada = "finalizada"
+
+
+class JornadaVendedor(Base):
+    """Una salida a campo de un vendedor_campo — reemplaza el 'mandar ubicación
+    en vivo al grupo de WhatsApp' por un registro que el admin puede revisar
+    después (WhatsApp no deja historial una vez que se cierra el chat)."""
+    __tablename__ = "jornadas_vendedor"
+
+    id = Column(Integer, primary_key=True, index=True)
+    vendedor_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    zona_id = Column(Integer, ForeignKey("zonas.id"))
+    estado = Column(SAEnum(EstadoJornada), nullable=False, default=EstadoJornada.activa, index=True)
+    lat_inicio = Column(Float, nullable=False)
+    lng_inicio = Column(Float, nullable=False)
+    monto_pasaje = Column(Float)  # pasaje del día — variable según zona, a veces no se da
+    monto_reclamado = Column(Float)  # lo que el vendedor dice que gastó de su bolsillo
+    nota_reclamo = Column(Text)
+    reclamo_reintegrado = Column(Boolean, nullable=False, default=False)
+    lat_fin = Column(Float)
+    lng_fin = Column(Float)
+    iniciado_en = Column(DateTime(timezone=True), server_default=func.now())
+    finalizado_en = Column(DateTime(timezone=True))
+
+    vendedor = relationship("Usuario")
+    zona = relationship("Zona")
+    ubicaciones = relationship("UbicacionVendedor", back_populates="jornada", cascade="all, delete-orphan")
+
+
+class UbicacionVendedor(Base):
+    """Un 'ping' de ubicación dentro de una jornada activa — forma el
+    recorrido que el admin ve dibujado en el mapa."""
+    __tablename__ = "ubicaciones_vendedor"
+
+    id = Column(Integer, primary_key=True, index=True)
+    jornada_id = Column(Integer, ForeignKey("jornadas_vendedor.id"), nullable=False, index=True)
+    lat = Column(Float, nullable=False)
+    lng = Column(Float, nullable=False)
+    registrado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+    jornada = relationship("JornadaVendedor", back_populates="ubicaciones")
+
+
+class ConsultaDocumentoMes(Base):
+    """Cuántas consultas de nombre se gastaron en un mes. Es una fila por mes,
+    no un registro por consulta: así se lleva la cuota sin acumular datos
+    personales de gente que no es cliente."""
+    __tablename__ = "consultas_documento_mes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    anio = Column(Integer, nullable=False)
+    mes = Column(Integer, nullable=False)
+    cantidad = Column(Integer, nullable=False, default=0)
+    actualizado_en = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (UniqueConstraint('anio', 'mes', name='uq_consulta_mes'),)
+

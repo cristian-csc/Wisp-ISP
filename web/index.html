@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="WISP, internet para todos. Conecta tu hogar con fibra óptica, velocidad y estabilidad."
+    />
+    <title>WISP | Internet para todos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" href="assets/logo-wisp.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="progress" id="progress"></div>
+    <header class="header" id="header">
+      <a class="brand" href="#inicio" aria-label="WISP inicio"
+        ><img src="assets/logo-wisp.png" alt="WISP" /><span
+          >internet para todos</span
+        ></a
+      >
+      <nav id="nav" aria-label="Navegación principal">
+        <a href="#inicio">Inicio</a><a href="#planes">Planes</a
+        ><a href="#beneficios">Beneficios</a><a href="#cobertura">Cobertura</a
+        ><a href="#faq">Preguntas</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="login-trigger" href="/app/login"> Ingresar <span>↗</span></a
+        ><a class="btn btn-small nav-cta" href="#contacto"
+          >Contratar <span>↗</span></a
+        >
+      </div>
+      <button
+        class="menu-toggle"
+        id="menuToggle"
+        aria-label="Abrir menú"
+        aria-expanded="false"
+      >
+        ☰
+      </button>
+    </header>
+    <main>
+      <section class="hero" id="inicio" aria-label="Promociones WISP">
+        <div class="hero-carousel" id="heroCarousel">
+          <div
+            class="hero-slide active"
+            data-index="0"
+            style="background-image: url(&quot;assets/familia.webp&quot;)"
+            aria-hidden="false"
+          ></div>
+          <div
+            class="hero-slide"
+            data-index="1"
+            style="background-image: url(&quot;assets/gaming-pc.webp&quot;)"
+            aria-hidden="true"
+          ></div>
+          <div
+            class="hero-slide"
+            data-index="2"
+            style="background-image: url(&quot;assets/seguridad.webp&quot;)"
+            aria-hidden="true"
+          ></div>
+          <div
+            class="hero-slide"
+            data-index="3"
+            style="background-image: url(&quot;assets/videollamadas.webp&quot;)"
+            aria-hidden="true"
+          ></div>
+        </div>
+        <div class="hero-shade"></div>
+        <div class="hero-content container">
+          <div class="hero-copy">
+            <!-- Logo grande del carrusel: elemento propio, no va incrustado en
+                 la fotografía, para que conserve nitidez y se pueda escalar. -->
+            <div class="hero-brand">
+              <img
+                src="assets/logo-wisp.png"
+                alt="WISP"
+                width="376"
+                height="152"
+                fetchpriority="high"
+              />
+              <span>internet para todos</span>
+            </div>
+            <div class="hero-message active" data-message="0">
+              <h1>Conecta tu hogar con <em>fibra óptica.</em></h1>
+              <p>
+                Velocidad y estabilidad para disfrutar cada momento en familia.
+              </p>
+            </div>
+            <div class="hero-message" data-message="1">
+              <h1>Tu mundo gamer, <em>sin pausas.</em></h1>
+              <p>Juega, transmite y comparte tus mejores partidas con WISP.</p>
+            </div>
+            <div class="hero-message" data-message="2">
+              <h1>Tu hogar, <em>más seguro.</em></h1>
+              <p>Conecta tus cámaras y mantén tu hogar siempre a la vista.</p>
+            </div>
+            <div class="hero-message" data-message="3">
+              <h1>Cerca de todos, <em>desde donde estés.</em></h1>
+              <p>Videollamadas fluidas para trabajar, estudiar y compartir.</p>
+            </div>
+            <div class="hero-actions">
+              <a href="#planes" class="btn"
+                >Conoce nuestros planes <span>↗</span></a
+              ><a href="#contacto" class="btn btn-ghost"
+                >Consultar cobertura ↓</a
+              >
+            </div>
+            <div class="hero-stats">
+              <div>
+                <strong>Fibra <span>óptica</span></strong
+                ><small>Para tu hogar</small>
+              </div>
+              <div><strong>WISP</strong><small>Internet para todos</small></div>
+            </div>
+          </div>
+        </div>
+        <button
+          class="carousel-arrow prev"
+          type="button"
+          aria-label="Imagen anterior"
+        >
+          ‹</button
+        ><button
+          class="carousel-arrow next"
+          type="button"
+          aria-label="Imagen siguiente"
+        >
+          ›
+        </button>
+        <div class="carousel-dots" aria-label="Seleccionar imagen">
+          <button
+            type="button"
+            class="carousel-dot active"
+            data-go="0"
+            aria-label="Ver imagen 1"
+            aria-current="true"
+          ></button
+          ><button
+            type="button"
+            class="carousel-dot"
+            data-go="1"
+            aria-label="Ver imagen 2"
+            aria-current="false"
+          ></button
+          ><button
+            type="button"
+            class="carousel-dot"
+            data-go="2"
+            aria-label="Ver imagen 3"
+            aria-current="false"
+          ></button
+          ><button
+            type="button"
+            class="carousel-dot"
+            data-go="3"
+            aria-label="Ver imagen 4"
+            aria-current="false"
+          ></button>
+        </div>
+        <div class="scroll-hint">DESLIZA PARA EXPLORAR ↓</div>
+      </section>
+      <div class="ticker">
+        <div>
+          ⚡ VELOCIDAD QUE SE SIENTE &nbsp; ✦ &nbsp; 🎮 JUEGA SIN INTERRUPCIONES
+          &nbsp; ✦ &nbsp; 💻 TRABAJA DESDE CASA &nbsp; ✦ &nbsp; 📺 STREAMING EN
+          FAMILIA &nbsp; ✦ &nbsp; ⚡ VELOCIDAD QUE SE SIENTE &nbsp; ✦ &nbsp; 🎮
+          JUEGA SIN INTERRUPCIONES &nbsp; ✦ &nbsp; 💻 TRABAJA DESDE CASA &nbsp;
+          ✦ &nbsp; 📺 STREAMING EN FAMILIA &nbsp; ✦ &nbsp;
+        </div>
+      </div>
+      <section class="section intro container reveal" id="beneficios">
+        <div class="section-label">01 / LA EXPERIENCIA WISP</div>
+        <div class="intro-grid">
+          <h2>
+            No es solo internet.<br /><span>Es todo lo que haces con él.</span>
+          </h2>
+          <p>
+            Tu vida no se detiene, tu conexión tampoco debería. Una experiencia
+            diseñada para acompañarte en cada momento del día.
+          </p>
+        </div>
+        <!-- Cada tarjeta lleva su propia fotografía en assets/, en WebP. -->
+        <div class="benefit-grid">
+          <article class="benefit">
+            <div class="benefit-foto">
+              <img
+                src="assets/velocidad.webp"
+                alt="Fibra óptica en detalle"
+                width="1340"
+                height="890"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <div class="benefit-texto">
+              <h3>Velocidad para todos</h3>
+              <p>
+                Más momentos conectados, menos esperas. Navega y disfruta tus
+                contenidos favoritos.
+              </p>
+            </div>
+          </article>
+          <article class="benefit">
+            <div class="benefit-foto">
+              <img
+                src="assets/conectividad.webp"
+                alt="Equipos de red de fibra óptica"
+                width="1340"
+                height="890"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <div class="benefit-texto">
+              <h3>Conexión estable</h3>
+              <p>
+                Fibra óptica para una experiencia consistente en tu rutina
+                digital.
+              </p>
+            </div>
+          </article>
+          <article class="benefit">
+            <div class="benefit-foto">
+              <img
+                src="assets/hogarconectado.webp"
+                alt="Hogar moderno conectado"
+                width="1340"
+                height="890"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <div class="benefit-texto">
+              <h3>Un hogar conectado</h3>
+              <p>Estudia, trabaja, juega y comparte en todos tus espacios.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section class="section plans" id="planes">
+        <div class="container">
+          <div class="section-label">02 / ELIGE TU VELOCIDAD</div>
+          <div class="section-heading reveal">
+            <h2>Un plan para <span>cada ritmo.</span></h2>
+            <p>
+              Fibra óptica propia, sin letra chica. Consulta el plan ideal para
+              tu hogar por WhatsApp al 931 090 909.
+            </p>
+          </div>
+          <div class="plans-grid">
+            <article class="plan plan-red reveal">
+              <div class="plan-top">PLAN 39</div>
+              <div class="plan-body">
+                <div class="speed">50<span>MBPS</span></div>
+                <div class="plan-wifi">⌁</div>
+                <div class="plan-tag">Navega sin límites</div>
+                <ul>
+                  <li>Fibra óptica simétrica</li>
+                  <li>Router WiFi incluido</li>
+                  <li><strong>Instalación: S/ 50</strong></li>
+                </ul>
+                <div class="plan-price">
+                  S/ <strong>39</strong><sup>.00</sup><small>MENSUALES</small>
+                </div>
+                <a
+                  href="#contacto"
+                  class="plan-buy"
+                  data-plan="Plan 39 — 50 Mbps"
+                  >🛒 &nbsp; Solicitar plan</a
+                >
+              </div>
+            </article>
+            <article class="plan plan-orange reveal">
+              <div class="plan-top">PLAN 49</div>
+              <div class="plan-body">
+                <div class="speed">100<span>MBPS</span></div>
+                <div class="plan-wifi">⌁</div>
+                <div class="plan-tag">Navega sin límites</div>
+                <ul>
+                  <li>Fibra óptica simétrica</li>
+                  <li>Router WiFi incluido</li>
+                  <li><strong>Instalación: S/ 50</strong></li>
+                </ul>
+                <div class="plan-price">
+                  S/ <strong>49</strong><sup>.00</sup><small>MENSUALES</small>
+                </div>
+                <a
+                  href="#contacto"
+                  class="plan-buy"
+                  data-plan="Plan 49 — 100 Mbps"
+                  >🛒 &nbsp; Solicitar plan</a
+                >
+              </div>
+            </article>
+            <article class="plan plan-green reveal">
+              <div class="plan-top">PLAN 69</div>
+              <span class="popular">MÁS VENDIDO</span>
+              <div class="plan-body">
+                <div class="speed">150<span>MBPS</span></div>
+                <div class="plan-wifi">⌁</div>
+                <div class="plan-tag">Incluye TV digital gratis</div>
+                <ul>
+                  <li>Fibra óptica simétrica</li>
+                  <li>Router WiFi incluido</li>
+                  <li><strong>¡Instalación gratis!</strong></li>
+                </ul>
+                <div class="plan-price">
+                  S/ <strong>69</strong><sup>.00</sup><small>MENSUALES</small>
+                </div>
+                <a
+                  href="#contacto"
+                  class="plan-buy"
+                  data-plan="Plan 69 — 150 Mbps"
+                  >🛒 &nbsp; Solicitar plan</a
+                >
+              </div>
+            </article>
+            <article class="plan plan-blue reveal">
+              <div class="plan-top">PLAN 99</div>
+              <div class="plan-body">
+                <div class="speed">200<span>MBPS</span></div>
+                <div class="plan-wifi">⌁</div>
+                <div class="plan-tag">Incluye TV digital gratis</div>
+                <ul>
+                  <li>Fibra óptica simétrica</li>
+                  <li>Router WiFi incluido</li>
+                  <li><strong>¡Instalación gratis!</strong></li>
+                </ul>
+                <div class="plan-price">
+                  S/ <strong>99</strong><sup>.00</sup><small>MENSUALES</small>
+                </div>
+                <a
+                  href="#contacto"
+                  class="plan-buy"
+                  data-plan="Plan 99 — 200 Mbps"
+                  >🛒 &nbsp; Solicitar plan</a
+                >
+              </div>
+            </article>
+          </div>
+          <p class="disclaimer">
+            * Sujeto a disponibilidad de cobertura y confirmación comercial.
+            Verifica condiciones antes de contratar.
+          </p>
+        </div>
+      </section>
+      <section class="section lifestyle container">
+        <div class="section-label">03 / HECHO PARA TU DÍA A DÍA</div>
+        <h2 class="reveal">Cada momento, <span>mejor conectado.</span></h2>
+        <div class="lifestyle-grid">
+          <article class="life-card life-one reveal">
+            <div>
+              <span>01 / ENTRETENIMIENTO</span>
+              <h3>Juega a tu manera.</h3>
+              <p>Que la diversión no espere.</p>
+            </div>
+          </article>
+          <article class="life-card life-two reveal">
+            <div>
+              <span>02 / PRODUCTIVIDAD</span>
+              <h3>Tu oficina, donde quieras.</h3>
+              <p>Conecta tus ideas con el mundo.</p>
+            </div>
+          </article>
+          <article class="life-card life-three reveal">
+            <div>
+              <span>03 / FAMILIA</span>
+              <h3>Momentos que se comparten.</h3>
+              <p>Tu contenido favorito, en casa.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section class="section coverage" id="cobertura">
+        <div class="container coverage-grid">
+          <div class="reveal">
+            <div class="section-label">04 / CONECTAMOS CONTIGO</div>
+            <h2>¿WISP llega <span>a tu hogar?</span></h2>
+            <p>
+              Cuéntanos dónde vives y nuestro equipo podrá orientarte sobre
+              disponibilidad de servicio.
+            </p>
+            <a href="#contacto" class="btn">Consultar cobertura ↗</a>
+          </div>
+          <div class="coverage-art reveal">
+            <div class="orbit orbit-one"></div>
+            <div class="orbit orbit-two"></div>
+            <div class="orbit orbit-three"></div>
+            <div class="coverage-center">⌂<small>WISP</small></div>
+            <span class="orbit-dot dot-one"></span
+            ><span class="orbit-dot dot-two"></span
+            ><span class="orbit-dot dot-three"></span>
+          </div>
+        </div>
+      </section>
+      <section class="section faq container" id="faq">
+        <div class="section-label">05 / RESOLVEMOS TUS DUDAS</div>
+        <h2 class="reveal">Todo claro. <span>Todo conectado.</span></h2>
+        <div class="faq-list">
+          <details>
+            <summary>¿Qué es internet por fibra óptica? <span>+</span></summary>
+            <p>
+              Es una tecnología que transmite datos mediante señales de luz por
+              fibra óptica y permite conexiones de alta capacidad.
+            </p>
+          </details>
+          <details>
+            <summary>
+              ¿Cómo sé si hay cobertura en mi zona? <span>+</span>
+            </summary>
+            <p>
+              Envíanos tu distrito, barrio y dirección de referencia por el
+              formulario. Confirmaremos la disponibilidad antes de ofrecer una
+              instalación.
+            </p>
+          </details>
+          <details>
+            <summary>¿Cuánto tarda la instalación? <span>+</span></summary>
+            <p>
+              Depende de la cobertura, factibilidad técnica y agenda disponible.
+              Nuestro equipo te confirmará el plazo.
+            </p>
+          </details>
+          <details>
+            <summary>¿Qué plan es ideal para mi hogar? <span>+</span></summary>
+            <p>
+              Depende de cuántas personas y dispositivos se conecten y de las
+              actividades que realicen. Podemos orientarte.
+            </p>
+          </details>
+        </div>
+      </section>
+      <section class="section contact" id="contacto">
+        <div class="container contact-grid">
+          <div>
+            <div class="section-label">06 / EMPIEZA HOY</div>
+            <h2>Tu próxima conexión <span>empieza aquí.</span></h2>
+            <p>
+              Déjanos tus datos y prepara un mensaje para nuestro equipo
+              comercial.
+            </p>
+            <div class="contact-note">
+              ✦ Atención personalizada · Consulta sin compromiso
+            </div>
+          </div>
+          <form id="contactForm">
+            <label for="name">Tu nombre</label
+            ><input
+              id="name"
+              name="name"
+              placeholder="¿Cómo te llamas?"
+              required
+            /><label for="zone">Distrito o zona</label
+            ><input
+              id="zone"
+              name="zone"
+              placeholder="¿Dónde necesitas internet?"
+              required
+            /><label for="planSelect">Plan de interés</label
+            ><select id="planSelect" name="plan">
+              <option value="Asesoría de planes">Quiero asesoría</option>
+              <option value="Plan 39 — 50 Mbps">Plan 39 — 50 Mbps</option>
+              <option value="Plan 49 — 100 Mbps">Plan 49 — 100 Mbps</option>
+              <option value="Plan 69 — 150 Mbps">Plan 69 — 150 Mbps</option>
+              <option value="Plan 99 — 200 Mbps">
+                Plan 99 — 200 Mbps
+              </option></select
+            ><button class="btn" type="submit">
+              Preparar consulta por WhatsApp ↗</button
+            ><small
+              >La cobertura y condiciones se confirman con el equipo
+              comercial.</small
+            >
+          </form>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <div class="container footer-grid">
+        <div class="footer-brand">
+          <img src="assets/logo-wisp.png" alt="WISP" /><strong
+            >internet para todos</strong
+          >
+          <p>Tu mundo conectado, a tu manera.</p>
+        </div>
+        <div>
+          <b>EXPLORA</b><a href="#planes">Planes</a
+          ><a href="#beneficios">Beneficios</a
+          ><a href="#cobertura">Cobertura</a>
+        </div>
+        <div>
+          <b>CONTACTO</b><a href="#contacto">Solicitar información</a
+          ><a href="#faq">Preguntas frecuentes</a>
+        </div>
+      </div>
+      <div class="container footer-bottom">
+        <span
+          >© <span id="year"></span> WISP. Todos los derechos reservados.</span
+        ><a href="#inicio">Volver arriba ↑</a>
+      </div>
+    </footer>
+    <script src="script.js"></script>
+  </body>
+</html>

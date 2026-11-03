@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useSession } from '@/hooks/useSession';
+import { useSession, ROLES_MOBILE_PERMITIDOS } from '@/hooks/useSession';
 import { loginAdmin, loginCliente, getMeWithToken } from '@/services/api';
 import { Logo } from '@/components/Logo';
 import { COLORS } from '@/theme/colors';
@@ -38,7 +38,14 @@ export default function LoginScreen() {
       if (esStaff) {
         const res = await loginAdmin(usuario.trim(), clave);
         const me = await getMeWithToken(res.access_token);
-        await signIn({ token: res.access_token, role: me.rol, nombre: me.nombre });
+        if (!ROLES_MOBILE_PERMITIDOS.includes(me.rol as any)) {
+          Alert.alert(
+            'Acceso no disponible aquí',
+            'Tu usuario debe ingresar desde el sistema web, no desde la app móvil.',
+          );
+          return;
+        }
+        await signIn({ token: res.access_token, role: me.rol as any, nombre: me.nombre });
       } else {
         const res = await loginCliente(usuario.trim(), clave.trim());
         await signIn({ token: res.access_token, role: 'cliente', nombre: res.nombre, clienteId: res.cliente_id });
@@ -61,7 +68,7 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={s.brand}>
           <Logo height={56} />
-          <Text style={s.tagline}>Fibra óptica confiable para tu hogar</Text>
+          <Text style={s.tagline}>Internet para todos</Text>
           <Text style={s.taglineSub}>Rápida. Estable. Siempre contigo.</Text>
         </View>
 
@@ -91,22 +98,19 @@ export default function LoginScreen() {
               />
             </View>
 
-            <Text style={[s.inputLabel, { marginTop: 16 }]}>
-              {esStaff ? 'CONTRASEÑA' : 'PIN'}
-            </Text>
+            <Text style={[s.inputLabel, { marginTop: 16 }]}>CONTRASEÑA</Text>
             <View style={s.inputWrap}>
               <Ionicons name="lock-closed-outline" size={19} color={COLORS.mutedForeground} style={s.leadingIcon} />
               <TextInput
                 style={[s.input, { flex: 1 }]}
                 value={clave}
                 onChangeText={setClave}
-                placeholder="••••••••"
                 placeholderTextColor={COLORS.placeholder}
                 secureTextEntry={!mostrarClave}
                 keyboardType="default"
                 autoComplete="off"
                 autoCorrect={false}
-                maxLength={esStaff ? 100 : 4}
+                maxLength={100}
               />
               <TouchableOpacity style={s.eyeBtn} onPress={() => setMostrarClave(v => !v)}>
                 <Ionicons name={mostrarClave ? 'eye-off-outline' : 'eye-outline'} size={19} color={COLORS.mutedForeground} />

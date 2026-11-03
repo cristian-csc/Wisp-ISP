@@ -1,0 +1,2905 @@
+{
+ "url": "http://localhost:4173/",
+ "at": "2026-10-26T14:17:44.989Z",
+ "allow": [
+  "hairline",
+  "shadow",
+  "micro-label",
+  "gradient",
+  "gradient-text",
+  "glass",
+  "off-centre",
+  "eyebrow",
+  "outlined-box"
+ ],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 6,
+   "filled": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "motion": {
+    "elements": 20,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 20,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 4630,
+     "screens": 5.1,
+     "words": 640,
+     "img": 7,
+     "video": 0,
+     "canvas": 0,
+     "svg": 38,
+     "sections": 6,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 5,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "modern-wifi-6-router.jpg",
+      "video-call-laptop.jpg",
+      "gaming-rgb-setup.jpg",
+      "home-security-camera.jpg",
+      "fiber-splicer-closeup.jpg"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Conectividad total para tu hogar",
+     "words": 5,
+     "chars": 32,
+     "lines": 2,
+     "size": 72,
+     "vw": 5,
+     "font": "Outfit",
+     "weight": 800,
+     "tracking": -0.025,
+     "leading": 0.95,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.51,
+     "top": 191,
+     "gradientText": true,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Conectividad total para tu hogar",
+     "words": 5,
+     "lines": 2,
+     "size": 72,
+     "font": "Outfit"
+    },
+    "headings": [
+     {
+      "text": "Conectividad total para tu hogar",
+      "words": 5,
+      "chars": 32,
+      "lines": 2,
+      "size": 72,
+      "vw": 5,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 0.95,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.51,
+      "top": 191,
+      "gradientText": true,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "4",
+      "words": 1,
+      "chars": 1,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.11,
+      "top": 664,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "200",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.11,
+      "top": 664,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "100%",
+      "words": 1,
+      "chars": 4,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.11,
+      "top": 664,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Elige tu plan de internet 100% fibra óptica",
+      "words": 8,
+      "chars": 43,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.47,
+      "top": 961,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "50",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 48,
+      "vw": 3.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "left",
+      "widthRatio": 0.15,
+      "top": 1186,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "100",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 48,
+      "vw": 3.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "left",
+      "widthRatio": 0.15,
+      "top": 1186,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "200",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 48,
+      "vw": 3.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "right",
+      "widthRatio": 0.15,
+      "top": 1186,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "150",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 48,
+      "vw": 3.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "right",
+      "widthRatio": 0.15,
+      "top": 1187,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "69",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "right",
+      "widthRatio": 0.03,
+      "top": 1518,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "39",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "left",
+      "widthRatio": 0.03,
+      "top": 1519,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "49",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "left",
+      "widthRatio": 0.03,
+      "top": 1519,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "99",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "right",
+      "widthRatio": 0.03,
+      "top": 1519,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "¿Por qué elegir WISP fibra óptica?",
+      "words": 6,
+      "chars": 34,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.47,
+      "top": 1870,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Nuestro compromiso",
+      "words": 2,
+      "chars": 18,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.31,
+      "top": 2847,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "¿Tienes dudas o deseas consultar tu cobertura?",
+      "words": 7,
+      "chars": 46,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.25,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.45,
+      "top": 3803,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 16,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 7,
+     "centered": 10,
+     "medianWords": 1,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "DM Sans",
+       "share": 0.95,
+       "mono": false
+      },
+      {
+       "family": "Outfit",
+       "share": 0.05,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      13,
+      14,
+      16,
+      18,
+      20,
+      24,
+      30,
+      36,
+      48,
+      72
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "DM Sans",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 7.6
+     },
+     "measureChars": 56,
+     "max": {
+      "size": 72,
+      "vw": 5,
+      "font": "Outfit",
+      "text": "Conectividad para tu hogar"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 9,
+     "microLabelShare": 0.037,
+     "microSamples": [
+      "100% Fibra Óptica Simétrica",
+      "Fibra óptica en tu distrito",
+      "Planes residenciales",
+      "Mensuales",
+      "Mensuales",
+      "Más vendido"
+     ],
+     "upperShare": 0.05,
+     "centerShare": 0.19,
+     "smallText": 0
+    },
+    "eyebrows": [
+     {
+      "text": "100% Fibra Óptica Simétrica",
+      "above": "Conectividad total para tu hogar",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": true,
+      "size": 13,
+      "top": 142
+     },
+     {
+      "text": "Planes residenciales",
+      "above": "Elige tu plan de internet 100% fibra ópt",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": true,
+      "size": 13,
+      "top": 916
+     },
+     {
+      "text": "PLAN 39",
+      "above": "50",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 1126
+     },
+     {
+      "text": "PLAN 49",
+      "above": "100",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 1126
+     },
+     {
+      "text": "PLAN 99",
+      "above": "200",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 1126
+     },
+     {
+      "text": "PLAN 69",
+      "above": "150",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 1127
+     },
+     {
+      "text": "¡Instalación gratis!",
+      "above": "69",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 1458
+     },
+     {
+      "text": "Instalación: S/ 50",
+      "above": "39",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 1455
+     },
+     {
+      "text": "Instalación: S/ 50",
+      "above": "49",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 1455
+     },
+     {
+      "text": "¡Instalación gratis!",
+      "above": "99",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 1457
+     },
+     {
+      "text": "¡Conéctate con lo mejor!",
+      "above": "¿Tienes dudas o deseas consultar tu cobe",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 3785
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f1f5f9",
+     "bodyBgHsl": {
+      "h": 210,
+      "s": 0.4,
+      "l": 0.96
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#101415",
+       "top": 0,
+       "hsl": {
+        "h": 192,
+        "s": 0.14,
+        "l": 0.07
+       }
+      },
+      {
+       "color": "#f5f7fa",
+       "top": 820,
+       "hsl": {
+        "h": 216,
+        "s": 0.33,
+        "l": 0.97
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 1774,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      },
+      {
+       "color": "#0b0f10",
+       "top": 4041,
+       "hsl": {
+        "h": 192,
+        "s": 0.19,
+        "l": 0.05
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.41
+      },
+      {
+       "color": "#4b5563",
+       "share": 0.24
+      },
+      {
+       "color": "#10151c",
+       "share": 0.08
+      },
+      {
+       "color": "#374151",
+       "share": 0.07
+      },
+      {
+       "color": "#9aa5b8",
+       "share": 0.06
+      }
+     ],
+     "button": {
+      "bg": "#10151c",
+      "hsl": {
+       "h": 215,
+       "s": 0.27,
+       "l": 0.09
+      },
+      "fg": "#ffffff"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 9,
+     "inHero": 4,
+     "radius": "pill",
+     "height": 44,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "WhatsApp: 931 090 909",
+      "Ingresar",
+      "Ver planes desde S/ 39",
+      "Consultar por WhatsApp"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 18,
+     "shadowOverlay": 1,
+     "shadowSamples": [
+      "a.flex.items-center → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.w-full.max-w-md → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.relative.flex → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.relative.flex → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+     ],
+     "gradients": 1,
+     "scrims": 0,
+     "gradientSamples": [
+      "div.relative.mx-auto → linear-gradient(to right in oklab, rgb(194, 65, 12) 0%, rgb(154, 52, 9) 100%)"
+     ],
+     "gradientText": 1,
+     "hairlines": 1,
+     "hairlineSamples": [
+      "div.grid.max-w-lg 512px"
+     ],
+     "outlinedBoxes": 8,
+     "dashed": 0,
+     "blurred": 1,
+     "roundedBoxes": 20,
+     "boxRadius": 16,
+     "squareMedia": 0,
+     "roundedMedia": 1,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 4,
+     "fixed": true,
+     "height": 80,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "dm sans",
+     "outfit"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 4630,
+    "margins": {
+     "left": 80,
+     "right": 168
+    },
+    "sections": [
+     {
+      "sel": "section.relative.overflow-hidden",
+      "tag": "section",
+      "top": 80,
+      "height": 740,
+      "words": 100,
+      "media": 0,
+      "middle": 267,
+      "heading": {
+       "text": "Conectividad",
+       "size": 72,
+       "tag": "h1"
+      },
+      "left": 80,
+      "right": 88,
+      "textLeft": 80,
+      "textRight": 184,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#planes.bg-[#f5f7fa].px-5",
+      "tag": "section",
+      "top": 820,
+      "height": 954,
+      "words": 120,
+      "media": 0,
+      "middle": 49,
+      "heading": {
+       "text": "50",
+       "size": 48,
+       "tag": "p"
+      },
+      "left": 193,
+      "right": 199,
+      "textLeft": 193,
+      "textRight": 199,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#beneficios.bg-white.px-5",
+      "tag": "section",
+      "top": 1774,
+      "height": 976,
+      "words": 130,
+      "media": 4,
+      "middle": 0,
+      "heading": {
+       "text": "¿Por qué elegir",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 208,
+      "right": 208,
+      "textLeft": 220,
+      "textRight": 258,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#nosotros.bg-[#f5f7fa].px-5",
+      "tag": "section",
+      "top": 2751,
+      "height": 888,
+      "words": 90,
+      "media": 1,
+      "middle": 48,
+      "heading": {
+       "text": "Nuestro compromiso",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 208,
+      "right": 244,
+      "textLeft": 208,
+      "textRight": 244,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section.bg-white.px-5",
+      "tag": "section",
+      "top": 3639,
+      "height": 402,
+      "words": 36,
+      "media": 0,
+      "middle": 169,
+      "heading": {
+       "text": "¿Tienes dudas o deseas consultar tu cobertura?",
+       "size": 30,
+       "tag": "h2"
+      },
+      "left": 192,
+      "right": 192,
+      "textLeft": 192,
+      "textRight": 192,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "footer.bg-[#0b0f10].px-5",
+      "tag": "footer",
+      "top": 4041,
+      "height": 589,
+      "words": 156,
+      "media": 0,
+      "middle": 65,
+      "heading": null,
+      "left": 208,
+      "right": 238,
+      "textLeft": 208,
+      "textRight": 238,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Conectividad total para tu hogar",
+      "size": 72,
+      "top": 191,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 80,
+      "n": 3
+     },
+     {
+      "x": 192,
+      "n": 2
+     },
+     {
+      "x": 208,
+      "n": 2
+     },
+     {
+      "x": 590,
+      "n": 2
+     },
+     {
+      "x": 241,
+      "n": 1
+     },
+     {
+      "x": 297,
+      "n": 1
+     },
+     {
+      "x": 517,
+      "n": 1
+     },
+     {
+      "x": 940,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 13,
+    "bodySize": 16,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0.19,
+    "voidBox": {
+     "x": 600,
+     "y": 600,
+     "w": 840,
+     "h": 300
+    }
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 6,
+   "filled": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "motion": {
+    "elements": 20,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 20,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 5697,
+     "screens": 5.6,
+     "words": 636,
+     "img": 7,
+     "video": 0,
+     "canvas": 0,
+     "svg": 38,
+     "sections": 6,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 1,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "fiber-splicer-closeup.jpg"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Conectividad total para tu hogar",
+     "words": 5,
+     "chars": 32,
+     "lines": 2,
+     "size": 60,
+     "vw": 7.8,
+     "font": "Outfit",
+     "weight": 800,
+     "tracking": -0.025,
+     "leading": 0.95,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.9,
+     "top": 191,
+     "gradientText": true,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Conectividad total para tu hogar",
+     "words": 5,
+     "lines": 2,
+     "size": 60,
+     "font": "Outfit"
+    },
+    "headings": [
+     {
+      "text": "Conectividad total para tu hogar",
+      "words": 5,
+      "chars": 32,
+      "lines": 2,
+      "size": 60,
+      "vw": 7.8,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 0.95,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 191,
+      "gradientText": true,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "4",
+      "words": 1,
+      "chars": 1,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.21,
+      "top": 642,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "200",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.21,
+      "top": 642,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "100%",
+      "words": 1,
+      "chars": 4,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.21,
+      "top": 642,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Elige tu plan de internet 100% fibra óptica",
+      "words": 8,
+      "chars": 43,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.88,
+      "top": 1379,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "50",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 48,
+      "vw": 6.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "left",
+      "widthRatio": 0.37,
+      "top": 1604,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "100",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 48,
+      "vw": 6.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "right",
+      "widthRatio": 0.37,
+      "top": 1604,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "39",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "left",
+      "widthRatio": 0.05,
+      "top": 1933,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "49",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "right",
+      "widthRatio": 0.06,
+      "top": 1933,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "200",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 48,
+      "vw": 6.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "right",
+      "widthRatio": 0.37,
+      "top": 2189,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "150",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 48,
+      "vw": 6.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "left",
+      "widthRatio": 0.36,
+      "top": 2190,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "69",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "left",
+      "widthRatio": 0.05,
+      "top": 2521,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "99",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "right",
+      "widthRatio": 0.05,
+      "top": 2522,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "¿Por qué elegir WISP fibra óptica?",
+      "words": 6,
+      "chars": 34,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.88,
+      "top": 2874,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Nuestro compromiso",
+      "words": 2,
+      "chars": 18,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.58,
+      "top": 3874,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "¿Tienes dudas o deseas consultar tu cobertura?",
+      "words": 7,
+      "chars": 46,
+      "lines": 2,
+      "size": 30,
+      "vw": 3.9,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.25,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.54,
+      "top": 4825,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 16,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 7,
+     "centered": 10,
+     "medianWords": 1,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "DM Sans",
+       "share": 0.95,
+       "mono": false
+      },
+      {
+       "family": "Outfit",
+       "share": 0.05,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      13,
+      14,
+      16,
+      18,
+      20,
+      24,
+      30,
+      36,
+      48,
+      60
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "DM Sans",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 7.6
+     },
+     "measureChars": 56,
+     "max": {
+      "size": 60,
+      "vw": 7.8,
+      "font": "Outfit",
+      "text": "Conectividad para tu hogar"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 9,
+     "microLabelShare": 0.037,
+     "microSamples": [
+      "100% Fibra Óptica Simétrica",
+      "Fibra óptica en tu distrito",
+      "Planes residenciales",
+      "Mensuales",
+      "Mensuales",
+      "Más vendido"
+     ],
+     "upperShare": 0.05,
+     "centerShare": 0.19,
+     "smallText": 0
+    },
+    "eyebrows": [
+     {
+      "text": "100% Fibra Óptica Simétrica",
+      "above": "Conectividad total para tu hogar",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": true,
+      "size": 13,
+      "top": 142
+     },
+     {
+      "text": "Planes residenciales",
+      "above": "Elige tu plan de internet 100% fibra ópt",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": true,
+      "size": 13,
+      "top": 1334
+     },
+     {
+      "text": "PLAN 39",
+      "above": "50",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 1544
+     },
+     {
+      "text": "PLAN 49",
+      "above": "100",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 1544
+     },
+     {
+      "text": "Instalación: S/ 50",
+      "above": "39",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 1873
+     },
+     {
+      "text": "Instalación: S/ 50",
+      "above": "49",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 1873
+     },
+     {
+      "text": "PLAN 99",
+      "above": "200",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 2129
+     },
+     {
+      "text": "PLAN 69",
+      "above": "150",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 2130
+     },
+     {
+      "text": "¡Instalación gratis!",
+      "above": "69",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 2461
+     },
+     {
+      "text": "¡Instalación gratis!",
+      "above": "99",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 2460
+     },
+     {
+      "text": "¡Conéctate con lo mejor!",
+      "above": "¿Tienes dudas o deseas consultar tu cobe",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 4806
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f1f5f9",
+     "bodyBgHsl": {
+      "h": 210,
+      "s": 0.4,
+      "l": 0.96
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#101415",
+       "top": 0,
+       "hsl": {
+        "h": 192,
+        "s": 0.14,
+        "l": 0.07
+       }
+      },
+      {
+       "color": "#f5f7fa",
+       "top": 1238,
+       "hsl": {
+        "h": 216,
+        "s": 0.33,
+        "l": 0.97
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 2778,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      },
+      {
+       "color": "#0b0f10",
+       "top": 5108,
+       "hsl": {
+        "h": 192,
+        "s": 0.19,
+        "l": 0.05
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.41
+      },
+      {
+       "color": "#4b5563",
+       "share": 0.24
+      },
+      {
+       "color": "#10151c",
+       "share": 0.08
+      },
+      {
+       "color": "#374151",
+       "share": 0.07
+      },
+      {
+       "color": "#9aa5b8",
+       "share": 0.07
+      }
+     ],
+     "button": {
+      "bg": "#10151c",
+      "hsl": {
+       "h": 215,
+       "s": 0.27,
+       "l": 0.09
+      },
+      "fg": "#ffffff"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 7,
+     "inHero": 3,
+     "radius": 14,
+     "height": 44,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Ingresar",
+      "Ver planes desde S/ 39",
+      "Consultar por WhatsApp"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 18,
+     "shadowOverlay": 1,
+     "shadowSamples": [
+      "a.flex.items-center → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.w-full.max-w-md → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.relative.flex → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.relative.flex → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+     ],
+     "gradients": 1,
+     "scrims": 0,
+     "gradientSamples": [
+      "div.relative.mx-auto → linear-gradient(to right in oklab, rgb(194, 65, 12) 0%, rgb(154, 52, 9) 100%)"
+     ],
+     "gradientText": 1,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "div.grid.max-w-lg 512px",
+      "div.space-y-2.5.border-t 282px",
+      "div.space-y-2.5.border-t 282px",
+      "div.space-y-2.5.border-t 280px",
+      "div.space-y-2.5.border-t 282px"
+     ],
+     "outlinedBoxes": 8,
+     "dashed": 0,
+     "blurred": 1,
+     "roundedBoxes": 19,
+     "boxRadius": 16,
+     "squareMedia": 0,
+     "roundedMedia": 1,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 3,
+     "fixed": true,
+     "height": 80,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "dm sans",
+     "outfit"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 5697,
+    "margins": {
+     "left": 40,
+     "right": 46
+    },
+    "sections": [
+     {
+      "sel": "section.relative.overflow-hidden",
+      "tag": "section",
+      "top": 80,
+      "height": 1158,
+      "words": 100,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Conectividad",
+       "size": 60,
+       "tag": "h1"
+      },
+      "left": 40,
+      "right": 98,
+      "textLeft": 40,
+      "textRight": 98,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#planes.bg-[#f5f7fa].px-5",
+      "tag": "section",
+      "top": 1238,
+      "height": 1540,
+      "words": 120,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "50",
+       "size": 48,
+       "tag": "p"
+      },
+      "left": 53,
+      "right": 53,
+      "textLeft": 53,
+      "textRight": 53,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#beneficios.bg-white.px-5",
+      "tag": "section",
+      "top": 2778,
+      "height": 1000,
+      "words": 130,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "¿Por qué elegir",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 40,
+      "right": 40,
+      "textLeft": 52,
+      "textRight": 52,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#nosotros.bg-[#f5f7fa].px-5",
+      "tag": "section",
+      "top": 3778,
+      "height": 874,
+      "words": 90,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Nuestro compromiso",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 40,
+      "right": 61,
+      "textLeft": 40,
+      "textRight": 61,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section.bg-white.px-5",
+      "tag": "section",
+      "top": 4652,
+      "height": 456,
+      "words": 36,
+      "media": 0,
+      "middle": 38,
+      "heading": {
+       "text": "¿Tienes dudas o deseas consultar tu cobertura?",
+       "size": 30,
+       "tag": "h2"
+      },
+      "left": 88,
+      "right": 88,
+      "textLeft": 88,
+      "textRight": 101,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "footer.bg-[#0b0f10].px-5",
+      "tag": "footer",
+      "top": 5108,
+      "height": 589,
+      "words": 156,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 40,
+      "right": 43,
+      "textLeft": 40,
+      "textRight": 43,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Conectividad total para tu hogar",
+      "size": 60,
+      "top": 191,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 40,
+      "n": 5
+     },
+     {
+      "x": 88,
+      "n": 2
+     },
+     {
+      "x": 73,
+      "n": 1
+     },
+     {
+      "x": 129,
+      "n": 1
+     },
+     {
+      "x": 204,
+      "n": 1
+     },
+     {
+      "x": 310,
+      "n": 1
+     },
+     {
+      "x": 404,
+      "n": 1
+     },
+     {
+      "x": 548,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 13,
+    "bodySize": 16,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 10,
+   "filled": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0.98,
+    1
+   ],
+   "motion": {
+    "elements": 20,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 20,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 7977,
+     "screens": 9.5,
+     "words": 628,
+     "img": 7,
+     "video": 0,
+     "canvas": 0,
+     "svg": 38,
+     "sections": 6,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 1,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "fiber-splicer-closeup.jpg"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Conectividad total para tu hogar",
+     "words": 5,
+     "chars": 32,
+     "lines": 2,
+     "size": 36,
+     "vw": 9.2,
+     "font": "Outfit",
+     "weight": 800,
+     "tracking": -0.025,
+     "leading": 0.95,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.9,
+     "top": 175,
+     "gradientText": true,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Conectividad total para tu hogar",
+     "words": 5,
+     "lines": 2,
+     "size": 36,
+     "font": "Outfit"
+    },
+    "headings": [
+     {
+      "text": "Conectividad total para tu hogar",
+      "words": 5,
+      "chars": 32,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 0.95,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 175,
+      "gradientText": true,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "4",
+      "words": 1,
+      "chars": 1,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.27,
+      "top": 746,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "200",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.27,
+      "top": 746,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "100%",
+      "words": 1,
+      "chars": 4,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.27,
+      "top": 746,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Elige tu plan de internet 100% fibra óptica",
+      "words": 8,
+      "chars": 43,
+      "lines": 2,
+      "size": 30,
+      "vw": 7.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 1451,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "50",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 48,
+      "vw": 12.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 1732,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "39",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.11,
+      "top": 2061,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "100",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 48,
+      "vw": 12.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 2318,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "49",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.11,
+      "top": 2647,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "150",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 48,
+      "vw": 12.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.76,
+      "top": 2904,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "69",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.11,
+      "top": 3235,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "200",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 48,
+      "vw": 12.3,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 3493,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "99",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.11,
+      "top": 3824,
+      "tag": "span",
+      "kind": "heading"
+     },
+     {
+      "text": "¿Por qué elegir WISP fibra óptica?",
+      "words": 6,
+      "chars": 34,
+      "lines": 2,
+      "size": 30,
+      "vw": 7.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 4111,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Nuestro compromiso",
+      "words": 2,
+      "chars": 18,
+      "lines": 1,
+      "size": 30,
+      "vw": 7.7,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 5708,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "¿Tienes dudas o deseas consultar tu cobertura?",
+      "words": 7,
+      "chars": 46,
+      "lines": 2,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Outfit",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.25,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.73,
+      "top": 6730,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 16,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 7,
+     "centered": 11,
+     "medianWords": 1,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "DM Sans",
+       "share": 0.95,
+       "mono": false
+      },
+      {
+       "family": "Outfit",
+       "share": 0.05,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      13,
+      14,
+      16,
+      18,
+      20,
+      24,
+      30,
+      36,
+      48
+     ],
+     "sizeCount": 9,
+     "notLoaded": [],
+     "body": {
+      "font": "DM Sans",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 7.6
+     },
+     "measureChars": 35,
+     "max": {
+      "size": 48,
+      "vw": 12.3,
+      "font": "Outfit",
+      "text": "50"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 9,
+     "microLabelShare": 0.038,
+     "microSamples": [
+      "100% Fibra Óptica Simétrica",
+      "Fibra óptica en tu distrito",
+      "Planes residenciales",
+      "Mensuales",
+      "Mensuales",
+      "Más vendido"
+     ],
+     "upperShare": 0.05,
+     "centerShare": 0.24,
+     "smallText": 0
+    },
+    "eyebrows": [
+     {
+      "text": "100% Fibra Óptica Simétrica",
+      "above": "Conectividad total para tu hogar",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": true,
+      "size": 13,
+      "top": 126
+     },
+     {
+      "text": "Planes residenciales",
+      "above": "Elige tu plan de internet 100% fibra ópt",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": true,
+      "size": 13,
+      "top": 1407
+     },
+     {
+      "text": "PLAN 39",
+      "above": "50",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 1672
+     },
+     {
+      "text": "Instalación: S/ 50",
+      "above": "39",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 2001
+     },
+     {
+      "text": "PLAN 49",
+      "above": "100",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 2258
+     },
+     {
+      "text": "Instalación: S/ 50",
+      "above": "49",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 2587
+     },
+     {
+      "text": "PLAN 69",
+      "above": "150",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 2844
+     },
+     {
+      "text": "¡Instalación gratis!",
+      "above": "69",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 3175
+     },
+     {
+      "text": "PLAN 99",
+      "above": "200",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 18,
+      "top": 3433
+     },
+     {
+      "text": "¡Instalación gratis!",
+      "above": "99",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": false,
+      "size": 14,
+      "top": 3764
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f1f5f9",
+     "bodyBgHsl": {
+      "h": 210,
+      "s": 0.4,
+      "l": 0.96
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#101415",
+       "top": 0,
+       "hsl": {
+        "h": 192,
+        "s": 0.14,
+        "l": 0.07
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 878,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      },
+      {
+       "color": "#f5f7fa",
+       "top": 1343,
+       "hsl": {
+        "h": 216,
+        "s": 0.33,
+        "l": 0.97
+       }
+      },
+      {
+       "color": "#c2410c",
+       "top": 6254,
+       "hsl": {
+        "h": 17,
+        "s": 0.88,
+        "l": 0.4
+       }
+      },
+      {
+       "color": "#0b0f10",
+       "top": 7090,
+       "hsl": {
+        "h": 192,
+        "s": 0.19,
+        "l": 0.05
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.41
+      },
+      {
+       "color": "#4b5563",
+       "share": 0.24
+      },
+      {
+       "color": "#10151c",
+       "share": 0.08
+      },
+      {
+       "color": "#374151",
+       "share": 0.07
+      },
+      {
+       "color": "#9aa5b8",
+       "share": 0.07
+      }
+     ],
+     "button": {
+      "bg": "#10151c",
+      "hsl": {
+       "h": 215,
+       "s": 0.27,
+       "l": 0.09
+      },
+      "fg": "#ffffff"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 8,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 44,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Ingresar",
+      "Ver planes desde S/ 39",
+      "Consultar por WhatsApp"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 18,
+     "shadowOverlay": 1,
+     "shadowSamples": [
+      "a.flex.items-center → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.w-full.max-w-md → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.relative.flex → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.relative.flex → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+     ],
+     "gradients": 5,
+     "scrims": 0,
+     "gradientSamples": [
+      "div.absolute.inset-x-0 → linear-gradient(to top, oklab(0 0 0 / 0.85) 0%, oklab(0 0 0 / 0.15) 50%, rgba(0, 0, 0, 0) 100%)",
+      "div.absolute.inset-x-0 → linear-gradient(to top, oklab(0 0 0 / 0.85) 0%, oklab(0 0 0 / 0.15) 50%, rgba(0, 0, 0, 0) 100%)",
+      "div.absolute.inset-x-0 → linear-gradient(to top, oklab(0 0 0 / 0.85) 0%, oklab(0 0 0 / 0.15) 50%, rgba(0, 0, 0, 0) 100%)",
+      "div.absolute.inset-x-0 → linear-gradient(to top, oklab(0 0 0 / 0.85) 0%, oklab(0 0 0 / 0.15) 50%, rgba(0, 0, 0, 0) 100%)"
+     ],
+     "gradientText": 1,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "div.grid.max-w-lg 350px",
+      "div.space-y-2.5.border-t 300px",
+      "div.space-y-2.5.border-t 300px",
+      "div.space-y-2.5.border-t 298px",
+      "div.space-y-2.5.border-t 300px"
+     ],
+     "outlinedBoxes": 8,
+     "dashed": 0,
+     "blurred": 1,
+     "roundedBoxes": 19,
+     "boxRadius": 16,
+     "squareMedia": 0,
+     "roundedMedia": 1,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": true,
+     "height": 80,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "dm sans",
+     "outfit"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 7977,
+    "margins": {
+     "left": 20,
+     "right": 20
+    },
+    "sections": [
+     {
+      "sel": "section.relative.overflow-hidden",
+      "tag": "section",
+      "top": 80,
+      "height": 1263,
+      "words": 100,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Conectividad",
+       "size": 36,
+       "tag": "h1"
+      },
+      "left": 20,
+      "right": 0,
+      "textLeft": 20,
+      "textRight": 32,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#planes.bg-[#f5f7fa].px-5",
+      "tag": "section",
+      "top": 1343,
+      "height": 2705,
+      "words": 120,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "50",
+       "size": 48,
+       "tag": "p"
+      },
+      "left": 22,
+      "right": 22,
+      "textLeft": 22,
+      "textRight": 22,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#beneficios.bg-white.px-5",
+      "tag": "section",
+      "top": 4047,
+      "height": 1597,
+      "words": 130,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "¿Por qué elegir",
+       "size": 30,
+       "tag": "h2"
+      },
+      "left": 20,
+      "right": 20,
+      "textLeft": 21,
+      "textRight": 20,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section#nosotros.bg-[#f5f7fa].px-5",
+      "tag": "section",
+      "top": 5644,
+      "height": 970,
+      "words": 90,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Nuestro compromiso",
+       "size": 30,
+       "tag": "h2"
+      },
+      "left": 20,
+      "right": 20,
+      "textLeft": 20,
+      "textRight": 22,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "section.bg-white.px-5",
+      "tag": "section",
+      "top": 6614,
+      "height": 477,
+      "words": 36,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "¿Tienes dudas o deseas consultar tu cobertura?",
+       "size": 24,
+       "tag": "h2"
+      },
+      "left": 62,
+      "right": 62,
+      "textLeft": 62,
+      "textRight": 62,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "footer.bg-[#0b0f10].px-5",
+      "tag": "footer",
+      "top": 7090,
+      "height": 886,
+      "words": 156,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 20,
+      "right": 23,
+      "textLeft": 20,
+      "textRight": 23,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Conectividad total para tu hogar",
+      "size": 36,
+      "top": 175,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 20,
+      "n": 5
+     },
+     {
+      "x": 53,
+      "n": 3
+     },
+     {
+      "x": 94,
+      "n": 1
+     },
+     {
+      "x": 109,
+      "n": 1
+     },
+     {
+      "x": 239,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 11,
+    "bodySize": 16,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "WARN",
+   "id": "size-count",
+   "width": 1440,
+   "message": "10 different font sizes (13, 14, 16, 18, 20, 24, 30, 36, 48, 72).",
+   "fix": "A page needs about five: display, heading, lead, body, small.",
+   "alsoAt": [
+    768
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "no-footage",
+   "width": 1440,
+   "message": "No video anywhere on the page.",
+   "fix": "Look for one honest clip with scripts/assets.mjs --video (the place, the material, the process) and use it as a muted loop with a poster frame. Defend its absence only if no clip fits the subject."
+  },
+  {
+   "level": "WARN",
+   "id": "ragged-edges",
+   "width": 1440,
+   "message": "Left-aligned text starts at 8 different lines (80px, 192px, 208px, 590px, 241px, 297px, 517px); the three most used hold only 54% of it.",
+   "fix": "Pick two or three anchor lines from the grid and start every heading and paragraph on one of them."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "C:\\Users\\ASUS\\Documents\\ISP\\TUX-ISP\\.taste-skill\\inspect\\desktop-fold.jpg",
+   "pages": [
+    "C:\\Users\\ASUS\\Documents\\ISP\\TUX-ISP\\.taste-skill\\inspect\\desktop-page-01.jpg",
+    "C:\\Users\\ASUS\\Documents\\ISP\\TUX-ISP\\.taste-skill\\inspect\\desktop-page-02.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "C:\\Users\\ASUS\\Documents\\ISP\\TUX-ISP\\.taste-skill\\inspect\\tablet-fold.jpg",
+   "pages": [
+    "C:\\Users\\ASUS\\Documents\\ISP\\TUX-ISP\\.taste-skill\\inspect\\tablet-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "C:\\Users\\ASUS\\Documents\\ISP\\TUX-ISP\\.taste-skill\\inspect\\mobile-fold.jpg",
+   "pages": [
+    "C:\\Users\\ASUS\\Documents\\ISP\\TUX-ISP\\.taste-skill\\inspect\\mobile-page-01.jpg",
+    "C:\\Users\\ASUS\\Documents\\ISP\\TUX-ISP\\.taste-skill\\inspect\\mobile-page-02.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

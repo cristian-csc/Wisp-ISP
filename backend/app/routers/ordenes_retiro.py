@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -6,7 +7,11 @@ from typing import Optional, List
 
 from ..database import get_db
 from .. import models, schemas
+from ..config import settings
+from ..mensajeria import contacto_empresa, enviar_texto, telefono_de
 from .auth import get_current_user, require_roles
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -88,6 +93,7 @@ def create_orden_retiro(
     )
     db.add(orden)
     db.commit()
+
     orden = _ordenes_query(db).filter(models.OrdenRetiro.id == orden.id).first()
     return _con_onu_actual(db, orden)
 
@@ -131,6 +137,25 @@ def asignar_orden_retiro(
     return _con_onu_actual(db, orden)
 
 
+def _mensaje_despedida(cliente: models.Cliente) -> str:
+    """Lo que se le escribe al cliente cuando se le recoge el equipo: un
+    agradecimiento y la puerta abierta, sin pedirle nada."""
+    nombre = cliente.nombre.split()[0].title() if cliente.nombre else "vecino"
+    lineas = [
+        f"*{nombre}*, gracias por la confianza \U0001F64C",
+        "",
+        "Hoy recogimos el equipo y tu servicio quedó cerrado. Te agradecemos el "
+        "tiempo que estuviste con nosotros.",
+        "",
+        "Si más adelante quieres volver, aquí estaremos para atenderte: escríbenos "
+        "a este mismo número"
+        + (f" o llámanos al {contacto_empresa()}." if contacto_empresa() else "."),
+        "",
+        f"*{settings.EMPRESA_NOMBRE}* — Internet para todos \U0001F310",
+    ]
+    return "\n".join(lineas)
+
+
 @router.post("/{orden_id}/completar", response_model=schemas.OrdenRetiroOut)
 def completar_orden_retiro(
     orden_id: int,
@@ -168,6 +193,15 @@ def completar_orden_retiro(
         borne.potencia_optica_dbm = None
 
     if cliente:
+        # Datos al día antes de cerrar: el número es el que recibe la despedida
+        contacto = data.model_dump(
+            include={"telefono", "telefono_whatsapp", "direccion"}, exclude_none=True
+        )
+        for campo, valor in contacto.items():
+            valor = (valor or "").strip()
+            if valor:
+                setattr(cliente, campo, valor)
+
         cliente.estado = models.EstadoCliente.anulado
         historial = models.Historial(
             cliente_id=cliente.id,
@@ -185,5 +219,24 @@ def completar_orden_retiro(
     orden.estado = models.EstadoOrdenRetiro.completado
     orden.fecha_retiro = datetime.utcnow()
     db.commit()
+    # Despedida al cliente. Se espera la respuesta del bot (es un solo mensaje)
+    # para poder decirle al técnico en el acto si llegó o no; que falle no
+    # deshace el retiro, que ya quedó guardado.
+    enviado, detalle = None, None
+    if cliente:
+        phone = telefono_de(cliente)
+        if not phone:
+            enviado, detalle = False, "El cliente no tiene número registrado"
+        else:
+            enviado, detalle = enviar_texto(phone, _mensaje_despedida(cliente))
+            if enviado:
+                logger.info("Despedida enviada a %s (cliente %d)", phone, cliente.id)
+            else:
+                logger.warning("No se pudo despedir al cliente %d: %s", cliente.id, detalle)
+
     orden = _ordenes_query(db).filter(models.OrdenRetiro.id == orden.id).first()
-    return _con_onu_actual(db, orden)
+    salida = _con_onu_actual(db, orden)
+    salida.whatsapp_enviado = enviado
+    salida.whatsapp_detalle = detalle
+    return salida
+

@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator,
   RefreshControl, Animated, Easing, TouchableOpacity, Linking,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/hooks/useSession';
 import { getMiCuenta, MiCuenta } from '@/services/api';
 import { COLORS } from '@/theme/colors';
@@ -52,13 +53,16 @@ function DiasBar({ dias }: { dias: number | null }) {
     ? `Vencido hace ${Math.abs(dias)} día${Math.abs(dias) !== 1 ? 's' : ''}`
     : dias === 0 ? 'Vence hoy'
     : `${dias} día${dias !== 1 ? 's' : ''} restantes`;
-  const icon = dias < 0 ? '⚠️' : dias <= 7 ? '⏰' : '✅';
+  const icon = dias < 0 ? 'alert-circle' : dias <= 7 ? 'time' : 'checkmark-circle';
   const pct = Math.max(0, Math.min(1, (30 - Math.max(0, -dias)) / 30));
 
   return (
     <View style={{ marginTop: 14 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-        <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>{icon} {label}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+          <Ionicons name={icon} size={13} color={color} />
+          <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>{label}</Text>
+        </View>
         {dias > 0 && <Text style={{ fontSize: 12, color: color, fontWeight: '700' }}>{Math.round(pct * 100)}%</Text>}
       </View>
       <View style={s.progressBg}>
@@ -130,7 +134,7 @@ export default function MiCuentaScreen() {
         {/* Plan badge */}
         {cuenta?.plan && (
           <View style={s.heroPlanBadge}>
-            <Text style={s.heroPlanIcon}>📡</Text>
+            <Ionicons name="wifi" size={14} color="#FFFFFF" />
             <Text style={s.heroPlanText}>{cuenta.plan.nombre}</Text>
           </View>
         )}
@@ -153,9 +157,7 @@ export default function MiCuentaScreen() {
             <Text style={s.statLabel}>Mensua-{'\n'}lidad</Text>
           </View>
           <View style={[s.statCard, { borderTopColor: activo ? '#10B981' : '#EF4444' }]}>
-            <Text style={[s.statNum, { color: activo ? '#10B981' : '#EF4444', fontSize: 18 }]}>
-              {activo ? '✓' : '✕'}
-            </Text>
+            <Ionicons name={activo ? 'checkmark-circle' : 'close-circle'} size={20} color={activo ? '#10B981' : '#EF4444'} style={{ marginBottom: 4 }} />
             <Text style={s.statLabel}>Estado{'\n'}actual</Text>
           </View>
         </View>
@@ -200,7 +202,7 @@ export default function MiCuentaScreen() {
             <Text style={s.cardTitle}>MI CONEXIÓN</Text>
             <View style={s.connRow}>
               <View style={s.connIcon}>
-                <Text style={{ fontSize: 28 }}>📶</Text>
+                <Ionicons name="wifi" size={26} color={COLORS.primary} />
               </View>
               <View style={{ flex: 1, marginLeft: 14 }}>
                 <Text style={s.connPlan}>{cuenta.plan.nombre}</Text>
@@ -209,7 +211,7 @@ export default function MiCuentaScreen() {
                 </Text>
               </View>
               <View style={[s.connStatus, { backgroundColor: activo ? '#DCFCE7' : '#FEE2E2' }]}>
-                <Text style={{ fontSize: 16 }}>{activo ? '🟢' : '🔴'}</Text>
+                <Ionicons name={activo ? 'checkmark' : 'close'} size={18} color={activo ? '#059669' : '#DC2626'} />
               </View>
             </View>
           </View>
@@ -219,14 +221,14 @@ export default function MiCuentaScreen() {
         {cuenta && (
           <View style={s.card}>
             <Text style={s.cardTitle}>MIS DATOS</Text>
-            {[
-              { icon: '📅', l: 'Instalación', v: fmt(cuenta.fecha_instalacion) },
-              { icon: '📱', l: 'Teléfono',    v: cuenta.telefono ?? '—'        },
-              { icon: '📍', l: 'Dirección',   v: cuenta.direccion ?? '—'       },
-            ].map(({ icon, l, v }) => (
+            {([
+              { icon: 'calendar-outline', l: 'Instalación', v: fmt(cuenta.fecha_instalacion) },
+              { icon: 'call-outline',     l: 'Teléfono',    v: cuenta.telefono ?? '—'        },
+              { icon: 'location-outline', l: 'Dirección',   v: cuenta.direccion ?? '—'       },
+            ] as const).map(({ icon, l, v }) => (
               <View key={l} style={s.fila}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 15 }}>{icon}</Text>
+                  <Ionicons name={icon} size={15} color={COLORS.mutedForeground} />
                   <Text style={s.filaLabel}>{l}</Text>
                 </View>
                 <Text style={s.filaValue} numberOfLines={1}>{v}</Text>
@@ -242,7 +244,9 @@ export default function MiCuentaScreen() {
           activeOpacity={0.8}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Text style={{ fontSize: 28 }}>🛟</Text>
+            <View style={s.helpIcon}>
+              <Ionicons name="logo-whatsapp" size={24} color="#25D366" />
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: '#F1F5F9', fontWeight: '800', fontSize: 14 }}>¿Problemas con tu servicio?</Text>
               <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>Toca aquí para escribirnos por WhatsApp</Text>
@@ -298,7 +302,6 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 20, paddingHorizontal: 16, paddingVertical: 7,
   },
-  heroPlanIcon: { fontSize: 14 },
   heroPlanText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
 
   /* Quick stats */
@@ -352,6 +355,10 @@ const s = StyleSheet.create({
   filaLabel: { color: '#64748B', fontSize: 13 },
   filaValue: { color: '#1E293B', fontSize: 13, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: 12 },
 
+  helpIcon: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(37,211,102,0.15)', alignItems: 'center', justifyContent: 'center',
+  },
   helpBadge: {
     backgroundColor: 'rgba(73,190,255,0.15)', borderRadius: 8,
     paddingHorizontal: 8, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(73,190,255,0.3)',

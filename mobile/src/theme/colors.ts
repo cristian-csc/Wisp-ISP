@@ -1,5 +1,5 @@
 /**
- * Paleta compartida con el frontend web (frontend-v2/src/css/globals.css).
+ * Paleta compartida con el frontend web (frontend/src/css/globals.css).
  * El naranja de la marca WISP es solo para el logo — la UI del sistema
  * interno (web y móvil) usa siempre esta paleta azul de referencia.
  */

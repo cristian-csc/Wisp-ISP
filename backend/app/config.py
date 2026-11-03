@@ -21,8 +21,28 @@ class Settings(BaseSettings):
     PHONE_CONTACTO: str = "990807069"
     BACKUP_DIR: str = "/backups"
     MEDIA_DIR: str = "/media"
+
+    # Consulta automatica de nombres por documento (APIs Peru).
+    # El token vive SOLO aqui: si el movil llamara directo al proveedor, el
+    # token viajaria dentro del APK y cualquiera podria extraerlo.
+    APISPERU_URL: str = "https://dniruc.apisperu.com/api/v1"
+    APISPERU_TOKEN: str = ""
+    # Cuota del plan gratuito. Al llegar al tope se deja de consultar y el
+    # nombre se escribe a mano; el alta del cliente nunca falla por esto.
+    CONSULTAS_LIMITE_MENSUAL: int = 1000
+    # A partir de aqui se avisa que queda poco
+    CONSULTAS_AVISO_DESDE: int = 950
     PRECIO_TV_ADICIONAL: float = 10.0
     DIAS_GRACIA: int = 3
+
+    # Datos que salen impresos en el recibo de pago. Vienen del recibo que la
+    # empresa ya usaba; si alguno cambia, se corrige en el .env sin tocar codigo.
+    EMPRESA_NOMBRE: str = "REDJULIACA"
+    EMPRESA_RUC: str = "20610944257"
+    EMPRESA_DIRECCION: str = "JR. SAN MARTIN 726"
+    EMPRESA_CIUDAD: str = "PERU - SAN ROMAN - JULIACA"
+    EMPRESA_TELEFONOS: str = "990807069 - 931090909"
+    EMPRESA_CORREO: str = "redjuliaca051@gmail.com"
 
     class Config:
         env_file = ".env"

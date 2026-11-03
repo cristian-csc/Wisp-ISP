@@ -1,0 +1,367 @@
+@import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap');
+@import 'simplebar-react/dist/simplebar.min.css';
+
+@import './layouts/container.css' layer(utilities);
+@import './layouts/sidebar.css' layer(utilities);
+@import './layouts/header.css' layer(utilities);
+@import './override/reboot.css' layer(utilities);
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+html,
+main {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+}
+
+@theme {
+  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  --shadow-md: 0 1px 4px rgba(133, 146, 173, 0.2);
+  --shadow-btn-shadow: 0 9px 17.5px rgba(0, 0, 0, 0.05);
+
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 7px;
+  --radius-tw: 12px;
+
+  --leading-21: 21px;
+
+  --gap-30: 30px;
+
+  --padding-15: 15px;
+  --padding-30: 30px;
+
+  --margin-30: 30px;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-info: var(--info);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-dark: var(--dark);
+  --color-bodytext: var(--bodytext);
+  --color-lightprimary: var(--lightprimary);
+  --color-lightsecondary: var(--lightsecondary);
+  --color-lightsuccess: var(--lightsuccess);
+  --color-lighterror: var(--lighterror);
+  --color-lightinfo: var(--lightinfo);
+  --color-lightwarning: var(--lightwarning);
+  --color-primaryemphasis: var(--primary-emphasis);
+  --color-secondaryemphasis: var(--secondary-emphasis);
+  --color-warningemphasis: var(--warning-emphasis);
+  --color-erroremphasis: var(--error-emphasis);
+  --color-successemphasis: var(--success-emphasis);
+  --color-infoemphasis: var(--info-emphasis);
+
+  /* Tokens nuevos del sistema de diseño */
+  --color-surface-2: var(--surface-2);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-lightbrand: var(--lightbrand);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-header: var(--header);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-foreground-strong: var(--sidebar-foreground-strong);
+  --color-primary-text: var(--primary-text);
+  --color-success-text: var(--success-text);
+  --color-warning-text: var(--warning-text);
+  --color-error-text: var(--error-text);
+  --color-info-text: var(--info-text);
+}
+
+/* Paleta idéntica a la plantilla de referencia — el naranja de WISP vive
+   solo en el logo (brand/logo-wisp.png) y en la página pública, no acá. */
+:root {
+  --radius: 10px;
+
+  /* ── Superficies ─────────────────────────────────────────────────────── */
+  --background: #f1f5fb;        /* área de trabajo: gris azulado muy claro */
+  --card: #ffffff;
+  --surface-2: #f8fafc;         /* cabeceras de tabla, filas alternas */
+  --popover: #ffffff;
+  --header: #ffffff;            /* el header es blanco en modo claro */
+
+  /* ── El sidebar es azul oscuro en LOS DOS temas: es identidad WISP ───── */
+  --sidebar: #152238;
+  --sidebar-hover: #1f3b5f;
+  --sidebar-foreground: #93a4be;
+  --sidebar-foreground-strong: #f8fafc;
+  --sidebar-border: #22304a;
+
+  /* ── Tinta ───────────────────────────────────────────────────────────── */
+  --foreground: #0f172a;
+  --card-foreground: #0f172a;
+  --popover-foreground: #0f172a;
+  --muted-foreground: #475569;
+  --bodytext: #475569;
+
+  /* ── Azul de navegación ──────────────────────────────────────────────── */
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #0ea5e9;
+  --secondary-foreground: #ffffff;
+
+  /* ── Naranja WISP: marca y elemento activo ───────────────────────────── */
+  --brand: #ff842a;
+  /* Sobre el naranja va tinta oscura: el blanco daría 2,45:1 y no se leería */
+  --brand-foreground: #0f172a;
+  --brand-strong: #b23b0b;      /* naranja para TEXTO sobre fondo claro */
+  --lightbrand: color-mix(in oklab, var(--brand) 16%, transparent);
+
+  --muted: #eef2f9;
+  --accent: var(--lightprimary);
+  --accent-foreground: var(--primary);
+  --destructive: var(--error);
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: var(--primary);
+
+  /* ── Semánticos ──────────────────────────────────────────────────────── */
+  --info: #7c4ddc;
+  --success: #16a34a;
+  --warning: #d97706;
+  --error: #dc2626;
+  --white: #ffffff;
+  --dark: #0f172a;
+
+  /* Variantes para TEXTO pequeño sobre tinte claro, donde el color de
+     relleno no alcanza por sí solo el contraste mínimo */
+  --primary-text: #1d4ed8;
+  --success-text: #157a3a;
+  --warning-text: #a44a08;
+  --error-text: #b91c1c;
+  --info-text: #6d28d9;
+
+  /* Series de gráficos: azul ingresos, naranja gastos (orden fijo) */
+  --chart-1: var(--primary);
+  --chart-2: var(--brand);
+  --chart-3: var(--success);
+  --chart-4: var(--warning);
+  --chart-5: var(--error);
+  --chart-grid: #e2e8f0;
+  --chart-axis: #cbd5e1;
+
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: var(--sidebar-hover);
+  --sidebar-accent-foreground: var(--sidebar-foreground-strong);
+  --sidebar-ring: var(--brand);
+
+  --lightprimary: color-mix(in oklab, var(--primary) 10%, transparent);
+  --lightsecondary: color-mix(in oklab, var(--secondary) 12%, transparent);
+  --lightsuccess: color-mix(in oklab, var(--success) 12%, transparent);
+  --lightwarning: color-mix(in oklab, var(--warning) 14%, transparent);
+  --lighterror: color-mix(in oklab, var(--error) 12%, transparent);
+  --lightinfo: color-mix(in oklab, var(--info) 12%, transparent);
+
+  --primary-emphasis: color-mix(in oklab, var(--primary) 80%, black);
+  --secondary-emphasis: color-mix(in oklab, var(--secondary) 80%, black);
+  --success-emphasis: var(--success-text);
+  --warning-emphasis: var(--warning-text);
+  --error-emphasis: var(--error-text);
+  --info-emphasis: var(--info-text);
+}
+
+.dark {
+  --background: #0a1220;        /* azul noche, nunca negro puro */
+  --card: #111d31;
+  --surface-2: #16263d;
+  --popover: #16263d;
+  --header: #101b2c;
+
+  --sidebar: #0f2036;
+  --sidebar-hover: #1b2d49;
+  --sidebar-foreground: #93a4be;
+  --sidebar-foreground-strong: #f8fafc;
+  --sidebar-border: #1b2d49;
+
+  --foreground: #f8fafc;
+  --card-foreground: #f8fafc;
+  --popover-foreground: #f8fafc;
+  --muted-foreground: #93a4be;
+  --bodytext: #93a4be;
+
+  --primary: #6090ff;
+  --primary-foreground: #0a1220;
+  --secondary: #38bdf8;
+  --secondary-foreground: #0a1220;
+
+  --brand: #ff842a;
+  --brand-foreground: #0f172a;
+  --brand-strong: #ff842a;
+  --lightbrand: color-mix(in oklab, var(--brand) 22%, transparent);
+
+  --muted: #1a2a42;
+  --accent: var(--lightprimary);
+  --accent-foreground: var(--primary);
+  --destructive: var(--error);
+  --destructive-foreground: #ffffff;
+  --border: #26364d;
+  --input: #26364d;
+  --ring: var(--primary);
+
+  --info: #a78bfa;
+  --success: #22c55e;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --white: #ffffff;
+  --dark: #0a1220;
+
+  /* Sobre fondo oscuro el color de relleno ya contrasta: no se oscurece */
+  --primary-text: #85a8ff;
+  --success-text: var(--success);
+  --warning-text: var(--warning);
+  --error-text: var(--error);
+  --info-text: var(--info);
+
+  --chart-1: var(--primary);
+  --chart-2: var(--brand);
+  --chart-3: var(--success);
+  --chart-4: var(--warning);
+  --chart-5: var(--error);
+  --chart-grid: #26364d;
+  --chart-axis: #33465f;
+
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: var(--sidebar-hover);
+  --sidebar-accent-foreground: var(--sidebar-foreground-strong);
+  --sidebar-ring: var(--brand);
+
+  --lightprimary: color-mix(in oklab, var(--primary) 18%, transparent);
+  --lightsecondary: color-mix(in oklab, var(--secondary) 18%, transparent);
+  --lightsuccess: color-mix(in oklab, var(--success) 18%, transparent);
+  --lightwarning: color-mix(in oklab, var(--warning) 18%, transparent);
+  --lighterror: color-mix(in oklab, var(--error) 18%, transparent);
+  --lightinfo: color-mix(in oklab, var(--info) 18%, transparent);
+
+  --primary-emphasis: color-mix(in oklab, var(--primary) 82%, white);
+  --secondary-emphasis: color-mix(in oklab, var(--secondary) 82%, white);
+  --success-emphasis: var(--success);
+  --warning-emphasis: var(--warning);
+  --error-emphasis: var(--error);
+  --info-emphasis: var(--info);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@utility form-control {
+  & input {
+    @apply border rounded-md border-border bg-transparent ring-transparent dark:ring-transparent dark:bg-transparent w-full text-sm;
+  }
+  & input:focus {
+    @apply border-primary dark:border-primary outline-hidden shadow-none ring-offset-0 ring-transparent;
+  }
+}
+
+@utility card-title {
+  @apply text-lg font-semibold text-foreground;
+}
+
+@utility border-ld {
+  @apply border-border;
+}
+
+@utility bg-hover {
+  @apply hover:bg-lightprimary;
+}
+
+@layer components {
+  body {
+    @apply text-sm overflow-x-hidden;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground font-semibold;
+  }
+  input::placeholder {
+    @apply text-muted-foreground;
+  }
+  button {
+    @apply !cursor-pointer;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Utilidades del sistema de diseño — se usan en todos los módulos para que
+   no haya que repetir las mismas combinaciones de clases en cada pantalla.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Transición estándar: 180 ms, dentro del rango 150-250 ms acordado */
+@utility transition-ui {
+  @apply transition-[background-color,border-color,color,box-shadow,transform] duration-[180ms] ease-out;
+}
+
+/* Tarjeta elevada que reacciona al cursor */
+@utility card-hover {
+  @apply hover:border-primary/35 hover:shadow-md;
+}
+
+/* Cabecera de tabla */
+@utility th-ui {
+  @apply bg-surface-2 text-muted-foreground text-xs font-semibold uppercase tracking-wide;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

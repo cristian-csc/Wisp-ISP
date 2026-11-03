@@ -2,7 +2,7 @@ import os
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract, or_
 from typing import Optional
@@ -17,6 +17,8 @@ from .. import models, schemas
 from .auth import get_current_user
 from ..config import settings
 from ..billing import monto_mensual, detalle_monto
+from ..recibos import DatosRecibo, LineaRecibo, etiqueta_mes, generar_recibo_pdf
+from ..mensajeria import enviar_archivo, enviar_texto
 
 logger = logging.getLogger(__name__)
 
@@ -31,61 +33,198 @@ def _sumar_un_mes(d: date) -> date:
     return date(anio, mes, dia)
 
 
-def _mensaje_confirmacion_pago(cliente: models.Cliente, pago: models.Pago, plan: models.Plan) -> str:
-    anio, mes = map(int, pago.mes_pagado.split("-"))
-    if cliente.fecha_vencimiento:
-        fecha_limite = cliente.fecha_vencimiento.strftime("%d/%m/%Y")
-    else:
-        ultimo_dia = calendar.monthrange(anio, mes)[1]
-        fecha_limite = f"{ultimo_dia:02d}/{mes:02d}/{anio}"
+MESES_NOMBRE = [
+    "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+]
 
-    nombres = cliente.nombre.split()[0]
-    plan_nombre = plan.nombre if plan else "Internet"
-    monto = f"{pago.monto:.2f}"
-    mes_nombres = [
-        "", "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-        "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+
+def _meses_consecutivos(desde: str, cantidad: int) -> list[str]:
+    """['2026-11', '2026-12', '2027-01'] a partir de '2026-11' y 3."""
+    anio, mes = map(int, desde.split("-"))
+    salida = []
+    for _ in range(cantidad):
+        salida.append(f"{anio}-{mes:02d}")
+        mes += 1
+        if mes == 13:
+            mes, anio = 1, anio + 1
+    return salida
+
+
+def _repartir(total: float, partes: int) -> list[float]:
+    """Divide el total en partes de dos decimales. El sobrante de céntimos va
+    a la última, para que la suma sea exactamente lo que entró a caja."""
+    if partes == 1:
+        return [round(total, 2)]
+    centimos = int(round(total * 100))
+    base = centimos // partes
+    montos = [base] * partes
+    montos[-1] += centimos - base * partes
+    return [c / 100 for c in montos]
+
+
+def _etiqueta_mes(mes_pagado: str) -> str:
+    anio, mes = map(int, mes_pagado.split("-"))
+    return f"{MESES_NOMBRE[mes]} {anio}"
+
+
+METODO_PAGO_LABEL = {
+    "efectivo": "EFECTIVO",
+    "yape": "YAPE",
+    "plin": "PLIN",
+    "transferencia": "TRANSFERENCIA",
+    "deposito": "DEPOSITO",
+    "otro": "OTRO",
+}
+
+
+def _pagos_del_recibo(db: Session, pago: models.Pago) -> list[models.Pago]:
+    """Los pagos que entran en el mismo recibo: uno solo, o todos los meses que
+    se cobraron juntos en un adelanto."""
+    if not pago.grupo_adelanto:
+        return [pago]
+    return db.query(models.Pago).filter(
+        models.Pago.grupo_adelanto == pago.grupo_adelanto
+    ).order_by(models.Pago.mes_pagado.asc()).all()
+
+
+def _datos_recibo(db: Session, pago: models.Pago) -> DatosRecibo:
+    """Traduce un pago (o el grupo del adelanto) a lo que imprime el recibo.
+
+    Los números se arman para que cuadren entre sí: IMP. TOTAL menos DESCUENTO
+    es siempre el IMPORTE PAGADO, porque el subtotal sale de sumar lo cobrado
+    más la rebaja, no de recalcular la tarifa de hoy.
+    """
+    grupo = _pagos_del_recibo(db, pago)
+    primero = grupo[0]
+    cliente = pago.cliente or db.query(models.Cliente).filter(
+        models.Cliente.id == pago.cliente_id
+    ).first()
+    plan = db.query(models.Plan).filter(models.Plan.id == cliente.plan_id).first() if cliente else None
+
+    pagado = round(sum(p.monto for p in grupo), 2)
+    descuento = round(next((p.descuento for p in grupo if p.descuento), 0) or 0, 2)
+    subtotal = round(pagado + descuento, 2)
+    meses = len(grupo)
+
+    # Lo que no es mensualidad (televisores adicionales, por ejemplo) sale del
+    # desglose real del cliente; el resto es mensualidad.
+    detalle = detalle_monto(cliente, plan) if cliente else []
+    otros_mes = round(sum(d["monto"] for d in detalle[1:]), 2)
+    otros = min(round(otros_mes * meses, 2), subtotal)
+    mensualidad = round(subtotal - otros, 2)
+
+    por_mes = round(subtotal / meses, 2) if meses else 0.0
+    lineas = [
+        LineaRecibo(mes=p.mes_pagado, plan=(plan.nombre if plan else ""),
+                    precio=por_mes, total=por_mes)
+        for p in grupo
     ]
-    mes_label = f"{mes_nombres[mes]} {anio}"
+    # El último renglón absorbe el céntimo que deje la división
+    if lineas:
+        suma = round(por_mes * meses, 2)
+        if suma != subtotal:
+            ajuste = round(subtotal - suma, 2)
+            lineas[-1].precio = round(lineas[-1].precio + ajuste, 2)
+            lineas[-1].total = lineas[-1].precio
 
-    return (
-        f"✅ *WISP* — Pago Confirmado\n\n"
-        f"Hola *{nombres}* 🎉, tu pago fue registrado exitosamente:\n\n"
-        f"📅 Mes: *{mes_label}*\n"
-        f"💰 Monto: *S/ {monto}*\n"
-        f"📶 Plan: {plan_nombre}\n"
-        f"📆 Activo hasta: *{fecha_limite}*\n\n"
-        f"¡Gracias por tu pago puntual! 🙏\n"
-        f"_WISP — Internet para todos_ 🌐"
+    dia_pago = None
+    if cliente:
+        if cliente.fecha_instalacion:
+            dia_pago = cliente.fecha_instalacion.day
+        elif cliente.fecha_vencimiento:
+            dia_pago = cliente.fecha_vencimiento.day
+
+    registrador = primero.registrador or db.query(models.Usuario).filter(
+        models.Usuario.id == primero.registrado_por
+    ).first()
+
+    return DatosRecibo(
+        numero=primero.id,
+        cliente=cliente.nombre if cliente else f"Cliente #{pago.cliente_id}",
+        direccion=cliente.direccion if cliente else None,
+        dia_pago=dia_pago,
+        dia_corte=(dia_pago + settings.DIAS_GRACIA) if dia_pago else None,
+        fecha_pago=primero.fecha_pago,
+        hora_pago=primero.creado_en,
+        metodo_pago=primero.metodo_pago or "efectivo",
+        numero_operacion=next((p.numero_operacion for p in grupo if p.numero_operacion), None),
+        cajero=registrador.nombre if registrador else None,
+        lineas=lineas,
+        mensualidad=mensualidad,
+        otros=otros,
+        descuento=descuento,
+        pagado=pagado,
+        observaciones=primero.notas,
     )
 
 
-def _enviar_confirmacion_pago(cliente: models.Cliente, pago: models.Pago, plan: models.Plan):
-    """Envía confirmación de pago por WhatsApp en segundo plano (no bloquea
-    la respuesta ni lanza excepciones) — se usa al registrar el pago."""
+def _mensaje_confirmacion_pago(cliente: models.Cliente, datos: DatosRecibo) -> str:
+    """El texto que acompaña al PDF, con los mismos números del recibo."""
+    meses = [ln.mes for ln in datos.lineas]
+    if len(meses) > 1:
+        linea_mes = (
+            f"\u2705 Meses pagados ({len(meses)}): "
+            f"{etiqueta_mes(meses[0])} a {etiqueta_mes(meses[-1])}"
+        )
+    else:
+        linea_mes = f"\u2705 Recibo del mes: {etiqueta_mes(meses[0]) if meses else ''}"
+
+    cuerpo = [
+        f"*{cliente.nombre}* su pago ha sido registrado \u2705",
+        "",
+        f"\u2705 N\u00famero del recibo: {datos.numero}",
+        linea_mes,
+        f"\u2705 Importe mensual: {datos.mensualidad:.2f}",
+        f"\u2705 Imp. otros: {datos.otros:.2f}",
+        f"\u2705 Imp. total: {datos.imp_total:.2f}",
+        f"\u2705 Descuento: {datos.descuento:.2f}",
+        f"\u2705 Importe pagado: {datos.pagado:.2f}",
+        f"\u2705 Su medio de pago ha sido por: "
+        f"{METODO_PAGO_LABEL.get(datos.metodo_pago, datos.metodo_pago.upper())}",
+    ]
+    if cliente.fecha_vencimiento:
+        cuerpo.append(
+            f"\u2705 Su servicio est\u00e1 activo hasta: "
+            f"{cliente.fecha_vencimiento.strftime('%d/%m/%Y')}"
+        )
+    cuerpo += ["", "\u2705 GRACIAS POR SU PREFERENCIA."]
+    return "\n".join(cuerpo)
+
+
+def _enviar_recibo_whatsapp(
+    phone: str,
+    mensaje: str,
+    pdf: Optional[bytes],
+    numero: int,
+) -> tuple[bool, str]:
+    """Manda el recibo por WhatsApp: el PDF con el mensaje de descripción, o
+    solo el texto si no se pudo armar el PDF."""
+    if pdf:
+        return enviar_archivo(phone, mensaje, f"recibo-{numero}.pdf", pdf)
+    return enviar_texto(phone, mensaje)
+
+
+def _enviar_confirmacion_pago(cliente: models.Cliente, datos: DatosRecibo, pdf: Optional[bytes]):
+    """Envía el recibo por WhatsApp en segundo plano (no bloquea la respuesta
+    ni lanza excepciones) — se usa al registrar el pago."""
     phone = (cliente.telefono_whatsapp or cliente.telefono or "").strip()
     if not phone:
         logger.warning("WhatsApp pago omitido — cliente %d sin número de teléfono", cliente.id)
         return
 
-    mensaje = _mensaje_confirmacion_pago(cliente, pago, plan)
-    logger.info("WhatsApp pago: enviando a %s (cliente %d)", phone, cliente.id)
+    mensaje = _mensaje_confirmacion_pago(cliente, datos)
+    logger.info("WhatsApp recibo %d: enviando a %s (cliente %d)", datos.numero, phone, cliente.id)
 
     def _enviar():
-        try:
-            with httpx.Client(timeout=10) as http:
-                r = http.post(
-                    f"{settings.WHATSAPP_API_URL}/send",
-                    json={"phone": phone, "message": mensaje},
-                )
-                if r.status_code == 200:
-                    logger.info("WhatsApp pago enviado OK a %s", phone)
-                else:
-                    logger.warning("WhatsApp pago falló HTTP %d a %s: %s", r.status_code, phone, r.text[:200])
-        except Exception as e:
-            logger.warning("WhatsApp pago excepción a %s: %s", phone, e)
+        ok, detalle = _enviar_recibo_whatsapp(phone, mensaje, pdf, datos.numero)
+        if ok:
+            logger.info("WhatsApp recibo %d OK a %s (%s)", datos.numero, phone, detalle)
+        else:
+            logger.warning("WhatsApp recibo %d falló a %s: %s", datos.numero, phone, detalle)
 
     threading.Thread(target=_enviar, daemon=True).start()
+
 
 router = APIRouter()
 
@@ -146,13 +285,31 @@ def create_pago(
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
-    # Check duplicate (mismo cliente + mes)
-    existing = db.query(models.Pago).filter(
-        models.Pago.cliente_id == data.cliente_id,
-        models.Pago.mes_pagado == data.mes_pagado,
-    ).first()
-    if existing:
-        raise HTTPException(status_code=400, detail=f"Ya existe un pago para {data.mes_pagado}")
+    if data.monto <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="El total a pagar tiene que ser mayor que cero — revisa el descuento",
+        )
+
+    # Meses que cubre este cobro: uno solo, o varios si es un adelanto
+    meses = _meses_consecutivos(data.mes_pagado, data.meses)
+
+    # Check duplicate (mismo cliente + mes) — en un adelanto, ninguno de los
+    # meses puede estar pagado ya, y se avisa cuáles para no dejarlo a medias
+    ya_pagados = [
+        p.mes_pagado for p in db.query(models.Pago).filter(
+            models.Pago.cliente_id == data.cliente_id,
+            models.Pago.mes_pagado.in_(meses),
+        ).all()
+    ]
+    if ya_pagados:
+        detalle = ", ".join(sorted(ya_pagados))
+        if len(meses) == 1:
+            raise HTTPException(status_code=400, detail=f"Ya existe un pago para {detalle}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Estos meses ya están pagados: {detalle}. Ajusta el mes de inicio o la cantidad de meses.",
+        )
 
     # El número de operación es único en todo el sistema — evita que se
     # reutilice (a propósito o por error) el comprobante de un pago anterior.
@@ -174,10 +331,42 @@ def create_pago(
                 ),
             )
 
-    datos_pago = data.model_dump()
+    datos_pago = data.model_dump(exclude={"meses", "descuento"})
     datos_pago["numero_operacion"] = numero_operacion
-    pago = models.Pago(**datos_pago, registrado_por=current_user.id)
-    db.add(pago)
+
+    plan_cliente = db.query(models.Plan).filter(models.Plan.id == cliente.plan_id).first()
+
+    # La rebaja la decide quien cobra y viene en el propio pedido — si mandó 0,
+    # es que no hubo rebaja y no hay que inventar ninguna. Solo cuando el campo
+    # no viene (el móvil no lo manda) se deduce comparando con la cuota.
+    if "descuento" in data.model_fields_set:
+        descuento = round(data.descuento or 0, 2) or None
+    else:
+        cuota = monto_mensual(cliente, plan_cliente) if plan_cliente else None
+        precio_lista = round(cuota * len(meses), 2) if cuota else None
+        descuento = round(precio_lista - data.monto, 2) if precio_lista else None
+        if descuento is not None and descuento <= 0:
+            descuento = None
+
+    grupo = uuid.uuid4().hex if len(meses) > 1 else None
+    montos = _repartir(data.monto, len(meses))
+
+    pagos = []
+    for i, (mes_cubierto, monto_mes) in enumerate(zip(meses, montos)):
+        datos = dict(datos_pago)
+        datos["mes_pagado"] = mes_cubierto
+        datos["monto"] = monto_mes
+        # El voucher y su número van una sola vez: es un solo comprobante
+        datos["numero_operacion"] = numero_operacion if i == 0 else None
+        p = models.Pago(
+            **datos,
+            grupo_adelanto=grupo,
+            descuento=descuento if i == 0 else None,
+            registrado_por=current_user.id,
+        )
+        db.add(p)
+        pagos.append(p)
+    pago = pagos[0]
 
     # Solo reactivar si es un pago real (no corte_temporal)
     if data.estado == models.EstadoPago.pagado and cliente.estado == models.EstadoCliente.suspendido:
@@ -185,22 +374,39 @@ def create_pago(
         historial = models.Historial(
             cliente_id=cliente.id,
             tipo=models.TipoHistorial.activacion,
-            descripcion=f"Reactivado automáticamente por pago del mes {data.mes_pagado}",
+            descripcion=(
+                f"Reactivado automáticamente por pago del mes {data.mes_pagado}"
+                if len(meses) == 1
+                else f"Reactivado automáticamente por pago adelantado de {len(meses)} meses"
+            ),
             usuario_id=current_user.id,
         )
         db.add(historial)
 
+    if len(meses) == 1:
+        descripcion_historial = (
+            f"Pago registrado: S/{data.monto} - Mes {data.mes_pagado} - Método: {data.metodo_pago}"
+        )
+    else:
+        descripcion_historial = (
+            f"Pago adelantado de {len(meses)} meses ({_etiqueta_mes(meses[0])} a "
+            f"{_etiqueta_mes(meses[-1])}): S/{data.monto:.2f} - Método: {data.metodo_pago}"
+        )
+        if descuento:
+            descripcion_historial += (
+                f" - Descuento S/{descuento:.2f} sobre S/{data.monto + descuento:.2f}"
+            )
     historial_pago = models.Historial(
         cliente_id=cliente.id,
         tipo=models.TipoHistorial.pago,
-        descripcion=f"Pago registrado: S/{data.monto} - Mes {data.mes_pagado} - Método: {data.metodo_pago}",
+        descripcion=descripcion_historial,
         usuario_id=current_user.id,
     )
     db.add(historial_pago)
 
     # Solo actualizar fecha_vencimiento para pagos reales, no cortes temporales
     if data.estado == models.EstadoPago.pagado:
-        anio_p, mes_p = map(int, data.mes_pagado.split("-"))
+        anio_p, mes_p = map(int, meses[-1].split("-"))
         next_mes  = mes_p % 12 + 1
         next_anio = anio_p + (1 if mes_p == 12 else 0)
         dia_ciclo = cliente.fecha_instalacion.day if cliente.fecha_instalacion else 1
@@ -216,8 +422,14 @@ def create_pago(
     db.refresh(cliente)
 
     # Notificación WhatsApp — no bloqueante, falla silenciosa
-    plan = db.query(models.Plan).filter(models.Plan.id == cliente.plan_id).first()
-    _enviar_confirmacion_pago(cliente, pago, plan)
+    # El recibo se arma una sola vez: sirve para el PDF y para el mensaje
+    datos = _datos_recibo(db, pago)
+    try:
+        pdf = generar_recibo_pdf(datos)
+    except Exception as e:  # el PDF nunca debe tumbar el registro del pago
+        logger.warning("No se pudo generar el recibo %d: %s", datos.numero, e)
+        pdf = None
+    _enviar_confirmacion_pago(cliente, datos, pdf)
 
     return pago
 
@@ -285,20 +497,43 @@ def reenviar_confirmacion_whatsapp(
     if not phone:
         raise HTTPException(status_code=400, detail="El cliente no tiene un número de teléfono registrado")
 
-    plan = db.query(models.Plan).filter(models.Plan.id == cliente.plan_id).first()
-    mensaje = _mensaje_confirmacion_pago(cliente, pago, plan)
-
+    datos = _datos_recibo(db, pago)
+    mensaje = _mensaje_confirmacion_pago(cliente, datos)
     try:
-        with httpx.Client(timeout=10) as http:
-            r = http.post(f"{settings.WHATSAPP_API_URL}/send", json={"phone": phone, "message": mensaje})
+        pdf = generar_recibo_pdf(datos)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"No se pudo conectar con WhatsApp: {e}")
+        logger.warning("No se pudo generar el recibo %d: %s", datos.numero, e)
+        pdf = None
 
-    if r.status_code != 200:
-        detalle = r.json().get("error") if r.headers.get("content-type", "").startswith("application/json") else r.text
-        raise HTTPException(status_code=502, detail=f"WhatsApp no pudo enviar el mensaje: {detalle}")
+    ok, detalle = _enviar_recibo_whatsapp(phone, mensaje, pdf, datos.numero)
+    if not ok:
+        raise HTTPException(status_code=502, detail=f"WhatsApp no pudo enviar el recibo: {detalle}")
 
     return {"ok": True, "telefono": phone}
+
+
+@router.get("/{pago_id}/recibo-pdf")
+def recibo_pdf(
+    pago_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user),
+):
+    """El recibo del pago en PDF, con el formato de ticket de la empresa. Si el
+    pago es parte de un cobro adelantado, sale un solo recibo con todos los
+    meses."""
+    pago = db.query(models.Pago).options(joinedload(models.Pago.cliente)).filter(
+        models.Pago.id == pago_id
+    ).first()
+    if not pago:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
+
+    datos = _datos_recibo(db, pago)
+    pdf = generar_recibo_pdf(datos)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="recibo-{datos.numero}.pdf"'},
+    )
 
 
 @router.get("/resumen-mensual")
@@ -530,7 +765,23 @@ def get_pago(
     ).filter(models.Pago.id == pago_id).first()
     if not pago:
         raise HTTPException(status_code=404, detail="Pago no encontrado")
-    return pago
+
+    salida = schemas.PagoOut.model_validate(pago)
+    # Si se cobró junto con otros meses, el recibo tiene que hablar del periodo
+    # completo y del total, no de la parte que le tocó a este mes.
+    if pago.grupo_adelanto:
+        hermanos = db.query(models.Pago).filter(
+            models.Pago.grupo_adelanto == pago.grupo_adelanto
+        ).order_by(models.Pago.mes_pagado.asc()).all()
+        salida.adelanto = schemas.AdelantoResumen(
+            numero=hermanos[0].id,
+            meses=len(hermanos),
+            desde=hermanos[0].mes_pagado,
+            hasta=hermanos[-1].mes_pagado,
+            total=round(sum(h.monto for h in hermanos), 2),
+            descuento=next((h.descuento for h in hermanos if h.descuento), None),
+        )
+    return salida
 
 
 @router.delete("/{pago_id}")

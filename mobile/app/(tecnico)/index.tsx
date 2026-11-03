@@ -19,7 +19,7 @@ function OrdenCard({ item, onInstalar, onNoInstalar }: {
           {item.zona && (
             <View style={st.zonaTagRow}>
               <Ionicons name="location-outline" size={12} color={COLORS.info} />
-              <Text style={st.zonaTag}>{item.zona.nombre}</Text>
+              <Text style={st.zonaTag}>{item.zona?.nombre ?? 'Sin zona'}</Text>
             </View>
           )}
         </View>

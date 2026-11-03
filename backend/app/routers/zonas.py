@@ -5,6 +5,7 @@ import subprocess
 import re
 import socket
 import logging
+import base64
 from datetime import datetime
 
 import paramiko
@@ -44,22 +45,19 @@ def check_ssh_port(host: str, port: int = 22, timeout: int = 3) -> bool:
 
 def wg_show_dump() -> list[dict]:
     """
-    Parsea `wg show wg0 dump`.
+    Parsea `wg show wg0 dump` — se ejecuta por SSH en la VPS, porque el
+    backend ya no vive en la misma máquina que el túnel WireGuard (esa es
+    la VPS; el backend corre en el servidor local de la empresa).
     Retorna lista de peers con: pubkey, endpoint, allowed_ips,
     last_handshake (epoch), rx_bytes, tx_bytes.
     """
-    try:
-        out = subprocess.check_output(
-            ["wg", "show", "wg0", "dump"],
-            stderr=subprocess.DEVNULL,
-            timeout=5,
-        ).decode()
-    except Exception as e:
-        logger.warning("wg show dump falló: %s", e)
+    result = _ssh_exec(settings.VPS_IP, "wg show wg0 dump")
+    if not result["ok"]:
+        logger.warning("wg show dump falló: %s", result["output"])
         return []
 
     peers = []
-    lines = out.strip().splitlines()
+    lines = result["output"].strip().splitlines()
     for line in lines[1:]:   # primera línea = interface
         parts = line.split("\t")
         if len(parts) < 8:
@@ -88,15 +86,14 @@ def wg_peer_status(pubkey: str) -> Optional[dict]:
 
 
 def wg_add_peer(pubkey: str, allowed_ips: str, comment: str = "") -> dict:
-    """Agrega peer al wg0.conf y aplica con wg set."""
+    """Agrega peer al wg0.conf de la VPS y lo aplica con wg set — todo por
+    SSH, porque el backend corre en el servidor local, no en la VPS."""
     conf_path = settings.WG_CONFIG_PATH
 
-    # Leer config actual
-    try:
-        with open(conf_path, "r") as f:
-            content = f.read()
-    except FileNotFoundError:
-        return {"ok": False, "error": f"No se encontró {conf_path}"}
+    leido = _ssh_exec(settings.VPS_IP, f"cat {conf_path}")
+    if not leido["ok"]:
+        return {"ok": False, "error": f"No se pudo leer {conf_path} en la VPS: {leido['output']}"}
+    content = leido["output"]
 
     if pubkey in content:
         # El peer ya fue agregado manualmente (por consola).
@@ -111,33 +108,30 @@ def wg_add_peer(pubkey: str, allowed_ips: str, comment: str = "") -> dict:
     block += f"AllowedIPs = {allowed_ips}\n"
     block += "PersistentKeepalive = 25\n"
 
-    try:
-        with open(conf_path, "a") as f:
-            f.write(block)
-    except Exception as e:
-        return {"ok": False, "error": f"Error escribiendo config: {e}"}
+    # Va codificado en base64 para no pelear con comillas/espacios al pasar
+    # el bloque como una sola línea de comando remoto.
+    b64_block = base64.b64encode(block.encode()).decode()
+    escrito = _ssh_exec(settings.VPS_IP, f"echo {b64_block} | base64 -d >> {conf_path}")
+    if not escrito["ok"]:
+        return {"ok": False, "error": f"Error escribiendo config en la VPS: {escrito['output']}"}
 
     # Aplicar sin reiniciar
     ips_clean = allowed_ips.replace(" ", "")
-    try:
-        subprocess.run(
-            ["wg", "set", "wg0", "peer", pubkey, "allowed-ips", ips_clean],
-            check=True, timeout=5,
-        )
-        return {"ok": True}
-    except Exception as e:
-        return {"ok": False, "error": f"wg set falló: {e}"}
+    aplicado = _ssh_exec(settings.VPS_IP, f"wg set wg0 peer {pubkey} allowed-ips {ips_clean}")
+    if not aplicado["ok"]:
+        return {"ok": False, "error": f"wg set falló: {aplicado['output']}"}
+    return {"ok": True}
 
 
 def wg_remove_peer(pubkey: str) -> dict:
-    """Elimina peer de wg0.conf y de la interfaz activa."""
+    """Elimina peer del wg0.conf de la VPS y de la interfaz activa — por
+    SSH, mismo motivo que wg_add_peer."""
     conf_path = settings.WG_CONFIG_PATH
 
-    try:
-        with open(conf_path, "r") as f:
-            content = f.read()
-    except FileNotFoundError:
-        return {"ok": False, "error": f"No se encontró {conf_path}"}
+    leido = _ssh_exec(settings.VPS_IP, f"cat {conf_path}")
+    if not leido["ok"]:
+        return {"ok": False, "error": f"No se pudo leer {conf_path} en la VPS: {leido['output']}"}
+    content = leido["output"]
 
     if pubkey not in content:
         return {"ok": False, "error": "Peer no encontrado en la configuración"}
@@ -147,20 +141,15 @@ def wg_remove_peer(pubkey: str) -> dict:
     new_sections = [s for s in sections if pubkey not in s]
     new_content = "\n".join(new_sections)
 
-    try:
-        with open(conf_path, "w") as f:
-            f.write(new_content)
-    except Exception as e:
-        return {"ok": False, "error": f"Error escribiendo config: {e}"}
+    b64_content = base64.b64encode(new_content.encode()).decode()
+    escrito = _ssh_exec(settings.VPS_IP, f"echo {b64_content} | base64 -d > {conf_path}")
+    if not escrito["ok"]:
+        return {"ok": False, "error": f"Error escribiendo config en la VPS: {escrito['output']}"}
 
-    try:
-        subprocess.run(
-            ["wg", "set", "wg0", "peer", pubkey, "remove"],
-            check=True, timeout=5,
-        )
-        return {"ok": True}
-    except Exception as e:
-        return {"ok": False, "error": f"wg set remove falló: {e}"}
+    quitado = _ssh_exec(settings.VPS_IP, f"wg set wg0 peer {pubkey} remove")
+    if not quitado["ok"]:
+        return {"ok": False, "error": f"wg set remove falló: {quitado['output']}"}
+    return {"ok": True}
 
 
 def _zona_to_dict(zona, db: Session) -> dict:
@@ -214,6 +203,25 @@ def create_zona(
     db.commit()
     db.refresh(zona)
     return zona
+
+
+@router.get("/publicas", response_model=List[dict])
+def list_zonas_publicas(db: Session = Depends(get_db)):
+    """Lista pública de zonas con cobertura activa — sin autenticación, para el
+    comprobador de cobertura de la página pública. Solo expone id y nombre."""
+    zonas = db.query(models.Zona).filter(models.Zona.activo == True).order_by(models.Zona.nombre).all()
+    return [{"id": z.id, "nombre": z.nombre} for z in zonas]
+
+
+@router.get("/publicas/resumen", response_model=dict)
+def resumen_publico(db: Session = Depends(get_db)):
+    """Cifras reales (no estimadas) para la página pública: cuántas zonas
+    activas y cuántos clientes activos hay hoy. Sin autenticación."""
+    zonas_activas = db.query(models.Zona).filter(models.Zona.activo == True).count()
+    clientes_activos = db.query(models.Cliente).filter(
+        models.Cliente.estado == models.EstadoCliente.activo,
+    ).count()
+    return {"zonas_activas": zonas_activas, "clientes_activos": clientes_activos}
 
 
 @router.get("/{zona_id}", response_model=dict)

@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "frontend/src/views/landing/Hero.tsx"
+        ],
+        "createdAt": "2026-10-26T13:50:53.710Z",
+        "reason": "Restored original design: replicates the user's own references/ejemplo.html prototype, which uses gradient text on the hero word"
+      }
+    ]
+  }
+}

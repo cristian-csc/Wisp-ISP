@@ -15,6 +15,7 @@ from .. import models, schemas
 from .auth import get_current_user, get_password_hash, require_roles, zonas_asignadas
 from ..config import settings
 from ..billing import monto_mensual, detalle_monto
+from .whatsapp import wa_request
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -170,6 +171,7 @@ def list_clientes(
     zona_id: Optional[int] = None,
     estado: Optional[str] = None,
     tipo_conexion: Optional[str] = None,
+    solo_mis_instalaciones: bool = False,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(get_current_user),
 ):
@@ -187,7 +189,13 @@ def list_clientes(
         query = query.filter(models.Cliente.tipo_conexion.in_(tipos))
 
     if current_user.rol == models.RolUsuario.tecnico:
-        query = query.filter(models.Cliente.zona_id.in_(zonas_asignadas(db, current_user) or [-1]))
+        if solo_mis_instalaciones:
+            # "Mis instalaciones" — lo que este técnico instaló de verdad, no
+            # todo lo que pasa por su zona (ahí puede haber instalado otro
+            # técnico que también cubre esa misma zona).
+            query = query.filter(models.Cliente.tecnico_instalador_id == current_user.id)
+        else:
+            query = query.filter(models.Cliente.zona_id.in_(zonas_asignadas(db, current_user) or [-1]))
     elif current_user.rol in (models.RolUsuario.vendedor_campo, models.RolUsuario.vendedor_tienda):
         query = query.filter(models.Cliente.vendedor_id == current_user.id)
 
@@ -265,9 +273,19 @@ def create_cliente(
     current_user: models.Usuario = Depends(get_current_user),
 ):
     if db.query(models.Cliente).filter(models.Cliente.dni == data.dni).first():
-        raise HTTPException(status_code=400, detail="Ya existe un cliente con ese DNI")
+        raise HTTPException(
+            status_code=400,
+            detail="Ya existe un cliente con ese DNI"
+            if data.tipo_documento == models.TipoDocumento.dni
+            else "Ese DNI de responsable ya está registrado en otro cliente",
+        )
+
+    if data.ruc and db.query(models.Cliente).filter(models.Cliente.ruc == data.ruc).first():
+        raise HTTPException(status_code=400, detail="Ya existe un cliente con ese RUC")
 
     dump = data.model_dump()
+    # Las credenciales salen SIEMPRE del DNI, nunca del RUC: un RUC es público
+    # y cualquiera podría usarlo para entrar al portal del cliente.
     dump["usuario_pppoe"] = data.dni
     dump["password_pppoe"] = data.dni
     dump["vendedor_id"] = current_user.id
@@ -546,6 +564,155 @@ def no_instalar_cliente(
     db.add(historial)
     db.commit()
     return {"ok": True, "estado": "no_instalado"}
+
+
+# ── Notificaciones ────────────────────────────────────────────────────────────
+# No hay una tabla de notificaciones aparte — se calculan en vivo a partir de
+# lo que ya existe (clientes pendientes de aprobar, instalaciones recientes,
+# averías demoradas, instalaciones fallidas, estado de WhatsApp). Así nunca
+# quedan desincronizadas de la realidad: en cuanto se resuelve lo que las
+# generó, la notificación desaparece sola.
+
+def _sin_tz(dt: Optional[datetime]) -> Optional[datetime]:
+    return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
+
+
+@router.get("/notificaciones", response_model=List[schemas.NotificacionOut])
+async def get_notificaciones(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(
+        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)
+    ),
+):
+    ahora = datetime.utcnow()
+    hace_7_dias = date.today() - timedelta(days=7)
+    hace_14_dias = ahora - timedelta(days=14)
+    hace_24_horas = ahora - timedelta(hours=24)
+    notificaciones = []
+
+    # 1) Clientes pendientes de aprobación (cubre también "la vendedora
+    # registró un cliente" — es el mismo evento visto desde dos ángulos).
+    pendientes = db.query(models.Cliente).options(
+        joinedload(models.Cliente.vendedor)
+    ).filter(
+        models.Cliente.estado == models.EstadoCliente.pendiente_aprobacion,
+    ).order_by(models.Cliente.creado_en.desc()).limit(20).all()
+
+    for c in pendientes:
+        quien = c.vendedor.nombre if c.vendedor else "alguien"
+        notificaciones.append(schemas.NotificacionOut(
+            tipo="pendiente_aprobacion",
+            titulo="Nuevo cliente pendiente de aprobación",
+            detalle=f"{c.nombre} — registrado por {quien}",
+            url=f"/clientes/{c.id}",
+            fecha=_sin_tz(c.creado_en) or ahora,
+        ))
+
+    # 2) Instalaciones completadas recientemente (el técnico instaló).
+    instalados = db.query(models.Cliente).options(
+        joinedload(models.Cliente.tecnico_instalador)
+    ).filter(
+        models.Cliente.estado == models.EstadoCliente.activo,
+        models.Cliente.fecha_instalacion.isnot(None),
+        models.Cliente.fecha_instalacion >= hace_7_dias,
+    ).order_by(models.Cliente.fecha_instalacion.desc()).limit(20).all()
+
+    for c in instalados:
+        quien = c.tecnico_instalador.nombre if c.tecnico_instalador else "un técnico"
+        notificaciones.append(schemas.NotificacionOut(
+            tipo="instalado",
+            titulo="Instalación completada",
+            detalle=f"{c.nombre} — instalado por {quien}",
+            url=f"/clientes/{c.id}",
+            fecha=datetime.combine(c.fecha_instalacion, datetime.min.time()),
+        ))
+
+    # 3) Instalaciones que no se pudieron hacer — se pierden de vista fácil
+    # si nadie las reprograma.
+    no_instalados = db.query(models.Cliente).filter(
+        models.Cliente.estado == models.EstadoCliente.no_instalado,
+        models.Cliente.actualizado_en.isnot(None),
+        models.Cliente.actualizado_en >= hace_14_dias,
+    ).order_by(models.Cliente.actualizado_en.desc()).limit(20).all()
+
+    for c in no_instalados:
+        notificaciones.append(schemas.NotificacionOut(
+            tipo="no_instalado",
+            titulo="Instalación no efectuada — necesita seguimiento",
+            detalle=f"{c.nombre} — {c.motivo_no_instalado or 'sin motivo registrado'}",
+            url=f"/clientes/{c.id}",
+            fecha=_sin_tz(c.actualizado_en) or ahora,
+        ))
+
+    # 4) Averías reportadas que llevan más de 24h sin resolverse.
+    demoradas = db.query(models.Averia).options(
+        joinedload(models.Averia.cliente),
+        joinedload(models.Averia.caja_nap),
+    ).filter(
+        models.Averia.estado.in_([models.EstadoAveria.pendiente, models.EstadoAveria.asignada]),
+        models.Averia.fecha_reporte <= hace_24_horas,
+    ).order_by(models.Averia.fecha_reporte.asc()).limit(20).all()
+
+    for a in demoradas:
+        if a.cliente:
+            zona_id, afectado = a.cliente.zona_id, a.cliente.nombre
+        elif a.caja_nap:
+            zona_id, afectado = a.caja_nap.zona_id, f"Caja {a.caja_nap.codigo}"
+        else:
+            continue
+        fecha_reporte = _sin_tz(a.fecha_reporte) or ahora
+        horas = max(int((ahora - fecha_reporte).total_seconds() // 3600), 24)
+        estado_label = "asignada, pero sigue sin resolverse" if a.estado == models.EstadoAveria.asignada else "sin asignar"
+        notificaciones.append(schemas.NotificacionOut(
+            tipo="averia_demorada",
+            titulo="Avería sin atender",
+            detalle=f"{afectado} — reportada hace {horas} h, {estado_label}",
+            url=f"/averias/zona/{zona_id}",
+            fecha=fecha_reporte,
+        ))
+
+    # 5) Vendedoras de campo en ruta — reemplaza el "mandar ubicación al
+    # grupo de WhatsApp" como aviso de que alguien salió a trabajar. Se
+    # limita a las últimas 24h para que una jornada olvidada sin finalizar
+    # no se quede avisando para siempre.
+    en_ruta = db.query(models.JornadaVendedor).options(
+        joinedload(models.JornadaVendedor.vendedor),
+        joinedload(models.JornadaVendedor.zona),
+    ).filter(
+        models.JornadaVendedor.estado == models.EstadoJornada.activa,
+        models.JornadaVendedor.iniciado_en >= hace_24_horas,
+    ).order_by(models.JornadaVendedor.iniciado_en.desc()).limit(20).all()
+
+    for j in en_ruta:
+        quien = j.vendedor.nombre if j.vendedor else "Una vendedora"
+        zona_txt = f" — zona {j.zona.nombre}" if j.zona else ""
+        notificaciones.append(schemas.NotificacionOut(
+            tipo="jornada_iniciada",
+            titulo="Jornada de campo iniciada",
+            detalle=f"{quien} está en ruta{zona_txt}",
+            url="/jornadas",
+            fecha=_sin_tz(j.iniciado_en) or ahora,
+        ))
+
+    # 6) WhatsApp desconectado — si nadie lo nota, los recordatorios de pago
+    # simplemente dejan de salir en silencio.
+    try:
+        status = await wa_request("GET", "/status")
+        conectado = bool(status.get("connected"))
+    except Exception:
+        conectado = False
+
+    if not conectado:
+        notificaciones.append(schemas.NotificacionOut(
+            tipo="whatsapp_desconectado",
+            titulo="WhatsApp desconectado",
+            detalle="Los recordatorios de pago y avisos automáticos no se están enviando.",
+            url="/configuracion/whatsapp",
+            fecha=ahora,
+        ))
+
+    notificaciones.sort(key=lambda n: n.fecha, reverse=True)
+    return notificaciones[:30]
 
 
 # ── Obtener cliente ───────────────────────────────────────────────────────────

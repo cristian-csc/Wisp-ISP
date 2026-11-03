@@ -3,29 +3,22 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 export type SessionRole =
-  | 'super_admin'
-  | 'admin'
-  | 'subadmin'
   | 'tecnico'
   | 'vendedor_campo'
-  | 'vendedor_tienda'
   | 'cliente'
   | null;
 
-export const ROLES_STAFF = ['super_admin', 'admin', 'subadmin', 'tecnico', 'vendedor_campo', 'vendedor_tienda'] as const;
+/** Roles que tienen permitido usar la app móvil. Administradores,
+ * sub-administradores y atención al cliente (vendedor_tienda) trabajan
+ * siempre desde el sistema web en PC — nunca desde el móvil. */
+export const ROLES_MOBILE_PERMITIDOS = ['tecnico', 'vendedor_campo'] as const;
 
-/** A qué grupo de rutas pertenece cada rol. Subadmin y super_admin comparten
- * el panel de admin (el móvil no tiene pantallas propias de infraestructura). */
+/** A qué grupo de rutas pertenece cada rol. */
 export function seccionDeRol(role: SessionRole): string {
   switch (role) {
-    case 'super_admin':
-    case 'admin':
-    case 'subadmin':
-      return '(admin)';
     case 'tecnico':
       return '(tecnico)';
     case 'vendedor_campo':
-    case 'vendedor_tienda':
       return '(vendedor)';
     case 'cliente':
       return '(cliente)';

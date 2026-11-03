@@ -1,0 +1,1506 @@
+:root {
+  --bg: #0b0d13;
+  --surface: #141721;
+  --orange: #ff791b;
+  --amber: #ffb13b;
+  --text: #fff;
+  --muted: #a4a7b4;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "DM Sans", sans-serif;
+  overflow-x: hidden;
+}
+h1,
+h2,
+h3,
+.brand,
+.speed {
+  font-family: Outfit, sans-serif;
+}
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+.container {
+  width: min(1180px, 90%);
+  margin: auto;
+}
+.progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: var(--orange);
+  width: 0;
+  z-index: 100;
+}
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5%;
+  transition: 0.3s;
+  background: linear-gradient(#090b12c7, transparent);
+}
+.header.scrolled {
+  height: 72px;
+  background: #0b0d13ee;
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid #ffffff12;
+}
+/* Al inicio manda el logo grande del carrusel, así que el del encabezado se
+   oculta para no duplicarlo, y reaparece en cuanto se baja (clase .scrolled,
+   que el script ya aplica). Se oculta con opacidad y no con display para que
+   siga ocupando su sitio: así la navegación no se desplaza al aparecer. */
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
+}
+.header.scrolled .brand {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.brand img {
+  width: 104px;
+  display: block;
+}
+.brand span {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #ffc17b;
+  margin-top: -4px;
+}
+.header nav {
+  display: flex;
+  gap: 30px;
+}
+.header nav a {
+  font-size: 14px;
+  color: #e6e6eb;
+  transition: 0.2s;
+}
+.header nav a:hover {
+  color: var(--orange);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 16px 25px;
+  border-radius: 50px;
+  background: linear-gradient(110deg, #ff9d25, #ff5915);
+  color: white;
+  font-weight: 800;
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0 10px 30px #ff6b1835;
+  transition:
+    transform 0.25s,
+    box-shadow 0.25s;
+}
+.btn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 40px #ff6b1860;
+}
+.btn-small {
+  padding: 12px 21px;
+  font-size: 13px;
+}
+.btn-ghost,
+.btn-outline {
+  background: transparent;
+  border: 1px solid #ffffff55;
+  box-shadow: none;
+}
+.btn-ghost:hover,
+.btn-outline:hover {
+  border-color: var(--orange);
+  box-shadow: none;
+}
+.menu-toggle {
+  display: none;
+  background: none;
+  color: white;
+  border: 0;
+  font-size: 27px;
+}
+.hero {
+  min-height: 760px;
+  height: 100svh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  isolation: isolate;
+}
+/* z-index 1: la capa oscura va POR ENCIMA de las fotos del carrusel (z auto)
+   y por DEBAJO del contenido (z 2). Con el -1 que tenía antes se pintaba
+   detrás de las fotos y el degradado no oscurecía nada. */
+.hero-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+/* El degradado de la portada se define una sola vez, al final del archivo,
+   junto con el resto del diseño del carrusel. */
+.hero-content {
+  padding-top: 80px;
+}
+.section-label {
+  font-size: 12px;
+  letter-spacing: 0.19em;
+  font-weight: 800;
+  color: var(--amber);
+  margin-bottom: 24px;
+}
+.hero h1 {
+  font-size: clamp(56px, 7.5vw, 110px);
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+  max-width: 780px;
+  margin-bottom: 25px;
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--orange);
+}
+.hero p {
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.6;
+  max-width: 520px;
+  color: #e3e3e8;
+}
+.hero-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 35px 0 55px;
+}
+.hero-stats {
+  display: flex;
+  gap: 35px;
+  flex-wrap: wrap;
+}
+.hero-stats > div {
+  border-right: 1px solid #ffffff44;
+  padding-right: 35px;
+}
+.hero-stats > div:last-child {
+  border: 0;
+}
+.hero-stats strong {
+  display: block;
+  font: 800 26px Outfit;
+}
+.hero-stats strong span {
+  color: var(--orange);
+}
+.hero-stats small {
+  color: #c3c3ca;
+  font-size: 12px;
+}
+.scroll-hint {
+  position: absolute;
+  bottom: 30px;
+  right: 5%;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: #ffffff9c;
+}
+.ticker {
+  overflow: hidden;
+  background: var(--orange);
+  color: #151010;
+  white-space: nowrap;
+  font: 800 15px Outfit;
+  padding: 17px 0;
+}
+.ticker div {
+  width: max-content;
+  animation: marquee 30s linear infinite;
+}
+.section {
+  padding: 115px 0;
+}
+.section h2 {
+  font-size: clamp(38px, 5.5vw, 68px);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+.section h2 span {
+  color: var(--orange);
+}
+.intro-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  align-items: end;
+  gap: 60px;
+}
+.intro-grid h2 span {
+  color: var(--orange);
+}
+.intro-grid p,
+.section-heading p,
+.coverage p,
+.contact p {
+  color: var(--muted);
+  line-height: 1.8;
+  font-size: 17px;
+}
+/* auto-fit: tres columnas en escritorio y se reacomoda solo al estrecharse,
+   sin necesidad de un punto de quiebre por cada tamaño de tablet. */
+.benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 18px;
+  margin-top: 55px;
+}
+/* ── Tarjetas de beneficios con fotografía ─────────────────────────────────
+   La foto ocupa la mitad superior y el texto la inferior. El `overflow:hidden`
+   es lo que recorta el zoom de la imagen contra las esquinas redondeadas. */
+.benefit {
+  display: flex;
+  flex-direction: column;
+  background: #141a26;
+  border: 1px solid #ffffff17;
+  border-radius: 22px;
+  overflow: hidden;
+  transition:
+    transform 0.38s ease,
+    border-color 0.38s ease,
+    box-shadow 0.38s ease;
+}
+.benefit:hover {
+  transform: translateY(-5px);
+  border-color: #ff8a1f66;
+  box-shadow: 0 16px 40px rgba(255, 138, 31, 0.16);
+}
+
+/* Alto fijo para la foto: con las tarjetas igualadas por el grid, deja la
+   imagen en torno al 50-55% del alto total sin depender del largo del texto. */
+.benefit-foto {
+  position: relative;
+  height: clamp(196px, 21vw, 232px);
+  flex: none;
+  overflow: hidden;
+  background: #0e1420;
+}
+.benefit-foto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.42s ease;
+}
+.benefit:hover .benefit-foto img {
+  transform: scale(1.05);
+}
+/* Funde el pie de la foto con el fondo de la tarjeta */
+.benefit-foto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(0deg, #141a26 0%, rgba(20, 26, 38, 0) 58%);
+}
+
+.benefit-texto {
+  padding: 26px 30px 32px;
+}
+
+/* Con movimiento reducido no basta con acortar la transición: se anulan el
+   zoom y el desplazamiento, que son los que producen la sensación de salto. */
+@media (prefers-reduced-motion: reduce) {
+  .benefit:hover {
+    transform: none;
+  }
+  .benefit:hover .benefit-foto img {
+    transform: none;
+  }
+}
+.benefit h3 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+.benefit p {
+  color: var(--muted);
+  line-height: 1.7;
+}
+.plans {
+  background: radial-gradient(
+    ellipse at 50% 15%,
+    #3c211e 0%,
+    #13141c 47%,
+    #0d0f16 100%
+  );
+}
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 50px;
+}
+.section-heading p {
+  max-width: 400px;
+}
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 55px;
+}
+.plan {
+  background: #191b25;
+  border: 1px solid #ffffff19;
+  border-radius: 25px;
+  padding: 35px;
+  position: relative;
+  transition: 0.3s;
+}
+.plan:hover {
+  transform: translateY(-8px);
+}
+.plan.featured {
+  border-color: var(--orange);
+  background: linear-gradient(160deg, #37241f, #171921);
+  box-shadow: 0 0 50px #ff791b18;
+}
+/* La cinta se define una sola vez, junto al resto de la tarjeta de plan. */
+.plan-name {
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  color: var(--amber);
+  font-size: 12px;
+}
+.speed {
+  font-size: 70px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  margin: 15px 0;
+}
+.speed span {
+  font-size: 22px;
+  letter-spacing: 0;
+  color: var(--orange);
+}
+.plan > p {
+  color: var(--muted);
+  min-height: 46px;
+}
+.plan-price {
+  font: 800 28px Outfit;
+  border-bottom: 1px solid #ffffff20;
+  padding: 20px 0;
+}
+.plan-price small {
+  display: block;
+  font: 400 11px "DM Sans";
+  color: var(--muted);
+  margin-top: 5px;
+}
+.plan ul {
+  padding: 10px 0 15px;
+  list-style: none;
+  line-height: 2.5;
+  font-size: 14px;
+}
+.plan li:before {
+  content: "✓";
+  color: var(--orange);
+  margin-right: 12px;
+}
+.plan .btn {
+  width: 100%;
+}
+.disclaimer {
+  color: #858895;
+  font-size: 12px;
+  margin-top: 22px;
+}
+.lifestyle h2 {
+  max-width: 750px;
+}
+.lifestyle-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 18px;
+  margin-top: 45px;
+}
+/* flex-end mantiene el texto abajo, sobre el degradado oscuro de la foto.
+   Antes era space-between porque había un icono arriba; al quitarlo, con un
+   solo hijo space-between lo habría subido a la zona clara de la imagen. */
+.life-card {
+  min-height: 370px;
+  border-radius: 25px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  border: 1px solid #ffffff20;
+  transition: transform 0.3s;
+}
+.life-card:hover {
+  transform: translateY(-7px);
+}
+.life-one {
+  background: radial-gradient(circle at 70% 20%, #ed7a2360, transparent 45%),
+    linear-gradient(145deg, #382119, #15141d);
+}
+.life-two {
+  background: radial-gradient(circle at 70% 20%, #4d71ff66, transparent 45%),
+    linear-gradient(145deg, #19294a, #15141d);
+}
+.life-three {
+  background: radial-gradient(circle at 70% 20%, #ff397166, transparent 45%),
+    linear-gradient(145deg, #412039, #15141d);
+}
+.life-card span {
+  font-size: 11px;
+  color: #ffffffa8;
+  letter-spacing: 0.12em;
+}
+.life-card h3 {
+  font-size: 29px;
+  margin: 10px 0;
+}
+.life-card p {
+  color: #d2cbd0;
+  margin: 0;
+}
+.coverage {
+  background: linear-gradient(125deg, #1b1417, #111622);
+  overflow: hidden;
+}
+.coverage-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 70px;
+  align-items: center;
+}
+.coverage h2 {
+  max-width: 550px;
+}
+.coverage p {
+  max-width: 470px;
+  margin-bottom: 30px;
+}
+.coverage-art {
+  height: 400px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.orbit {
+  position: absolute;
+  border: 1px solid #ff8a334a;
+  border-radius: 50%;
+  animation: orbitPulse 5s ease-in-out infinite;
+}
+.orbit-one {
+  width: 180px;
+  height: 180px;
+}
+.orbit-two {
+  width: 300px;
+  height: 300px;
+  animation-delay: 1s;
+}
+.orbit-three {
+  width: 400px;
+  height: 400px;
+  animation-delay: 2s;
+}
+.coverage-center {
+  z-index: 1;
+  background: linear-gradient(130deg, #ffb13b, #ff5e16);
+  height: 115px;
+  width: 115px;
+  border-radius: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 56px;
+  box-shadow: 0 0 80px #ff791b77;
+}
+.coverage-center small {
+  font-size: 14px;
+  font-weight: 900;
+}
+.orbit-dot {
+  position: absolute;
+  background: var(--orange);
+  border-radius: 50%;
+  box-shadow: 0 0 20px var(--orange);
+  width: 13px;
+  height: 13px;
+}
+.dot-one {
+  top: 70px;
+  left: 25%;
+}
+.dot-two {
+  bottom: 65px;
+  right: 22%;
+}
+.dot-three {
+  top: 44%;
+  right: 8%;
+}
+.faq h2 {
+  max-width: 800px;
+}
+.faq-list {
+  max-width: 900px;
+  margin: 45px auto 0;
+}
+.faq details {
+  border-bottom: 1px solid #ffffff2b;
+  padding: 23px 0;
+}
+.faq summary {
+  list-style: none;
+  cursor: pointer;
+  font: 600 20px Outfit;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq summary span {
+  color: var(--orange);
+  font-size: 28px;
+}
+.faq details[open] summary span {
+  transform: rotate(45deg);
+}
+.faq details p {
+  color: var(--muted);
+  line-height: 1.8;
+  max-width: 720px;
+  margin: 16px 0 0;
+}
+.contact {
+  background: radial-gradient(ellipse at 0 70%, #542616, #17151c 60%);
+}
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+.contact-note {
+  color: var(--amber);
+  font-size: 14px;
+  margin-top: 35px;
+}
+.contact form {
+  background: #1c1c25;
+  border: 1px solid #ffffff24;
+  border-radius: 24px;
+  padding: 35px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.contact label {
+  font-size: 13px;
+  font-weight: 700;
+}
+.contact input,
+.contact select {
+  padding: 16px;
+  border: 1px solid #ffffff22;
+  background: #101119;
+  color: white;
+  border-radius: 11px;
+  outline: none;
+  margin-bottom: 10px;
+  width: 100%;
+}
+.contact input:focus,
+.contact select:focus {
+  border-color: var(--orange);
+}
+.contact form .btn {
+  margin-top: 12px;
+}
+.contact form small {
+  color: #999da9;
+  line-height: 1.5;
+}
+footer {
+  padding: 65px 0 25px;
+  background: #090a0f;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 50px;
+}
+.footer-brand img {
+  width: 135px;
+  display: block;
+}
+.footer-brand strong {
+  display: block;
+  color: var(--amber);
+  font-size: 13px;
+  margin-top: 4px;
+}
+.footer-brand p {
+  color: var(--muted);
+  margin-top: 20px;
+}
+.footer-grid > div:not(:first-child) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 14px;
+}
+.footer-grid b {
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  color: var(--orange);
+  margin-bottom: 7px;
+}
+.footer-grid a {
+  color: var(--muted);
+}
+.footer-grid a:hover {
+  color: white;
+}
+.footer-bottom {
+  border-top: 1px solid #ffffff17;
+  margin-top: 60px;
+  padding-top: 25px;
+  display: flex;
+  justify-content: space-between;
+  color: #858895;
+  font-size: 12px;
+}
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition:
+    opacity 0.75s,
+    transform 0.75s;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@keyframes zoomIn {
+  from {
+    transform: scale(1.07);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes orbitPulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(1.04);
+  }
+}
+@media (max-width: 900px) {
+  .header nav {
+    position: absolute;
+    top: 72px;
+    left: 0;
+    right: 0;
+    background: #11131bf5;
+    display: none;
+    flex-direction: column;
+    padding: 30px 5%;
+    gap: 22px;
+  }
+  .header nav.open {
+    display: flex;
+  }
+  .menu-toggle {
+    display: block;
+  }
+  .nav-cta {
+    margin-left: auto;
+    margin-right: 18px;
+  }
+  .hero h1 {
+    max-width: 640px;
+  }
+  .intro-grid,
+  .coverage-grid,
+  .contact-grid {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+  .section-heading {
+    display: block;
+  }
+  .plans-grid {
+    gap: 12px;
+  }
+  .plan {
+    padding: 23px;
+  }
+  .speed {
+    font-size: 54px;
+  }
+  .lifestyle-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .life-card:first-child {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 650px) {
+  .header {
+    height: 72px;
+  }
+  .brand img {
+    width: 90px;
+  }
+  .nav-cta {
+    display: none;
+  }
+  .hero {
+    min-height: 720px;
+    height: 95svh;
+  }
+  .hero-content {
+    padding-top: 95px;
+  }
+  .hero h1 {
+    font-size: clamp(50px, 12vw, 75px);
+  }
+  .hero p {
+    font-size: 16px;
+  }
+  .hero-stats {
+    gap: 15px;
+  }
+  .hero-stats > div {
+    padding-right: 14px;
+  }
+  .hero-stats strong {
+    font-size: 20px;
+  }
+  .hero-stats small {
+    font-size: 10px;
+  }
+  .scroll-hint {
+    display: none;
+  }
+  .section {
+    padding: 75px 0;
+  }
+  .benefit-grid,
+  .plans-grid,
+  .lifestyle-grid,
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+  .life-card:first-child {
+    grid-column: auto;
+  }
+  .life-card {
+    min-height: 280px;
+  }
+  .section h2 {
+    font-size: 42px;
+  }
+  .contact form {
+    padding: 22px;
+  }
+  .footer-bottom {
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .coverage-art {
+    height: 340px;
+  }
+  .orbit-three {
+    width: 330px;
+    height: 330px;
+  }
+  .orbit-two {
+    width: 250px;
+    height: 250px;
+  }
+  .hero-actions .btn {
+    font-size: 13px;
+    padding: 14px 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Carrusel WISP: 4 diapositivas, accesible y adaptable */
+.hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 720px;
+}
+.hero-carousel,
+.hero-slide {
+  position: absolute;
+  inset: 0;
+}
+.hero-slide {
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transform: scale(1.06);
+  transition:
+    opacity 1s ease,
+    transform 6s ease;
+  pointer-events: none;
+}
+.hero-slide.active {
+  opacity: 1;
+  transform: scale(1);
+}
+.hero-content {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+.hero-copy {
+  max-width: 730px;
+  pointer-events: auto;
+}
+.hero-message {
+  display: none;
+}
+/* La entrada se anima por partes (etiqueta, título, descripción) más abajo,
+   no en bloque: así el texto aparece escalonado y se lee mejor. */
+.hero-message.active {
+  display: block;
+}
+.hero-message h1 {
+  max-width: 730px;
+}
+.hero-message p {
+  max-width: 560px;
+}
+@keyframes heroReveal {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.carousel-arrow {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 50px;
+  width: 50px;
+  border: 1px solid #ffffff55;
+  border-radius: 50%;
+  background: #17171ab8;
+  color: #fff;
+  font-size: 36px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s;
+}
+.carousel-arrow:hover {
+  background: #f57b13;
+}
+.carousel-arrow.prev {
+  left: 18px;
+}
+.carousel-arrow.next {
+  right: 18px;
+}
+.carousel-dots {
+  position: absolute;
+  z-index: 5;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 11px;
+}
+.carousel-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff75;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.carousel-dot.active {
+  background: #ff8a19;
+  width: 35px;
+  border-radius: 12px;
+}
+@media (max-width: 760px) {
+  .hero {
+    min-height: 730px;
+  }
+  .hero-slide {
+    background-position: 62% center;
+  }
+  /* Las flechas y el degradado de pantallas pequeñas se definen una sola vez,
+     al final del archivo, junto al resto del diseño de la portada. */
+  .carousel-dots {
+    bottom: 60px;
+  }
+  .hero-copy {
+    max-width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide,
+  .hero-message {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* WISP PREMIUM — diseño oscuro, carrusel limpio y acceso interno */
+:root {
+  --orange: #ff8518;
+  --orange2: #ff4d00;
+}
+body {
+  background: #080c13;
+  color: #f8f9fc;
+}
+.header {
+  padding-left: max(4vw, 22px);
+  padding-right: max(4vw, 22px);
+  background: linear-gradient(
+    180deg,
+    rgba(5, 8, 14, 0.84),
+    rgba(5, 8, 14, 0.15)
+  );
+  backdrop-filter: blur(15px);
+}
+.brand {
+  min-width: 172px;
+}
+.brand img {
+  width: 154px !important;
+  max-height: 72px !important;
+  object-fit: contain;
+}
+.brand span {
+  font-size: 11px !important;
+  letter-spacing: 2px;
+}
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.login-trigger {
+  background: rgba(255, 255, 255, 0.09);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  padding: 13px 20px;
+  border-radius: 100px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: 0.25s;
+}
+.login-trigger:hover {
+  border-color: #ff8518;
+  background: rgba(255, 133, 24, 0.16);
+  transform: translateY(-2px);
+}
+/* ───────────────────────────────────────────────────────────────────────────
+   PORTADA CINEMATOGRÁFICA
+   Logo protagonista arriba a la izquierda, texto debajo, y un degradado que
+   oscurece ese lado dejando la fotografía casi limpia a la derecha.
+   Esta es la única sección que define el degradado, los tamaños y las
+   animaciones de la portada: antes estaban repartidos en tres capas que se
+   pisaban entre sí con !important.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.hero {
+  min-height: 760px;
+}
+
+.hero-slide {
+  background-position: center center;
+  background-size: cover;
+  filter: saturate(1.12) contrast(1.06);
+}
+
+/* Izquierda negro azulado al 94%, centro progresivo, derecha casi sin tocar.
+   El ángulo de 100° evita el corte vertical duro y lo integra con la foto.
+   El segundo degradado funde el pie de la portada con la sección siguiente. */
+.hero-shade {
+  background: linear-gradient(
+      100deg,
+      rgba(4, 8, 18, 0.94) 0%,
+      rgba(4, 8, 18, 0.89) 24%,
+      rgba(5, 9, 19, 0.6) 50%,
+      rgba(6, 10, 20, 0.2) 74%,
+      rgba(6, 10, 20, 0.04) 100%
+    ),
+    linear-gradient(0deg, #0b0d13 0%, transparent 26%);
+}
+
+/* ── Logo grande ───────────────────────────────────────────────────────────
+   Imagen independiente (no incrustada en la foto) para que conserve nitidez
+   y se pueda escalar con una sola variable. */
+/* width: max-content hace que el bloque se ciña al ancho del logo, y así el
+   eslogan de abajo se centra respecto al logo y no respecto a la columna. */
+.hero-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: max-content;
+  max-width: 100%;
+  margin-bottom: clamp(16px, 2.4vw, 30px);
+}
+
+.hero-brand img {
+  display: block;
+  width: clamp(190px, 25vw, 360px);
+  height: auto;
+  filter: drop-shadow(0 16px 34px rgba(0, 0, 0, 0.5));
+}
+
+.hero-brand span {
+  font-family: Outfit, sans-serif;
+  font-size: clamp(14px, 1.35vw, 19px);
+  font-weight: 600;
+  /* Separación moderada: con .32em las palabras se leían sueltas */
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: #f2f3f7;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+/* ── Textos ────────────────────────────────────────────────────────────────
+   Más contenidos que antes porque ahora comparten espacio con el logo. */
+.hero-copy {
+  max-width: 760px;
+}
+
+.hero h1 {
+  font-size: clamp(2.5rem, 4.6vw, 4.9rem);
+  line-height: 1.04;
+  max-width: 700px;
+  margin-bottom: 20px;
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+}
+
+/* Naranja corporativo en las palabras destacadas */
+.hero h1 em {
+  color: #ff8a1f;
+}
+
+.hero-message p {
+  max-width: 560px;
+  text-shadow: 0 2px 10px #0009;
+}
+
+/* ── Animaciones escalonadas ───────────────────────────────────────────────
+   El logo entra una sola vez al cargar; el texto, cada vez que cambia la
+   diapositiva. Se respeta la preferencia de movimiento reducido más abajo. */
+.hero-brand {
+  animation: heroReveal 0.75s ease both;
+}
+
+.hero-message.active h1 {
+  animation: heroReveal 0.6s 0.14s ease both;
+}
+
+.hero-message.active p {
+  animation: heroReveal 0.65s 0.22s ease both;
+}
+
+/* ── Adaptación a pantallas menores ────────────────────────────────────────
+   El logo se reduce antes que el título para que nunca lo empuje ni lo tape. */
+/* Tablet y menores: las flechas centradas verticalmente chocan siempre con el
+   texto alineado a la izquierda, así que bajan al borde inferior. El título se
+   mantiene acotado para que no corra por debajo de ellas. */
+@media (max-width: 1024px) {
+  .hero-brand img {
+    width: clamp(170px, 26vw, 250px);
+  }
+  .hero h1 {
+    max-width: 560px;
+  }
+  .hero-message p {
+    max-width: 520px;
+  }
+  .carousel-arrow {
+    width: 38px;
+    height: 38px;
+    font-size: 28px;
+    top: auto;
+    bottom: 42px;
+  }
+  .carousel-arrow.prev {
+    left: 16px;
+  }
+  .carousel-arrow.next {
+    right: 16px;
+  }
+  /* La foto queda de fondo, no al costado: el degradado baja en vertical para
+     que el texto no compita con las caras ni con las luces de la imagen. */
+  .hero-shade {
+    background: linear-gradient(
+        165deg,
+        rgba(4, 8, 18, 0.93) 0%,
+        rgba(4, 8, 18, 0.84) 40%,
+        rgba(5, 9, 19, 0.6) 100%
+      ),
+      linear-gradient(0deg, #0b0d13 0%, transparent 28%);
+  }
+}
+
+@media (max-width: 680px) {
+  .hero-brand img {
+    width: 165px;
+  }
+  .hero-brand {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .hero-brand span {
+    font-size: 10px;
+    letter-spacing: 0.26em;
+  }
+  /* En móvil la foto se ve de fondo, así que el degradado tapa más para que
+     el texto se lea sin competir con las luces naranjas de la imagen. */
+  .hero-shade {
+    background: linear-gradient(
+        170deg,
+        rgba(4, 8, 18, 0.92) 0%,
+        rgba(4, 8, 18, 0.82) 45%,
+        rgba(5, 9, 19, 0.72) 100%
+      ),
+      linear-gradient(0deg, #0b0d13 0%, transparent 32%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-brand,
+  .hero-message.active h1,
+  .hero-message.active p {
+    animation: none;
+  }
+}
+.intro,
+.plans,
+.lifestyle,
+.faq {
+  background: transparent !important;
+  color: #f5f7fc !important;
+}
+.section-heading h2,
+.intro h2,
+.lifestyle h2,
+.faq h2 {
+  color: #fff !important;
+}
+/* .benefit quedó fuera a propósito: tiene su propia definición más arriba y
+   este `border ... !important` impedía que su borde naranja de hover se
+   aplicara nunca. */
+.plan,
+.faq details {
+  background: #141a26 !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  color: #f8f9ff !important;
+}
+.benefit {
+  color: #f8f9ff;
+}
+.benefit p,
+.plan p,
+.section-heading p,
+.intro p,
+.faq p {
+  color: #b7c0d0 !important;
+}
+.plans {
+  background: radial-gradient(
+      ellipse at top,
+      rgba(255, 119, 13, 0.09),
+      transparent 65%
+    ),
+    #0c111b !important;
+}
+.plans-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  align-items: stretch;
+}
+.plan {
+  padding: 0 !important;
+  overflow: hidden;
+  position: relative;
+  border-radius: 22px !important;
+  box-shadow: 0 18px 48px #0005;
+}
+.plan-top {
+  text-align: center;
+  background: var(--plan-color);
+  font-size: 22px;
+  font-weight: 850;
+  padding: 18px 12px;
+  color: white;
+}
+.plan-red {
+  --plan-color: #e8272b;
+}
+.plan-orange {
+  --plan-color: #d54509;
+}
+.plan-green {
+  --plan-color: #168647;
+}
+.plan-blue {
+  --plan-color: #2453e8;
+}
+.plan-body {
+  padding: 28px 22px 24px;
+  text-align: center;
+}
+.plan .speed {
+  font-size: 66px !important;
+  color: var(--plan-color) !important;
+  font-weight: 900;
+  line-height: 1.1;
+}
+.plan .speed span {
+  display: block;
+  font-size: 21px !important;
+  color: #f7f8ff !important;
+  letter-spacing: 2px;
+}
+.plan-wifi {
+  font-size: 49px;
+  color: var(--plan-color);
+  line-height: 1.2;
+  margin: 14px;
+}
+.plan-tag {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 30px;
+  padding: 9px 13px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.plan ul {
+  padding: 18px 0 !important;
+  margin: 20px 0 !important;
+  text-align: left;
+  border-top: 1px solid #ffffff20;
+  list-style: none;
+}
+.plan ul li {
+  margin: 12px 0;
+  color: #dbe2ed;
+  font-size: 14px;
+}
+.plan ul li:before {
+  content: "✓";
+  color: var(--plan-color);
+  font-weight: 900;
+  margin-right: 9px;
+}
+.plan-price {
+  background: var(--plan-color);
+  padding: 18px 10px;
+  border-radius: 15px;
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 25px !important;
+  line-height: 1.1;
+}
+.plan-price strong {
+  font-size: 48px;
+}
+.plan-price sup {
+  font-size: 22px;
+}
+.plan-price small {
+  display: block;
+  color: #fff !important;
+  font-size: 12px;
+  letter-spacing: 2px;
+  margin-top: 7px;
+}
+.plan-buy {
+  display: block;
+  background: #080d16;
+  color: white;
+  text-decoration: none;
+  border-radius: 14px;
+  margin-top: 15px;
+  padding: 16px 10px;
+  font-weight: 800;
+  transition: 0.25s;
+  border: 1px solid #ffffff25;
+}
+.plan-buy:hover {
+  background: var(--plan-color);
+  transform: translateY(-3px);
+}
+/* Cinta diagonal de la esquina superior derecha.
+   Va POR DEBAJO de la franja del título (que mide ~58px) para no taparlo, y
+   sobre el cuerpo oscuro de la tarjeta, donde el verde corporativo con letras
+   blancas se lee bien — sobre la franja verde se confundiría con ella.
+   Los extremos los recorta el `overflow: hidden` de .plan, que es lo que le da
+   el remate limpio contra el borde redondeado. */
+.plan .popular {
+  position: absolute;
+  /* 134px: al girar 45° la caja crece hacia arriba unos 70px, así que este es
+     el mínimo para que su borde superior quede por debajo de la franja del
+     título (58px) y no tape el "69". Subido respecto a los 130px originales
+     porque la caja ahora es más alta (padding/letra más grandes) y crece un
+     poco más hacia arriba al rotar. */
+  top: 134px;
+  right: -44px;
+  width: 176px;
+  padding: 9px 0;
+  text-align: center;
+  transform: rotate(45deg);
+  background: #168647;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+  z-index: 3;
+}
+.plan.featured {
+  transform: none !important;
+}
+.disclaimer {
+  color: #9da8b9 !important;
+}
+.life-card {
+  background-position: center !important;
+  background-size: cover !important;
+}
+.life-one {
+  background-image: linear-gradient(0deg, #080c13e8, transparent),
+    url("assets/juega.webp") !important;
+}
+.life-two {
+  background-image: linear-gradient(0deg, #080c13e8, transparent),
+    url("assets/oficina.webp") !important;
+}
+.life-three {
+  background-image: linear-gradient(0deg, #080c13e8, transparent),
+    url("assets/fam.webp") !important;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+body.modal-open {
+  overflow: hidden;
+}
+@media (max-width: 1080px) {
+  .plans-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 680px) {
+  .plans-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .hero {
+    min-height: 730px;
+  }
+  .brand img {
+    width: 113px !important;
+  }
+  .brand {
+    min-width: 116px;
+  }
+  .brand span {
+    font-size: 8px !important;
+  }
+  .nav-actions {
+    gap: 5px;
+  }
+  .login-trigger {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .nav-cta {
+    display: none !important;
+  }
+}

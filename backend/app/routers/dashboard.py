@@ -104,10 +104,21 @@ def ultimas_activaciones(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(get_current_user),
 ):
+    # La descripción de un movimiento de pago lleva el importe, así que sólo se
+    # incluye para los roles que tienen acceso al módulo Pagos — los demás no
+    # deben recibir cifras de dinero ni siquiera en la respuesta.
+    tipos = ["activacion", "corte"]
+    if current_user.rol in (
+        models.RolUsuario.super_admin,
+        models.RolUsuario.admin,
+        models.RolUsuario.subadmin,
+    ):
+        tipos.append("pago")
+
     activaciones = db.query(models.Historial).options(
         joinedload(models.Historial.cliente)
     ).filter(
-        models.Historial.tipo.in_(["activacion", "corte", "pago"])
+        models.Historial.tipo.in_(tipos)
     ).order_by(models.Historial.creado_en.desc()).limit(limit).all()
 
     return [

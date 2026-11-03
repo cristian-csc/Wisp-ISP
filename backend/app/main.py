@@ -6,6 +6,7 @@ from . import models
 from .routers import (
     clientes, zonas, pagos, gastos, auth, whatsapp, dashboard, planes, admin,
     cliente_app, cajas_nap, onus, averias, ordenes_retiro, evidencias, mufas,
+    jornadas, consultas,
 )
 
 
@@ -63,6 +64,8 @@ app.include_router(onus.router, prefix="/api/onus", tags=["ONUs"])
 app.include_router(averias.router, prefix="/api/averias", tags=["Averías"])
 app.include_router(ordenes_retiro.router, prefix="/api/ordenes-retiro", tags=["Órdenes de retiro"])
 app.include_router(evidencias.router, prefix="/api/evidencias", tags=["Evidencias"])
+app.include_router(jornadas.router, prefix="/api/jornadas", tags=["Jornadas"])
+app.include_router(consultas.router, prefix="/api/consultas", tags=["Consultas"])
 
 
 @app.get("/api/health")

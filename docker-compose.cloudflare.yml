@@ -1,0 +1,20 @@
+# Complemento para el despliegue en la PC de la oficina (sin IP pública).
+#
+# Añade el túnel de Cloudflare, que conecta de salida hacia Cloudflare y
+# publica el sitio sin abrir ningún puerto en el router.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d
+#
+# Requiere CLOUDFLARE_TUNNEL_TOKEN en el .env (se obtiene al crear el túnel en
+# el panel Zero Trust de Cloudflare). En ese panel, el "public hostname" debe
+# apuntar al servicio  http://nginx:80
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: tuxtell_cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - nginx
