@@ -1,4 +1,5 @@
 import { api } from './api';
+import { descargarDeApi, type FormatoReporte } from './descargas';
 import type { ClienteListItem } from './clientes';
 
 export type EstadoPago = 'pagado' | 'pendiente' | 'vencido' | 'corte_temporal';
@@ -185,4 +186,48 @@ export type ReporteZona = { zona_id: number; zona_nombre: string; total: number;
 export async function getReporteMensualZonas(mes: string): Promise<ReporteZona[]> {
   const { data } = await api.get('/pagos/reporte-mensual-zonas', { params: { mes } });
   return data;
+}
+
+// ── Reportes descargables ───────────────────────────────────────────────────
+
+export type { FormatoReporte };
+
+const EXT: Record<FormatoReporte, string> = { excel: 'xlsx', pdf: 'pdf' };
+
+/** La lista de pagos completa (sin paginar) con los filtros que estén puestos
+ *  en la pantalla. El backend decide el nombre del archivo. */
+export async function descargarReportePagos(
+  formato: FormatoReporte,
+  filtros?: { cliente_id?: number; mes?: string; estado?: EstadoPago; search?: string },
+): Promise<void> {
+  await descargarDeApi(
+    '/pagos/exportar',
+    { formato, ...filtros },
+    `reporte-pagos.${EXT[formato]}`,
+  );
+}
+
+/** El corte de caja de un día, con el desglose por método y por cobrador. */
+export async function descargarReporteCaja(
+  formato: FormatoReporte,
+  fecha: string,
+  zonaId?: number,
+): Promise<void> {
+  await descargarDeApi(
+    '/pagos/reporte-caja/exportar',
+    { formato, fecha, zona_id: zonaId },
+    `corte-caja-${fecha}.${EXT[formato]}`,
+  );
+}
+
+/** Lo recaudado en el mes, zona por zona. */
+export async function descargarReporteZonas(
+  formato: FormatoReporte,
+  mes: string,
+): Promise<void> {
+  await descargarDeApi(
+    '/pagos/reporte-mensual-zonas/exportar',
+    { formato, mes },
+    `recaudacion-por-zona-${mes}.${EXT[formato]}`,
+  );
 }

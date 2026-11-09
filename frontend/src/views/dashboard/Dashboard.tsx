@@ -59,7 +59,6 @@ const Dashboard = () => {
     getUltimasActivaciones(6)
       .then(setMovimientos)
       .catch(() => setMovimientos([]));
-    getIngresosMensual().then(setMeses).catch(() => {});
     contarClientesPorEstado('pendiente_aprobacion').then(setPorAprobar).catch(() => {});
     Promise.all([contarClientesPorEstado('aprobado'), contarClientesPorEstado('no_instalado')])
       .then(([a, b]) => setPorInstalar(a + b))
@@ -75,6 +74,13 @@ const Dashboard = () => {
   const veGastos = puedeVerUrl('/gastos', rol);
   const veClientes = puedeVerUrl('/clientes', rol);
   const veZonas = puedeVerUrl('/zonas', rol);
+
+  // El histórico de ingresos y gastos es de gerencia: solo se pide cuando el
+  // rol puede verlo, para no provocar un 403 silencioso en cada carga.
+  useEffect(() => {
+    if (!veGastos) return;
+    getIngresosMensual().then(setMeses).catch(() => {});
+  }, [veGastos]);
 
   const deltaIngresos =
     stats && stats.ingresos_mes_anterior > 0

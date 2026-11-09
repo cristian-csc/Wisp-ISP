@@ -23,7 +23,7 @@ import { uniqueId } from 'lodash';
 
 // Navegación real del sistema WISP — reemplaza el contenido de demo de la
 // plantilla (Notes/Blog/eCommerce/etc.) por las secciones que existen de
-// verdad en el backend (ver TUX-ISP fase backend v2). `roles` filtra qué ve
+// verdad en el backend (ver fase backend v2). `roles` filtra qué ve
 // cada rol — si se omite, lo ven todos los roles autenticados.
 const SidebarContent: MenuItem[] = [
   {
@@ -78,7 +78,7 @@ const SidebarContent: MenuItem[] = [
         icon: 'solar:map-point-linear',
         id: uniqueId(),
         url: '/zonas',
-        roles: ['admin', 'subadmin'],
+        roles: ['admin', 'subadmin', 'vendedor_tienda'],
       },
       {
         name: 'Cajas NAP',
@@ -92,7 +92,7 @@ const SidebarContent: MenuItem[] = [
         icon: 'solar:cpu-bolt-linear',
         id: uniqueId(),
         url: '/onus',
-        roles: ['admin', 'subadmin'],
+        roles: ['admin', 'subadmin', 'vendedor_tienda'],
       },
     ],
   },
@@ -130,7 +130,7 @@ const SidebarContent: MenuItem[] = [
         icon: 'solar:banknote-2-linear',
         id: uniqueId(),
         url: '/pagos',
-        roles: ['admin', 'subadmin'],
+        roles: ['admin', 'subadmin', 'vendedor_tienda'],
       },
       {
         name: 'Gastos',

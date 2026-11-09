@@ -24,6 +24,7 @@ export default function VendedorLayout() {
         <Stack.Screen name="nuevo-cliente" options={{ title: 'Nuevo Cliente', headerLeft: () => null }} />
         <Stack.Screen name="cliente/[id]" options={{ title: 'Detalle' }} />
         <Stack.Screen name="jornada" options={{ title: 'Jornada', headerLeft: () => null }} />
+        <Stack.Screen name="mapa" options={{ title: 'Cobertura de fibra', headerLeft: () => null }} />
         <Stack.Screen name="cuenta" options={{ title: 'Mi Cuenta', headerLeft: () => null }} />
       </Stack>
     </JornadaProvider>

@@ -1,6 +1,17 @@
-# TUX-ISP — Sistema de Gestión para Tuxtell
+# WISP-ISP — WISP Control
 
-Sistema web completo para administración de clientes, pagos, zonas y equipos de red de un proveedor de internet (ISP).
+Sistema de gestión para **WISP — Ingeniería en Redes y Telecomunicaciones**
+(Juliaca, Puno). *Internet para todos.*
+
+Administración de clientes, pagos, zonas y equipos de red de un proveedor de
+internet: panel web (**WISP Control**), aplicación móvil para técnicos y
+vendedoras, sitio público y envío de avisos por WhatsApp.
+
+> **Nombres técnicos antiguos.** Algunos identificadores internos siguen
+> diciendo `tuxtell` (contenedores de Docker, base de datos, carpetas de
+> `/opt`). No se renombraron a propósito: son nombres con datos ya guardados
+> detrás, y cambiarlos sin migración haría parecer que la información se
+> perdió. Ver `MANUAL_PRIVADO_SEGURIDAD_WISP-ISP.md`.
 
 ---
 
@@ -148,10 +159,16 @@ docker compose build
 docker compose up -d
 ```
 
-Acceder en: `https://tuxtell.duckdns.org`
-API docs en: `https://tuxtell.duckdns.org/api/docs`
+Acceder en el dominio configurado en `nginx/nginx.conf`.
+La documentación interactiva de la API (`/docs`) solo está disponible cuando
+`ENTORNO` **no** es `produccion`.
 
-Credenciales por defecto: `admin@tuxtell.net` / `admin2024`
+**Primer acceso:** en una base de datos vacía, el sistema crea un único
+administrador. La contraseña sale de `ADMIN_INICIAL_PASSWORD` (en el `.env`);
+si esa variable está vacía, se genera una al azar y se escribe **una sola vez**
+en el log de arranque (`docker compose logs backend`). Anótala y cámbiala al
+entrar. En este repositorio no hay ninguna contraseña: ver
+`MANUAL_PRIVADO_SEGURIDAD_WISP-ISP.md` (fuera de Git).
 
 ### Actualizar en producción
 

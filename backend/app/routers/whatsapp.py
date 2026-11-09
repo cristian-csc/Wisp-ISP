@@ -12,6 +12,7 @@ from .. import models, schemas
 from .auth import get_current_user, require_roles
 from ..billing import monto_mensual
 from ..config import settings
+from ..mensajeria import cabeceras_bot
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +57,11 @@ def _tiendas_text(zona) -> str:
 async def wa_request(method: str, path: str, json: dict = None):
     async with httpx.AsyncClient(timeout=10) as client:
         url = f"{WA_API}{path}"
+        cab = cabeceras_bot()
         if method == "GET":
-            r = await client.get(url)
+            r = await client.get(url, headers=cab)
         else:
-            r = await client.post(url, json=json)
+            r = await client.post(url, json=json, headers=cab)
         return r.json()
 
 
@@ -85,7 +87,7 @@ async def get_qr(current_user: models.Usuario = Depends(get_current_user)):
 async def send_message(
     phone: str,
     message: str,
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     try:
         data = await wa_request("POST", "/send", {"phone": phone, "message": message})
@@ -99,7 +101,7 @@ async def send_message(
 async def aviso_cobro(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -141,7 +143,7 @@ async def aviso_cobro(
 async def aviso_corte(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -233,7 +235,7 @@ def broadcast_cobros(
 @router.post("/recordatorio-preventivo/ejecutar")
 async def ejecutar_recordatorio_preventivo(
     dias_antes: int = 3,
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     from ..scheduler import job_recordatorio_preventivo
     result = await job_recordatorio_preventivo(dias_antes=dias_antes)

@@ -39,7 +39,7 @@ const SectionCard = ({
           )}
         </div>
       </div>
-      {extra && <div className="flex shrink-0 items-center gap-2">{extra}</div>}
+      {extra && <div className="flex min-w-0 flex-wrap items-center gap-2">{extra}</div>}
     </div>
     <div className={`flex-1 ${sinRelleno ? '' : 'px-5 pb-5'}`}>{children}</div>
   </CardBox>

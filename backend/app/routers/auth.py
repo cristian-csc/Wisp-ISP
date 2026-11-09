@@ -1,6 +1,8 @@
 import logging
+import threading
+import time
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
@@ -16,6 +18,93 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+
+# ── Freno contra fuerza bruta en el login ────────────────────────────────────
+# Sin esto, un atacante puede probar miles de contraseñas por minuto. Se cuenta
+# por (IP + usuario) para que el ataque a una cuenta no deje fuera a las demás
+# personas que trabajan desde la misma oficina.
+#
+# Limitación conocida: el contador vive en memoria del proceso. Si el backend
+# se reinicia, o si algún día se levantan varios procesos, el conteo se reparte.
+# Para una instalación de un solo proceso —la actual— es suficiente; con varios
+# habría que moverlo a la base o a Redis.
+_intentos: dict[tuple[str, str], list[float]] = {}
+_bloqueados: dict[tuple[str, str], float] = {}   # clave -> momento en que se libera
+_candado = threading.Lock()
+
+
+def _ip_del_cliente(request: Request) -> str:
+    """La IP real del visitante. Detrás de Nginx o Cloudflare la conexión
+    viene del proxy, así que la verdadera llega en una cabecera."""
+    for cabecera in ("cf-connecting-ip", "x-real-ip"):
+        valor = request.headers.get(cabecera)
+        if valor:
+            return valor.strip()
+    reenviada = request.headers.get("x-forwarded-for")
+    if reenviada:
+        return reenviada.split(",")[0].strip()
+    return request.client.host if request.client else "desconocida"
+
+
+def _segundos_de_espera(clave: tuple[str, str]) -> int:
+    """0 si puede intentar; si no, los segundos que le faltan para volver."""
+    if settings.LOGIN_MAX_INTENTOS <= 0:
+        return 0
+    ahora = time.time()
+    with _candado:
+        hasta = _bloqueados.get(clave)
+        if hasta is None:
+            return 0
+        if ahora >= hasta:
+            # Cumplió el castigo: vuelve a empezar de cero.
+            _bloqueados.pop(clave, None)
+            _intentos.pop(clave, None)
+            return 0
+        return max(int(hasta - ahora), 1)
+
+
+def _anotar_fallo(clave: tuple[str, str]) -> None:
+    """Apunta un intento fallido y bloquea si se pasó del límite.
+
+    Se cuentan los fallos de los últimos LOGIN_VENTANA_SEGUNDOS; al llegar a
+    LOGIN_MAX_INTENTOS la clave queda bloqueada LOGIN_BLOQUEO_SEGUNDOS enteros
+    contados desde ese momento.
+    """
+    if settings.LOGIN_MAX_INTENTOS <= 0:
+        return
+    ahora = time.time()
+    with _candado:
+        fallos = [t for t in _intentos.get(clave, []) if ahora - t < settings.LOGIN_VENTANA_SEGUNDOS]
+        fallos.append(ahora)
+        _intentos[clave] = fallos
+        if len(fallos) >= settings.LOGIN_MAX_INTENTOS:
+            _bloqueados[clave] = ahora + settings.LOGIN_BLOQUEO_SEGUNDOS
+        # No dejar crecer los diccionarios sin límite.
+        if len(_intentos) > 5000:
+            for k, v in list(_intentos.items()):
+                if not v or ahora - v[-1] > settings.LOGIN_BLOQUEO_SEGUNDOS:
+                    _intentos.pop(k, None)
+                    _bloqueados.pop(k, None)
+
+
+def _limpiar_intentos(clave: tuple[str, str]) -> None:
+    with _candado:
+        _intentos.pop(clave, None)
+        _bloqueados.pop(clave, None)
+
+
+def _frenar_o_seguir(request: Request, usuario: str) -> tuple[str, str]:
+    clave = (_ip_del_cliente(request), (usuario or "").strip().lower())
+    espera = _segundos_de_espera(clave)
+    if espera:
+        logger.warning("Login bloqueado por demasiados intentos — ip: %s", clave[0])
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Demasiados intentos fallidos. Vuelve a intentarlo en {espera // 60 + 1} minuto(s).",
+            headers={"Retry-After": str(espera)},
+        )
+    return clave
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -105,28 +194,41 @@ def get_current_cliente(token: str = Depends(oauth2_scheme), db: Session = Depen
 
 
 @router.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    clave = _frenar_o_seguir(request, form_data.username)
     user = db.query(models.Usuario).filter(models.Usuario.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
-        logger.warning("Login fallido para: %s", form_data.username)
+        _anotar_fallo(clave)
+        logger.warning("Login fallido — ip: %s", clave[0])
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales incorrectas")
     if not user.activo:
+        _anotar_fallo(clave)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cuenta desactivada")
+    _limpiar_intentos(clave)
     token = create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
 
 @router.post("/cliente/login", response_model=schemas.ClienteTokenResponse)
-def cliente_login(data: schemas.ClienteLoginRequest, db: Session = Depends(get_db)):
+def cliente_login(request: Request, data: schemas.ClienteLoginRequest, db: Session = Depends(get_db)):
     """Login para clientes en la app móvil. Usuario y contraseña son su DNI
     por defecto; si el cliente cambió su contraseña desde la app, se valida
-    contra ese valor en vez del DNI."""
+    contra ese valor en vez del DNI.
+
+    El freno de intentos importa más aquí que en el panel: mientras el cliente
+    no cambie su clave, ésta es su DNI, que son ocho dígitos y no es secreto."""
     usuario = data.usuario.strip()
+    clave_freno = _frenar_o_seguir(request, f"cliente:{usuario}")
     cliente = db.query(models.Cliente).filter(
         models.Cliente.dni == usuario
     ).first()
 
     if not cliente:
+        _anotar_fallo(clave_freno)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario o contraseña incorrecta",
@@ -134,11 +236,14 @@ def cliente_login(data: schemas.ClienteLoginRequest, db: Session = Depends(get_d
     if cliente.pin_app:
         # Cliente configuró una contraseña personalizada
         if not pwd_context.verify(data.pin.strip(), cliente.pin_app):
+            _anotar_fallo(clave_freno)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o contraseña incorrecta")
     else:
         # Por defecto, la contraseña es el mismo DNI
         if not cliente.dni or data.pin.strip() != cliente.dni:
+            _anotar_fallo(clave_freno)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o contraseña incorrecta")
+    _limpiar_intentos(clave_freno)
 
     if cliente.estado == models.EstadoCliente.anulado:
         raise HTTPException(
@@ -247,6 +352,35 @@ def update_usuario(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.put("/usuarios/{usuario_id}/password")
+def restablecer_password(
+    usuario_id: int,
+    data: schemas.ResetPassword,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    """Le pone una contraseña nueva a otro usuario.
+
+    Hace falta para cuando alguien del equipo olvida la suya: sin esto la
+    única salida era tocar la base de datos a mano, o que la gente se preste
+    cuentas entre sí, que es peor. El administrador NO puede ver la
+    contraseña anterior — solo la reemplaza.
+    """
+    user = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if len(data.password_nueva) < 8:
+        raise HTTPException(status_code=400, detail="La contraseña nueva debe tener al menos 8 caracteres")
+    user.hashed_password = get_password_hash(data.password_nueva)
+    db.commit()
+    # Queda constancia de quién restableció a quién, sin la contraseña.
+    logger.warning(
+        "Contraseña restablecida — usuario destino id %d, hecho por %s (id %d)",
+        user.id, current_user.email, current_user.id,
+    )
+    return {"ok": True}
 
 
 @router.delete("/usuarios/{usuario_id}")

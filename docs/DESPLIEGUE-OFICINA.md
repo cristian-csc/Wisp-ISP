@@ -1,7 +1,15 @@
 # Despliegue en la PC de la oficina (prueba de un mes)
 
-Guía para poner TUX-ISP a funcionar en una PC propia, publicado en internet con
-el dominio de Cloudflare, sin abrir puertos del router y sin IP pública.
+Guía para poner **WISP-ISP** a funcionar en una PC propia, publicado en internet
+con el dominio de Cloudflare, sin abrir puertos del router y sin IP pública.
+
+> **Sobre los nombres `tuxtell_*` que verás más abajo.** El proyecto pasó a
+> llamarse WISP-ISP, pero los nombres de los contenedores, de la base de datos,
+> del volumen de Docker y de las carpetas `/opt/tuxtell-isp/...` se dejaron
+> igual **a propósito**: son identificadores con los que ya hay datos guardados.
+> Cambiarlos haría que Docker creara una base vacía y pareciera que se perdió
+> todo. Si algún día se quieren renombrar, hay un procedimiento con respaldo
+> en `MANUAL_PRIVADO_SEGURIDAD_WISP-ISP.md`.
 
 **Hardware de referencia:** AMD A8-7600 (4 núcleos), 4 GB RAM, 450 GB disco.
 Suficiente: el sistema completo consume entre 1.3 y 1.8 GB en reposo.

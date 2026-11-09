@@ -50,8 +50,10 @@ import {
   listPagos,
   createPago,
   getComprobanteBlobUrl,
+  descargarReportePagos,
   type Pago,
 } from 'src/lib/pagos';
+import BotonDescargarReporte from 'src/components/shared/BotonDescargarReporte';
 import { listOnus, type Onu } from 'src/lib/onus';
 import { listEvidenciasCliente, getEvidenciaBlobUrl, type Evidencia } from 'src/lib/evidencias';
 import { listZonas, type Zona } from 'src/lib/zonas';
@@ -770,14 +772,24 @@ const ClienteDetail = () => {
                 icono="tabler:receipt-2"
                 sinRelleno
                 extra={
-                  <Button
-                    variant="lightprimary"
-                    className="rounded-md"
-                    onClick={abrirRegistrarPago}
-                  >
-                    <Icon icon="tabler:plus" height={16} className="mr-1" />
-                    Registrar pago
-                  </Button>
+                  <>
+                    {/* Todos los pagos de este cliente, para darle su estado
+                        de cuenta sin tener que buscarlo en la lista general. */}
+                    <BotonDescargarReporte
+                      titulo={`Pagos de ${cliente.nombre}`}
+                      onDescargar={(formato) =>
+                        descargarReportePagos(formato, { cliente_id: Number(id) })
+                      }
+                    />
+                    <Button
+                      variant="lightprimary"
+                      className="rounded-md"
+                      onClick={abrirRegistrarPago}
+                    >
+                      <Icon icon="tabler:plus" height={16} className="mr-1" />
+                      Registrar pago
+                    </Button>
+                  </>
                 }
               >
                 <div className="overflow-x-auto px-5 pb-5">

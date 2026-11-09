@@ -60,6 +60,11 @@ class ChangePassword(BaseModel):
     password_actual: str
     password_nueva: str
 
+class ResetPassword(BaseModel):
+    """Restablecimiento hecho por un administrador: no pide la anterior
+    porque justamente el caso de uso es que el usuario la olvidó."""
+    password_nueva: str
+
 class UsuarioSelfUpdate(BaseModel):
     """Lo único que un usuario puede cambiar de sí mismo — ver update_me()."""
     telefono: Optional[str] = None
@@ -98,11 +103,13 @@ class PlanOut(PlanBase):
 # ── Zona ──────────────────────────────────────────────────────────────────────
 
 class ZonaBase(BaseModel):
+    """Campos comunes de una zona. Ojo: la contraseña del MikroTik NO está
+    aquí a propósito — vive solo en los esquemas de entrada, para que no
+    pueda colarse en una respuesta por heredarla sin darse cuenta."""
     nombre: str
     ip_wireguard: str
     ip_lan: Optional[str] = None
     usuario_mikrotik: Optional[str] = None
-    password_mikrotik: Optional[str] = None
     wg_public_key: Optional[str] = None
     router_mikrotik: Optional[str] = None
     ip_router: Optional[str] = None
@@ -112,7 +119,8 @@ class ZonaBase(BaseModel):
     tiendas_pago: Optional[str] = None
 
 class ZonaCreate(ZonaBase):
-    pass
+    # Solo de entrada: se guarda en el servidor y nunca se devuelve.
+    password_mikrotik: Optional[str] = None
 
 class ZonaOut(ZonaBase):
     id: int
@@ -120,6 +128,9 @@ class ZonaOut(ZonaBase):
     creado_en: datetime
     total_clientes: Optional[int] = 0
     clientes_activos: Optional[int] = 0
+    # Si el router tiene clave configurada, sin decir cuál.
+    tiene_password_mikrotik: bool = False
+
     class Config:
         from_attributes = True
 

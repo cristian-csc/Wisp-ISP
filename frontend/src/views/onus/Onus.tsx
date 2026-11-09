@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import CardBox from 'src/components/shared/CardBox';
+import { useCurrentUser } from 'src/lib/useCurrentUser';
+import { puedeAccion } from 'src/lib/permisos';
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
 import { Badge } from 'src/components/ui/badge';
 import { Button } from 'src/components/ui/button';
@@ -51,6 +53,10 @@ const ESTADO_BADGE: Record<Onu['estado'], string> = {
 };
 
 const Onus = () => {
+  const { user } = useCurrentUser();
+  /** Consultar el inventario lo puede hacer también atención al cliente;
+   *  dar de alta, asignar o borrar equipos es de almacén. */
+  const puedeGestionar = puedeAccion('onus.gestionar', user?.rol);
   const [onus, setOnus] = useState<Onu[]>([]);
   const [tecnicos, setTecnicos] = useState<Usuario[]>([]);
   const [openCreate, setOpenCreate] = useState(false);
@@ -148,7 +154,9 @@ const Onus = () => {
     <CardBox>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Inventario de ONUs</h2>
-        <Button onClick={() => setOpenCreate(true)}>Registrar ONU</Button>
+        {/* Atención al cliente consulta el inventario para saber si hay
+            equipo disponible; darlo de alta o darlo de baja es de almacén. */}
+        {puedeGestionar && <Button onClick={() => setOpenCreate(true)}>Registrar ONU</Button>}
       </div>
 
       <Table>
@@ -193,7 +201,7 @@ const Onus = () => {
               <TableCell className="text-end">
                 <TooltipProvider>
                   <div className="flex justify-end gap-1">
-                    {o.estado === 'en_almacen' && (
+                    {puedeGestionar && o.estado === 'en_almacen' && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={() => setAsignando(o)}>
@@ -205,7 +213,7 @@ const Onus = () => {
                         </TooltipContent>
                       </Tooltip>
                     )}
-                    {o.estado !== 'danado' && o.estado !== 'instalado' && (
+                    {puedeGestionar && o.estado !== 'danado' && o.estado !== 'instalado' && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={() => handleMarcar(o, 'danado')}>
@@ -217,7 +225,7 @@ const Onus = () => {
                         </TooltipContent>
                       </Tooltip>
                     )}
-                    {o.estado !== 'instalado' && (
+                    {puedeGestionar && o.estado !== 'instalado' && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={() => setBorrando(o)}>

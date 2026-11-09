@@ -19,8 +19,10 @@ import {
 } from 'src/components/ui/table';
 import { listZonas, type Zona } from 'src/lib/zonas';
 import { ROL_LABEL } from 'src/lib/permisos';
+import BotonDescargarReporte from 'src/components/shared/BotonDescargarReporte';
 import {
   getReporteCaja, getReporteMensualZonas,
+  descargarReporteCaja, descargarReporteZonas,
   type ReporteCaja, type ReporteZona,
 } from 'src/lib/pagos';
 
@@ -110,7 +112,7 @@ const ReporteCajaView = () => {
       {/* ── Corte de caja diario ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-semibold">Corte de caja del día</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Input type="date" className="w-44" value={fecha} onChange={(e) => setFecha(e.target.value)} />
           <Select value={zonaDia} onValueChange={setZonaDia}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -119,6 +121,12 @@ const ReporteCajaView = () => {
               {zonas.map((z) => <SelectItem key={z.id} value={String(z.id)}>{z.nombre}</SelectItem>)}
             </SelectContent>
           </Select>
+          <BotonDescargarReporte
+            titulo="Corte de caja de este día"
+            onDescargar={(formato) =>
+              descargarReporteCaja(formato, fecha, zonaDia === 'todas' ? undefined : Number(zonaDia))
+            }
+          />
         </div>
       </div>
 
@@ -219,7 +227,7 @@ const ReporteCajaView = () => {
       {/* ── Recaudación mensual por zona ── */}
       <div className="flex items-center justify-between flex-wrap gap-3 mt-4">
         <h2 className="text-lg font-semibold">Recaudación mensual por zona</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Select value={mesSel} onValueChange={setMesSel}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -234,6 +242,10 @@ const ReporteCajaView = () => {
               ))}
             </SelectContent>
           </Select>
+          <BotonDescargarReporte
+            titulo="Recaudación del mes por zona"
+            onDescargar={(formato) => descargarReporteZonas(formato, `${anioSel}-${mesSel}`)}
+          />
         </div>
       </div>
 

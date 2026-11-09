@@ -1,5 +1,5 @@
 {
-  "name": "tuxtell-whatsapp",
+  "name": "wisp-whatsapp",
   "version": "1.0.0",
   "main": "server.js",
   "dependencies": {

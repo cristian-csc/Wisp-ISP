@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
-import CardBox from 'src/components/shared/CardBox';
+import PageHeader from 'src/components/shared/PageHeader';
+import SectionCard from 'src/components/shared/SectionCard';
+import StatCard from 'src/components/shared/StatCard';
+import EmptyState from 'src/components/shared/EmptyState';
 import { Badge } from 'src/components/ui/badge';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
@@ -29,6 +32,16 @@ import { listUsuarios } from 'src/lib/usuarios';
 import type { Usuario } from 'src/lib/api';
 
 const POLL_MS = 20_000;
+
+/** Iniciales para el avatar de la lista de pasajes. */
+function iniciales(nombre: string): string {
+  return nombre
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .join('');
+}
 
 function fechaCorta(fecha: string) {
   return new Date(fecha).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -210,103 +223,182 @@ const Jornadas = () => {
     }
   }
 
+  /** Resumen del encabezado. Sale todo de lo que ya se carga en pantalla: no
+   *  se pide nada nuevo al servidor ni se inventa ningún número. */
+  const vendedorasActivas = vendedores.filter((v) => v.activo).length;
+  const pasajeDelDia = historial.reduce((t, j) => t + (j.monto_pasaje ?? 0), 0);
+  const etiquetaPeriodo = filtroFecha
+    ? new Date(`${filtroFecha}T00:00:00`).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })
+    : 'todo el historial';
+
   function volverAlMapaEnVivo() {
     setJornadaSeleccionadaId(null);
     setRecorrido(null);
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-xl font-semibold">Seguimiento de vendedoras</h2>
-          <p className="text-sm text-muted-foreground">
-            Seguimiento en vivo de las jornadas de campo y su recorrido.
-          </p>
-        </div>
-        <Badge className="bg-lightsuccess text-success rounded-md border-0">
-          {activas.length} en ruta ahora
-        </Badge>
-      </div>
+    <div>
+      <PageHeader
+        titulo="Seguimiento de vendedoras"
+        descripcion="Seguimiento en vivo de las jornadas de campo y su recorrido."
+        icono="tabler:users-group"
+        acciones={
+          <span
+            className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold ${
+              activas.length > 0 ? 'bg-lightsuccess text-success-text' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <span
+              className={`inline-block h-2 w-2 rounded-full ${activas.length > 0 ? 'animate-pulse bg-success' : 'bg-muted-foreground'}`}
+            />
+            {activas.length} en ruta ahora
+          </span>
+        }
+      />
 
-      <CardBox className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Icon icon={jornadaSeleccionadaId ? 'tabler:route' : 'tabler:map-pin'} height={16} />
-            {jornadaSeleccionadaId ? `Recorrido — ${recorrido?.jornada.vendedor?.nombre ?? ''}` : 'Mapa en vivo'}
-          </h3>
-          {jornadaSeleccionadaId && (
-            <Button size="sm" variant="outline" onClick={volverAlMapaEnVivo}>
-              <Icon icon="tabler:arrow-left" height={14} className="mr-1" />
-              Volver al mapa en vivo
-            </Button>
-          )}
-        </div>
-        <MapaJornadas activas={activas} recorrido={recorrido} />
-      </CardBox>
-
-      <CardBox className="p-4">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Icon icon="tabler:bus" height={16} />
-            Pasajes del mes
-          </h3>
-          <Input
-            type="month"
-            className="w-44"
-            value={mesResumen}
-            onChange={(e) => setMesResumen(e.target.value || mesActual())}
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            icono="tabler:user-check"
+            etiqueta="Vendedoras activas"
+            valor={vendedorasActivas}
+            nota="Con cuenta habilitada"
+            tono="primary"
+          />
+          <StatCard
+            icono="tabler:route"
+            etiqueta="En ruta ahora"
+            valor={activas.length}
+            nota={activas.length > 0 ? 'Jornadas abiertas' : 'Nadie en campo'}
+            tono="success"
+          />
+          <StatCard
+            icono="tabler:calendar-event"
+            etiqueta="Jornadas"
+            valor={historial.length}
+            nota={etiquetaPeriodo}
+            tono="brand"
+          />
+          <StatCard
+            icono="tabler:bus"
+            etiqueta="Pasaje del periodo"
+            valor={`S/ ${pasajeDelDia.toFixed(2)}`}
+            nota={etiquetaPeriodo}
+            tono="warning"
           />
         </div>
 
-        {loadingResumen ? (
-          <p className="text-sm text-muted-foreground py-2">Cargando…</p>
-        ) : resumenPasajes.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-2">Sin jornadas registradas este mes.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {resumenPasajes.map((r) => (
-              <div key={r.vendedor_id} className="flex items-center justify-between rounded-lg border border-ld px-3 py-2.5">
-                <div>
-                  <p className="text-sm font-medium">{r.nombre}</p>
-                  <p className="text-xs text-muted-foreground">{r.total_jornadas} jornada{r.total_jornadas !== 1 ? 's' : ''}</p>
-                </div>
-                <Badge className="bg-lightwarning text-warning rounded-md border-0">
-                  S/ {r.total_pasajes.toFixed(2)}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardBox>
+        <SectionCard
+          titulo={
+            jornadaSeleccionadaId
+              ? `Recorrido — ${recorrido?.jornada.vendedor?.nombre ?? ''}`
+              : 'Mapa en vivo'
+          }
+          icono={jornadaSeleccionadaId ? 'tabler:route' : 'tabler:map-pin'}
+          descripcion={
+            jornadaSeleccionadaId
+              ? 'Por dónde pasó durante la jornada, de inicio a fin.'
+              : 'Dónde está cada vendedora ahora mismo.'
+          }
+          extra={
+            jornadaSeleccionadaId && (
+              <Button size="sm" variant="outline" onClick={volverAlMapaEnVivo} className="gap-1.5">
+                <Icon icon="tabler:arrow-left" height={14} />
+                Volver al mapa en vivo
+              </Button>
+            )
+          }
+        >
+          <MapaJornadas activas={activas} recorrido={recorrido} alto={560} />
+        </SectionCard>
 
-      <CardBox className="p-4">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Icon icon="tabler:history" height={16} />
-            Historial de jornadas
-          </h3>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Vendedor" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos los vendedores</SelectItem>
-                {vendedores.map((v) => (
-                  <SelectItem key={v.id} value={String(v.id)}>{v.nombre}</SelectItem>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <SectionCard
+            titulo="Pasajes del mes"
+            icono="tabler:bus"
+            className="min-w-0 xl:col-span-1"
+            extra={
+              <Input
+                type="month"
+                className="w-40"
+                value={mesResumen}
+                onChange={(e) => setMesResumen(e.target.value || mesActual())}
+              />
+            }
+          >
+            {loadingResumen ? (
+              <p className="py-2 text-sm text-muted-foreground">Cargando…</p>
+            ) : resumenPasajes.length === 0 ? (
+              <EmptyState
+                icono="tabler:bus"
+                titulo="Sin jornadas este mes"
+                descripcion="Cuando las vendedoras salgan a campo, acá se suma lo que gastaron en pasajes."
+              />
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {resumenPasajes.map((r) => (
+                  <div
+                    key={r.vendedor_id}
+                    className="transition-ui flex items-center justify-between gap-3 rounded-xl border border-ld px-3.5 py-2.5 hover:border-primary/35"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-lightprimary text-[11px] font-bold text-primary-text">
+                        {iniciales(r.nombre)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{r.nombre}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {r.total_jornadas} jornada{r.total_jornadas !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-lg bg-lightwarning px-2.5 py-1 text-sm font-semibold tabular-nums text-warning-text">
+                      S/ {r.total_pasajes.toFixed(2)}
+                    </span>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
-            <Input type="date" className="w-44" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} />
-            {filtroFecha !== fechaHoy() && (
-              <Button size="sm" variant="outline" onClick={() => setFiltroFecha(fechaHoy())}>Hoy</Button>
+              </div>
             )}
-            {filtroFecha && (
-              <Button size="sm" variant="outline" onClick={() => setFiltroFecha('')}>Ver todo el historial</Button>
-            )}
-          </div>
-        </div>
+          </SectionCard>
 
-        <Table>
+          <SectionCard
+            titulo="Historial de jornadas"
+            icono="tabler:history"
+            className="min-w-0 xl:col-span-2"
+            sinRelleno
+            extra={
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
+                  <SelectTrigger className="w-48"><SelectValue placeholder="Vendedor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos los vendedores</SelectItem>
+                    {vendedores.map((v) => (
+                      <SelectItem key={v.id} value={String(v.id)}>{v.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input type="date" className="w-40" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} />
+                {filtroFecha !== fechaHoy() && (
+                  <Button size="sm" variant="outline" onClick={() => setFiltroFecha(fechaHoy())}>Hoy</Button>
+                )}
+                {filtroFecha && (
+                  <Button size="sm" variant="outline" onClick={() => setFiltroFecha('')} className="gap-1.5">
+                    <Icon icon="tabler:list-details" height={14} />
+                    Ver todo el historial
+                  </Button>
+                )}
+              </div>
+            }
+          >
+            {!loadingHistorial && historial.length === 0 ? (
+              <EmptyState
+                icono="tabler:route-off"
+                titulo="Sin jornadas registradas"
+                descripcion="Todavía no hay rutas o visitas para los filtros elegidos."
+              />
+            ) : (
+            <div className="overflow-x-auto">
+            <Table className="[&_td]:px-2.5 [&_th]:px-2.5">
           <TableHeader>
             <TableRow>
               <TableHead>Vendedor</TableHead>
@@ -323,10 +415,6 @@ const Jornadas = () => {
             {loadingHistorial ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">Cargando…</TableCell>
-              </TableRow>
-            ) : historial.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">Sin jornadas registradas</TableCell>
               </TableRow>
             ) : (
               historial.map((j) => {
@@ -354,18 +442,28 @@ const Jornadas = () => {
                     <ReclamoCell jornada={j} onReintegrado={actualizarJornadaEnHistorial} />
                   </TableCell>
                   <TableCell className="text-end">
-                    <Button size="sm" variant="outline" onClick={() => verRecorrido(j)}>
-                      <Icon icon="tabler:route" height={14} className="mr-1" />
-                      Ver recorrido
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => verRecorrido(j)}
+                      title="Ver recorrido"
+                      aria-label={`Ver el recorrido de ${j.vendedor?.nombre ?? 'la jornada'}`}
+                      className="px-2"
+                    >
+                      <Icon icon="tabler:route" height={16} />
                     </Button>
                   </TableCell>
                 </TableRow>
                 );
               })
             )}
-          </TableBody>
-        </Table>
-      </CardBox>
+              </TableBody>
+            </Table>
+            </div>
+            )}
+          </SectionCard>
+        </div>
+      </div>
     </div>
   );
 };

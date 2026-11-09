@@ -1,13 +1,18 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
+import { AppState } from 'react-native';
 import * as Location from 'expo-location';
 import { Jornada, getMiJornadaActiva, iniciarJornada, pingJornada, finalizarJornada, reportarReclamoPasaje } from '@/services/api';
 
-// Ping cada 5 min mientras la jornada está activa — mismo espíritu que mandar
-// la ubicación en vivo al grupo de WhatsApp, pero queda guardado para que el
-// admin lo revise después. Solo corre mientras la app está abierta en esta
-// sección: no pedimos permiso de ubicación "siempre" (más invasivo y pelea
-// con las restricciones de Android/iOS para tracking en segundo plano).
-const INTERVALO_PING_MS = 5 * 60 * 1000;
+// El recorrido se arma con estos puntos. Solo se registran mientras la app está
+// abierta: no pedimos permiso de ubicación "siempre" (más invasivo y pelea con
+// las restricciones de Android/iOS para el seguimiento en segundo plano).
+//
+// Por eso, además del temporizador, se marca un punto cada vez que la vendedora
+// vuelve a la app: en la práctica eso es lo que más llena el recorrido, porque
+// camina con el teléfono guardado y lo saca para registrar a cada cliente.
+const INTERVALO_PING_MS = 2 * 60 * 1000;
+// Dos puntos muy seguidos no aportan nada al recorrido y gastan batería
+const MINIMO_ENTRE_PINGS_MS = 60 * 1000;
 
 async function obtenerUbicacionActual(): Promise<{ lat: number; lng: number }> {
   const { status } = await Location.requestForegroundPermissionsAsync();
@@ -30,37 +35,58 @@ export function JornadaProvider({ children }: { children: ReactNode }) {
   const [jornada, setJornada] = useState<Jornada | null>(null);
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ultimoPingRef = useRef(0);
+  const jornadaActivaRef = useRef(false);
 
   const detenerPings = useCallback(() => {
+    jornadaActivaRef.current = false;
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
   }, []);
 
+  /** Marca un punto del recorrido. Nunca lanza: si falla el GPS o la red, se
+   *  intentará en el siguiente ciclo. */
+  const marcarPunto = useCallback(async () => {
+    if (!jornadaActivaRef.current) return;
+    if (Date.now() - ultimoPingRef.current < MINIMO_ENTRE_PINGS_MS) return;
+    try {
+      const { lat, lng } = await obtenerUbicacionActual();
+      await pingJornada(lat, lng);
+      ultimoPingRef.current = Date.now();
+    } catch {
+      // Sin señal GPS o sin red — se reintenta después
+    }
+  }, []);
+
   const iniciarPings = useCallback(() => {
     detenerPings();
-    intervalRef.current = setInterval(async () => {
-      try {
-        const { lat, lng } = await obtenerUbicacionActual();
-        await pingJornada(lat, lng);
-      } catch {
-        // Un ping fallido (sin señal GPS, red caída) no debe tumbar el
-        // temporizador — simplemente se reintenta en el siguiente ciclo.
-      }
-    }, INTERVALO_PING_MS);
-  }, [detenerPings]);
+    jornadaActivaRef.current = true;
+    intervalRef.current = setInterval(() => void marcarPunto(), INTERVALO_PING_MS);
+  }, [detenerPings, marcarPunto]);
 
   useEffect(() => {
     getMiJornadaActiva()
       .then((j) => {
         setJornada(j);
-        if (j) iniciarPings();
+        if (j) {
+          iniciarPings();
+          void marcarPunto();
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
     return detenerPings;
   }, []);
+
+  // Cada vez que la app vuelve al frente, se marca dónde está
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') void marcarPunto();
+    });
+    return () => sub.remove();
+  }, [marcarPunto]);
 
   const iniciar = useCallback(async (zonaId?: number | null) => {
     const { lat, lng } = await obtenerUbicacionActual();

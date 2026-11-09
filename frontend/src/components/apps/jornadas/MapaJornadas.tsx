@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import {
+  AjustarTamanoMapa,
+  ControlesCapa,
+  ControlesZoom,
+  LeyendaMapa,
+  MapaShell,
+  type ItemLeyenda,
+} from 'src/components/shared/mapa/ControlesMapa';
 import type { Jornada, JornadaRecorrido } from 'src/lib/jornadas';
 
 // react-leaflet solo usa `center`/`zoom` al montar el mapa — cambiarlos luego
@@ -66,14 +74,48 @@ function horaCorta(fecha: string) {
 export default function MapaJornadas({
   activas = [],
   recorrido = null,
+  alto = 560,
 }: {
   activas?: Jornada[];
   recorrido?: JornadaRecorrido | null;
+  /** Alto del mapa en píxeles — el módulo decide cuánto protagonismo darle */
+  alto?: number;
 }) {
   const [capa, setCapa] = useState<CapaMapa>('calle');
 
   const puntosRecorrido = recorrido?.puntos ?? [];
   const jornadaSeleccionada = recorrido?.jornada ?? null;
+
+  /** El recorrido completo: desde dónde salió, por dónde pasó y dónde terminó. */
+  const trazo: [number, number][] = jornadaSeleccionada
+    ? [
+        [jornadaSeleccionada.lat_inicio, jornadaSeleccionada.lng_inicio],
+        ...puntosRecorrido.map((p) => [p.lat, p.lng] as [number, number]),
+        ...(jornadaSeleccionada.lat_fin != null && jornadaSeleccionada.lng_fin != null
+          ? [[jornadaSeleccionada.lat_fin, jornadaSeleccionada.lng_fin] as [number, number]]
+          : []),
+      ]
+    : [];
+
+  /** Cuánto caminó, sumando tramo por tramo. Sirve para contrastar el pasaje
+   *  del día con lo que de verdad recorrió. */
+  const metrosRecorridos = trazo.reduce((total, punto, i) => {
+    if (i === 0) return 0;
+    const [lat1, lng1] = trazo[i - 1];
+    const [lat2, lng2] = punto;
+    const R = 6371000;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    return total + 2 * R * Math.asin(Math.sqrt(a));
+  }, 0);
+
+  const distanciaTexto =
+    metrosRecorridos >= 1000
+      ? `${(metrosRecorridos / 1000).toFixed(1)} km`
+      : `${Math.round(metrosRecorridos)} m`;
 
   const centro: [number, number] =
     jornadaSeleccionada
@@ -85,28 +127,43 @@ export default function MapaJornadas({
   const zoom = jornadaSeleccionada ? 15 : 13;
   const claveRecentrado = jornadaSeleccionada ? `jornada-${jornadaSeleccionada.id}` : `vivo-${activas.length > 0 ? 'con-datos' : 'sin-datos'}`;
 
-  return (
-    <div className="rounded-xl overflow-hidden border border-ld relative isolate" style={{ height: 480 }}>
-      <div className="absolute top-2 right-2 z-[1000] flex bg-white dark:bg-dark rounded-lg shadow-md overflow-hidden border border-ld">
-        <button
-          type="button"
-          className={`px-3 py-1.5 text-xs font-medium ${capa === 'calle' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
-          onClick={() => setCapa('calle')}
-        >
-          Calle
-        </button>
-        <button
-          type="button"
-          className={`px-3 py-1.5 text-xs font-medium ${capa === 'satelite' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
-          onClick={() => setCapa('satelite')}
-        >
-          Satélite
-        </button>
-      </div>
+  /** Lo que explica la leyenda según lo que se esté mirando. */
+  const itemsLeyenda: ItemLeyenda[] = jornadaSeleccionada
+    ? [
+        { color: '#5d87ff', texto: 'Inicio' },
+        { color: '#64748B', texto: 'Fin' },
+        { color: '#FF842A', texto: `Recorrido · ${distanciaTexto}`, linea: true },
+      ]
+    : [{ color: '#10B981', texto: 'Vendedora en ruta' }];
 
-      <MapContainer center={centro} zoom={zoom} maxZoom={21} style={{ height: '100%', width: '100%' }}>
+  const notaLeyenda = jornadaSeleccionada
+    ? puntosRecorrido.length === 0
+      ? 'Sin puntos intermedios: solo inicio y fin'
+      : `${puntosRecorrido.length} punto${puntosRecorrido.length === 1 ? '' : 's'} en el camino`
+    : undefined;
+
+  return (
+    <MapaShell alto={alto}>
+      <ControlesCapa
+        valor={capa}
+        onChange={setCapa}
+        opciones={[
+          { valor: 'calle', etiqueta: 'Calle' },
+          { valor: 'satelite', etiqueta: 'Satélite' },
+        ] as const}
+      />
+
+      <MapContainer
+        center={centro}
+        zoom={zoom}
+        maxZoom={21}
+        zoomControl={false}
+        style={{ height: '100%', width: '100%' }}
+      >
         <TileLayer attribution={CAPAS[capa].attribution} url={CAPAS[capa].url} maxZoom={21} />
         <RecentrarMapa centro={centro} zoom={zoom} clave={claveRecentrado} />
+        <AjustarTamanoMapa />
+        <ControlesZoom volverA={{ centro, zoom }} />
 
         {!jornadaSeleccionada &&
           activas
@@ -145,42 +202,30 @@ export default function MapaJornadas({
                 <Popup>Fin{jornadaSeleccionada.finalizado_en ? ` — ${horaCorta(jornadaSeleccionada.finalizado_en)}` : ''}</Popup>
               </Marker>
             )}
-            {puntosRecorrido.length > 0 && (
+            {/* El recorrido en naranja, por encima del mapa: con un solo punto
+                igual se ve el tramo de ida y vuelta. Los puntos intermedios se
+                marcan para saber por dónde pasó y a qué hora. */}
+            {trazo.length > 1 && (
               <Polyline
-                positions={[
-                  [jornadaSeleccionada.lat_inicio, jornadaSeleccionada.lng_inicio],
-                  ...puntosRecorrido.map((p) => [p.lat, p.lng] as [number, number]),
-                  ...(jornadaSeleccionada.lat_fin != null && jornadaSeleccionada.lng_fin != null
-                    ? [[jornadaSeleccionada.lat_fin, jornadaSeleccionada.lng_fin] as [number, number]]
-                    : []),
-                ]}
-                pathOptions={{ color: '#5d87ff', weight: 4, opacity: 0.8 }}
+                positions={trazo}
+                pathOptions={{ color: '#FF842A', weight: 5, opacity: 0.9 }}
               />
             )}
+            {puntosRecorrido.map((p, i) => (
+              <CircleMarker
+                key={`${p.lat}-${p.lng}-${i}`}
+                center={[p.lat, p.lng]}
+                radius={4}
+                pathOptions={{ color: '#FF842A', fillColor: '#FF842A', fillOpacity: 1, weight: 1 }}
+              >
+                <Popup>Pasó por aquí — {horaCorta(p.registrado_en)}</Popup>
+              </CircleMarker>
+            ))}
           </>
         )}
       </MapContainer>
 
-      <div className="absolute bottom-2 left-2 z-[1000] flex flex-col gap-1.5 rounded-lg border border-ld bg-white dark:bg-dark px-3 py-2 text-xs shadow-md">
-        {!jornadaSeleccionada && (
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#10B981' }} />
-            <span className="text-muted-foreground">Vendedor en ruta</span>
-          </div>
-        )}
-        {jornadaSeleccionada && (
-          <>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#5d87ff' }} />
-              <span className="text-muted-foreground">Inicio</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#64748B' }} />
-              <span className="text-muted-foreground">Fin</span>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+      <LeyendaMapa items={itemsLeyenda} nota={notaLeyenda} />
+    </MapaShell>
   );
 }

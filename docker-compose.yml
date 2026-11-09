@@ -25,13 +25,26 @@ services:
       dockerfile: Dockerfile
     container_name: tuxtell_backend
     restart: unless-stopped
+    # OJO (seguridad): con network_mode host, uvicorn escucha en el puerto
+    # 8000 de TODAS las interfaces del servidor. En un servidor con IP
+    # pública eso deja la API accesible saltándose Nginx — sin HTTPS y sin
+    # las cabeceras de seguridad. El cortafuegos del servidor DEBE cerrar el
+    # 8000 desde fuera (ver MANUAL_PRIVADO_SEGURIDAD_WISP-ISP.md, sección
+    # "Puertos que deben estar cerrados"). No se cambia aquí porque Nginx
+    # llega al backend por host.docker.internal y atarlo a 127.0.0.1 lo
+    # dejaría incomunicado.
     network_mode: host          # comparte red del host → accede a wg0 (10.10.0.x) y localhost:5432
     cap_add:
       - NET_ADMIN               # necesario para wg set / wg show
     environment:
+      ENTORNO: ${ENTORNO:-produccion}
       DATABASE_URL: ${DATABASE_URL}
       SECRET_KEY: ${SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      ADMIN_INICIAL_EMAIL: ${ADMIN_INICIAL_EMAIL:-admin}
+      ADMIN_INICIAL_PASSWORD: ${ADMIN_INICIAL_PASSWORD:-}
       WHATSAPP_API_URL: ${WHATSAPP_API_URL}
+      WHATSAPP_API_TOKEN: ${WHATSAPP_API_TOKEN}
       SSH_KEY_PATH: ${SSH_KEY_PATH}
       SSH_USER: ${SSH_USER}
       WG_CONFIG_PATH: ${WG_CONFIG_PATH}
@@ -59,6 +72,11 @@ services:
       - whatsapp_session:/app/.wwebjs_auth
     environment:
       PORT: "3001"
+      # Solo escucha en la propia máquina: quien pueda llegar a este puerto
+      # puede pedir el QR de vinculación y escribir como la empresa.
+      BIND_HOST: "127.0.0.1"
+      # Misma clave que el backend. Sin ella el bot acepta a cualquiera.
+      WHATSAPP_API_TOKEN: ${WHATSAPP_API_TOKEN}
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
 
   # ── Sitio público (estático) ──────────────────────────────────────────────────

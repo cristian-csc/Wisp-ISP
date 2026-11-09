@@ -43,7 +43,7 @@ def upload_evidencia(
     orden_retiro_id: Optional[int] = Form(None),
     descripcion: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda, models.RolUsuario.vendedor_campo, models.RolUsuario.tecnico)),
 ):
     if not averia_id and not cliente_id and not orden_retiro_id:
         raise HTTPException(status_code=400, detail="Debe indicar averia_id, cliente_id u orden_retiro_id")

@@ -1,5 +1,13 @@
 import { useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
+import {
+  AjustarTamanoMapa,
+  ControlesCapa,
+  ControlesZoom,
+  LeyendaMapa,
+  MapaShell,
+  type ItemLeyenda,
+} from 'src/components/shared/mapa/ControlesMapa';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Icon } from '@iconify/react';
@@ -79,6 +87,7 @@ export default function MapaZona({
   dibujandoTrazadoMufa,
   puntosTrazado = [],
   onAgregarPuntoTrazado,
+  alto = 560,
 }: {
   serverLat: number | null;
   serverLng: number | null;
@@ -93,6 +102,8 @@ export default function MapaZona({
   dibujandoTrazadoMufa?: Mufa | null;
   puntosTrazado?: TrazadoPunto[];
   onAgregarPuntoTrazado?: (lat: number, lng: number) => void;
+  /** Alto del mapa en píxeles — la pantalla decide cuánto espacio darle */
+  alto?: number;
 }) {
   const [pinTemporal, setPinTemporal] = useState<PinPendiente>(null);
   const [capa, setCapa] = useState<CapaMapa>('calle');
@@ -103,6 +114,13 @@ export default function MapaZona({
       : mufas[0]?.lat != null && mufas[0]?.lng != null
       ? [mufas[0].lat!, mufas[0].lng!]
       : [-12.0464, -77.0428]; // Lima, fallback si no hay nada ubicado todavía
+
+  /** Solo se nombra lo que de verdad está en el mapa. */
+  const itemsLeyenda: ItemLeyenda[] = [
+    ...(serverLat != null ? [{ color: '#5d87ff', texto: 'Servidor' }] : []),
+    ...(mufas.length > 0 ? [{ color: '#8754ec', texto: 'Mufa' }] : []),
+    ...(cajas.length > 0 ? [{ color: '#13deb9', texto: 'Caja NAP' }] : []),
+  ];
 
   function handleMapClick(lat: number, lng: number) {
     if (dibujandoTrazadoMufa) {
@@ -118,7 +136,7 @@ export default function MapaZona({
     // isolate: los panes internos de Leaflet usan z-index hasta 700 — sin esto
     // se montan por encima de los Dialog (z-50) que abren "Nueva mufa"/"Nueva
     // caja NAP" sobre este mismo mapa, tapándolos o mezclándose con ellos.
-    <div className="rounded-xl overflow-hidden border border-ld relative isolate" style={{ height: 480 }}>
+    <MapaShell alto={alto}>
       {dibujandoTrazadoMufa ? (
         <div className="bg-lightinfo text-info text-sm font-medium px-3 py-2 flex items-center gap-2">
           <Icon icon="tabler:route" height={16} />
@@ -132,24 +150,22 @@ export default function MapaZona({
         </div>
       )}
 
-      <div className="absolute top-2 right-2 z-[1000] flex bg-white dark:bg-dark rounded-lg shadow-md overflow-hidden border border-ld">
-        <button
-          type="button"
-          className={`px-3 py-1.5 text-xs font-medium ${capa === 'calle' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
-          onClick={() => setCapa('calle')}
-        >
-          Calle
-        </button>
-        <button
-          type="button"
-          className={`px-3 py-1.5 text-xs font-medium ${capa === 'satelite' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
-          onClick={() => setCapa('satelite')}
-        >
-          Satélite
-        </button>
-      </div>
+      <ControlesCapa
+        valor={capa}
+        onChange={setCapa}
+        opciones={[
+          { valor: 'calle', etiqueta: 'Calle' },
+          { valor: 'satelite', etiqueta: 'Satélite' },
+        ] as const}
+      />
 
-      <MapContainer center={centro} zoom={15} maxZoom={MAX_ZOOM_MAPA} style={{ height: '100%', width: '100%' }}>
+      <MapContainer
+        center={centro}
+        zoom={15}
+        maxZoom={MAX_ZOOM_MAPA}
+        zoomControl={false}
+        style={{ height: '100%', width: '100%' }}
+      >
         <TileLayer
           attribution={CAPAS[capa].attribution}
           url={CAPAS[capa].url}
@@ -157,9 +173,12 @@ export default function MapaZona({
           maxZoom={MAX_ZOOM_MAPA}
         />
         <ClickHandler onClick={handleMapClick} />
+        <AjustarTamanoMapa />
+        <ControlesZoom volverA={{ centro, zoom: 15 }} />
 
         {serverLat != null && serverLng != null && (
           <Marker
+              riseOnHover
             position={[serverLat, serverLng]}
             icon={serverIcon}
             eventHandlers={dibujandoTrazadoMufa ? { click: () => onAgregarPuntoTrazado?.(serverLat, serverLng) } : undefined}
@@ -176,6 +195,7 @@ export default function MapaZona({
           .filter((m) => m.lat != null && m.lng != null)
           .map((m) => (
             <Marker
+              riseOnHover
               key={m.id}
               position={[m.lat!, m.lng!]}
               icon={mufaIcon}
@@ -222,6 +242,7 @@ export default function MapaZona({
           .filter((c) => c.lat != null && c.lng != null)
           .map((c) => (
             <Marker
+              riseOnHover
               key={c.id}
               position={[c.lat!, c.lng!]}
               icon={cajaIcon}
@@ -255,28 +276,7 @@ export default function MapaZona({
         )}
       </MapContainer>
 
-      {(serverLat != null || mufas.length > 0 || cajas.length > 0) && (
-        <div className="absolute bottom-2 left-2 z-[1000] flex flex-col gap-1.5 rounded-lg border border-ld bg-white dark:bg-dark px-3 py-2 text-xs shadow-md">
-          {serverLat != null && (
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#5d87ff' }} />
-              <span className="text-muted-foreground">Servidor</span>
-            </div>
-          )}
-          {mufas.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#8754ec' }} />
-              <span className="text-muted-foreground">Mufa</span>
-            </div>
-          )}
-          {cajas.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-[3px]" style={{ background: '#13deb9' }} />
-              <span className="text-muted-foreground">Caja NAP</span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+      <LeyendaMapa items={itemsLeyenda} />
+    </MapaShell>
   );
 }

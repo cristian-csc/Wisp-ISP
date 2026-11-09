@@ -9,10 +9,17 @@ from fastapi.responses import FileResponse
 from sqlalchemy.engine.url import make_url
 
 from ..config import settings
-from .auth import get_current_user
+from .auth import get_current_user, require_roles
 from .. import models
 
 router = APIRouter()
+
+
+# Los respaldos nuevos se llaman "wisp_...". Los anteriores se llamaban
+# "tuxtell_..." y siguen en el disco, así que se siguen listando y
+# descargando: cambiar el nombre no debe dejar inaccesible un respaldo viejo.
+PREFIJO_BACKUP = "wisp_"
+PREFIJOS_ACEPTADOS = ("wisp_", "tuxtell_")
 
 
 def _backup_dir() -> Path:
@@ -21,13 +28,20 @@ def _backup_dir() -> Path:
     return p
 
 
+def _todos_los_backups(backup_dir: Path) -> list[Path]:
+    archivos: list[Path] = []
+    for prefijo in PREFIJOS_ACEPTADOS:
+        archivos.extend(backup_dir.glob(f"{prefijo}*.sql.gz"))
+    return sorted(archivos, key=lambda p: p.stat().st_mtime)
+
+
 @router.post("/backup")
-def crear_backup(current_user: models.Usuario = Depends(get_current_user)):
+def crear_backup(current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin))):
     backup_dir = _backup_dir()
     db_url = make_url(settings.DATABASE_URL)
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"tuxtell_{timestamp}.sql.gz"
+    filename = f"{PREFIJO_BACKUP}{timestamp}.sql.gz"
     filepath = backup_dir / filename
 
     env = os.environ.copy()
@@ -57,7 +71,7 @@ def crear_backup(current_user: models.Usuario = Depends(get_current_user)):
 
     size_kb = filepath.stat().st_size // 1024
 
-    all_backups = sorted(backup_dir.glob('tuxtell_*.sql.gz'), key=lambda p: p.stat().st_mtime)
+    all_backups = _todos_los_backups(backup_dir)
     for old in all_backups[:-7]:
         old.unlink()
 
@@ -65,8 +79,11 @@ def crear_backup(current_user: models.Usuario = Depends(get_current_user)):
 
 
 @router.get("/backups/download/{filename}")
-def descargar_backup(filename: str, current_user: models.Usuario = Depends(get_current_user)):
-    if not filename.startswith('tuxtell_') or not filename.endswith('.sql.gz') or '/' in filename or '..' in filename:
+def descargar_backup(filename: str, current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin))):
+    # El nombre tiene que ser exactamente un respaldo de esta carpeta: sin
+    # barras ni '..', para que nadie pueda pedir un archivo de otro sitio.
+    if (not filename.startswith(PREFIJOS_ACEPTADOS) or not filename.endswith('.sql.gz')
+            or "/" in filename or "\\" in filename or ".." in filename):
         raise HTTPException(status_code=400, detail="Nombre de archivo inválido")
     filepath = Path(settings.BACKUP_DIR) / filename
     if not filepath.exists():
@@ -75,9 +92,9 @@ def descargar_backup(filename: str, current_user: models.Usuario = Depends(get_c
 
 
 @router.get("/backups")
-def listar_backups(current_user: models.Usuario = Depends(get_current_user)):
+def listar_backups(current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin))):
     backup_dir = _backup_dir()
-    files = sorted(backup_dir.glob('tuxtell_*.sql.gz'), key=lambda p: p.stat().st_mtime, reverse=True)
+    files = list(reversed(_todos_los_backups(backup_dir)))
     return [
         {
             "filename": f.name,

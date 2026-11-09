@@ -215,7 +215,8 @@ def _dibujar(destino: BytesIO, d: DatosRecibo, alto: float) -> float:
     L = _Lienzo(c, alto)
 
     # Logo
-    if os.path.exists(LOGO):
+    con_logo = os.path.exists(LOGO)
+    if con_logo:
         ancho_mm, alto_mm = 44.0, 16.0
         L.saltar(alto_mm)
         c.drawImage(
@@ -224,13 +225,23 @@ def _dibujar(destino: BytesIO, d: DatosRecibo, alto: float) -> float:
         )
         L.saltar(2.5)
 
-    # Encabezado de la empresa
-    L.centrado(settings.EMPRESA_NOMBRE, tam=10, negrita=True, salto=4.6)
-    L.centrado(f"RUC: {settings.EMPRESA_RUC}", tam=7.5)
-    L.centrado(f"DIRECCION: {settings.EMPRESA_DIRECCION}", tam=7.5)
-    L.centrado(settings.EMPRESA_CIUDAD, tam=7.5)
-    L.centrado(f"TELEFONO: {settings.EMPRESA_TELEFONOS}", tam=7.5)
-    L.centrado(f"CORREO: {settings.EMPRESA_CORREO}", tam=7.5, salto=5)
+    # Encabezado de la empresa. Lo que no esté configurado simplemente no sale:
+    # un recibo sin RUC es correcto, uno con el RUC de otra empresa no.
+    if not con_logo:
+        L.centrado(settings.EMPRESA_NOMBRE, tam=12, negrita=True, salto=4.8)
+    if settings.EMPRESA_RUBRO:
+        L.centrado(settings.EMPRESA_RUBRO, tam=8, negrita=con_logo, salto=4.6)
+    if settings.EMPRESA_RUC:
+        L.centrado(f"RUC: {settings.EMPRESA_RUC}", tam=7.5)
+    if settings.EMPRESA_DIRECCION:
+        L.centrado(f"DIRECCION: {settings.EMPRESA_DIRECCION}", tam=7.5)
+    if settings.EMPRESA_CIUDAD:
+        L.centrado(settings.EMPRESA_CIUDAD, tam=7.5)
+    if settings.EMPRESA_TELEFONOS:
+        L.centrado(f"TELEFONO: {settings.EMPRESA_TELEFONOS}", tam=7.5)
+    if settings.EMPRESA_CORREO:
+        L.centrado(f"CORREO: {settings.EMPRESA_CORREO}", tam=7.5)
+    L.saltar(1.2)
 
     L.separador()
     L.centrado("RECIBO DE PAGO", tam=9, negrita=True, salto=4.4)
@@ -299,7 +310,8 @@ def _dibujar(destino: BytesIO, d: DatosRecibo, alto: float) -> float:
                color=GRIS, salto=5)
     L.centrado("*GRACIAS POR SU PREFERENCIA*", tam=7, negrita=True, salto=4)
     L.centrado("Comprobante sin Derecho a Credito Fiscal", tam=6, color=GRIS)
-    L.centrado(f"Telefono De Soporte: {settings.EMPRESA_TELEFONOS}", tam=6, color=GRIS)
+    if settings.EMPRESA_TELEFONOS:
+        L.centrado(f"Telefono De Soporte: {settings.EMPRESA_TELEFONOS}", tam=6, color=GRIS)
 
     consumido = alto - L.y + MARGEN
     c.showPage()

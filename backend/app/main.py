@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from . import models
+from .config import es_produccion, origenes_cors
 from .routers import (
     clientes, zonas, pagos, gastos, auth, whatsapp, dashboard, planes, admin,
     cliente_app, cajas_nap, onus, averias, ordenes_retiro, evidencias, mufas,
@@ -27,26 +28,46 @@ async def lifespan(app: FastAPI):
     stop_scheduler()
 
 
+# En producción la documentación interactiva queda cerrada: regala el mapa
+# completo de la API (rutas, campos, ejemplos) a cualquiera que entre.
+_DOCS = None if es_produccion() else "/docs"
+_REDOC = None if es_produccion() else "/redoc"
+_OPENAPI = None if es_produccion() else "/openapi.json"
+
 app = FastAPI(
-    title="TUX-ISP API",
-    description="Sistema de gestión para ISP WISP",
+    title="WISP-ISP API",
+    description="WISP Control — sistema de gestión para WISP Ingeniería en Redes y Telecomunicaciones",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=_DOCS,
+    redoc_url=_REDOC,
+    openapi_url=_OPENAPI,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://dominiowisp.com",  # placeholder — reemplazar por el dominio real cuando lo compren
-        "http://localhost:5173",
-        "http://localhost:4173",
-        "http://localhost:8081",
-        "http://localhost:19006",
-    ],
+    allow_origins=origenes_cors(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def cabeceras_de_seguridad(request: Request, call_next):
+    """Cabeceras mínimas en toda respuesta de la API.
+
+    Lo importante es `no-store` en /api/: las respuestas llevan datos de
+    clientes y de dinero, y sin esto el navegador —o una caché intermedia
+    como Cloudflare— podría guardarlas y enseñárselas a otra persona.
+    """
+    respuesta = await call_next(request)
+    respuesta.headers["X-Content-Type-Options"] = "nosniff"
+    respuesta.headers["Referrer-Policy"] = "no-referrer"
+    if request.url.path.startswith("/api/"):
+        respuesta.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+        respuesta.headers["Pragma"] = "no-cache"
+    return respuesta
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
@@ -70,4 +91,4 @@ app.include_router(consultas.router, prefix="/api/consultas", tags=["Consultas"]
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "app": "TUX-ISP", "version": "1.0.0"}
+    return {"status": "ok", "app": "WISP-ISP", "version": "1.0.0"}

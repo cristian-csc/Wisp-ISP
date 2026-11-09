@@ -54,6 +54,8 @@ function App() {
           />
           <Route path="/login" element={<Login />} />
 
+          {/* ProtectedLayout exige sesión. El permiso por rol lo comprueba
+              FullLayout, que envuelve la pantalla con <RutaPermitida>. */}
           <Route
             element={
               <ProtectedLayout>

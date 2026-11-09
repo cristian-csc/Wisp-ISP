@@ -5,7 +5,7 @@ import logging
 
 from ..database import get_db
 from .. import models, schemas
-from .auth import get_current_user
+from .auth import get_current_user, require_roles
 from .clientes import _mikrotik_exec
 
 router = APIRouter()
@@ -65,7 +65,7 @@ def list_planes(
 def create_plan(
     data: schemas.PlanCreate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     if db.query(models.Plan).filter(models.Plan.codigo == data.codigo).first():
         raise HTTPException(status_code=400, detail="El código de plan ya existe")
@@ -82,7 +82,7 @@ def update_plan(
     plan_id: int,
     data: schemas.PlanCreate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     plan = db.query(models.Plan).filter(models.Plan.id == plan_id).first()
     if not plan:
@@ -99,7 +99,7 @@ def update_plan(
 def delete_plan(
     plan_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     plan = db.query(models.Plan).filter(models.Plan.id == plan_id).first()
     if not plan:

@@ -40,7 +40,7 @@ def override_get_db():
 MOCK_USER = models.Usuario(
     id=99,
     nombre="Test Admin",
-    email="test@tuxtell.test",
+    email="test@wisp.test",
     hashed_password="x",
     rol="admin",
     activo=True,

@@ -5,7 +5,7 @@ from datetime import date
 
 from ..database import get_db
 from .. import models, schemas
-from .auth import get_current_user
+from .auth import get_current_user, require_roles
 
 router = APIRouter()
 
@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("/stats", response_model=schemas.DashboardStats)
 def get_stats(
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     hoy = date.today()
     mes_actual = f"{hoy.year}-{hoy.month:02d}"
@@ -37,10 +37,21 @@ def get_stats(
         models.Pago.estado == models.EstadoPago.pagado,
     ).scalar() or 0
 
-    gastos_actual = db.query(func.sum(models.Gasto.monto)).filter(
-        extract("year", models.Gasto.fecha) == hoy.year,
-        extract("month", models.Gasto.fecha) == hoy.month,
-    ).scalar() or 0
+    # Los gastos son cifra de gerencia: atención al cliente cobra, no lleva
+    # las cuentas de la empresa. Se calculan solo para quien puede verlos, y
+    # al resto se les manda 0 en vez de omitir el campo, para no cambiarle la
+    # forma a la respuesta y romper la pantalla.
+    ve_gastos = current_user.rol in (
+        models.RolUsuario.super_admin,
+        models.RolUsuario.admin,
+        models.RolUsuario.subadmin,
+    )
+    gastos_actual = 0
+    if ve_gastos:
+        gastos_actual = db.query(func.sum(models.Gasto.monto)).filter(
+            extract("year", models.Gasto.fecha) == hoy.year,
+            extract("month", models.Gasto.fecha) == hoy.month,
+        ).scalar() or 0
 
     total_zonas = db.query(models.Zona).filter(models.Zona.activo == True).count()
 
@@ -69,7 +80,7 @@ def get_stats(
 def ingresos_mensual(
     anio: int = None,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
 ):
     if not anio:
         anio = date.today().year
@@ -102,7 +113,7 @@ def ingresos_mensual(
 def ultimas_activaciones(
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     # La descripción de un movimiento de pago lleva el importe, así que sólo se
     # incluye para los roles que tienen acceso al módulo Pagos — los demás no

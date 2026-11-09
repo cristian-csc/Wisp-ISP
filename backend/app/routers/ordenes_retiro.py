@@ -8,7 +8,7 @@ from typing import Optional, List
 from ..database import get_db
 from .. import models, schemas
 from ..config import settings
-from ..mensajeria import contacto_empresa, enviar_texto, telefono_de
+from ..mensajeria import contacto_empresa, enviar_texto, telefono_de, oculta
 from .auth import get_current_user, require_roles
 
 logger = logging.getLogger(__name__)
@@ -230,7 +230,7 @@ def completar_orden_retiro(
         else:
             enviado, detalle = enviar_texto(phone, _mensaje_despedida(cliente))
             if enviado:
-                logger.info("Despedida enviada a %s (cliente %d)", phone, cliente.id)
+                logger.info("Despedida enviada a %s (cliente %d)", oculta(phone), cliente.id)
             else:
                 logger.warning("No se pudo despedir al cliente %d: %s", cliente.id, detalle)
 

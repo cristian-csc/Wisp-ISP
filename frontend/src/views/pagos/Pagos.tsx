@@ -4,6 +4,9 @@ import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import CardBox from 'src/components/shared/CardBox';
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
+import BotonDescargarReporte from 'src/components/shared/BotonDescargarReporte';
+import { useCurrentUser } from 'src/lib/useCurrentUser';
+import { puedeAccion } from 'src/lib/permisos';
 import { Badge } from 'src/components/ui/badge';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
@@ -45,6 +48,7 @@ import {
   type ClienteMoroso,
   getClientesCortados,
   getPausasPorVencer,
+  descargarReportePagos,
   type Pago,
   type EstadoPago,
   type ClienteCortado,
@@ -160,6 +164,10 @@ const StatCard = ({
 );
 
 const Pagos = () => {
+  const { user } = useCurrentUser();
+  /** Atención al cliente cobra, pero no corrige el histórico:
+   *  borrar un pago queda para administración. */
+  const puedeBorrarPago = puedeAccion('pagos.borrar', user?.rol);
   const navigate = useNavigate();
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [page, setPage] = useState(1);
@@ -398,7 +406,22 @@ const Pagos = () => {
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center flex-wrap gap-3">
         <h1 className="text-2xl">Pagos</h1>
-        <Button onClick={() => abrirRegistrarPago()}>Registrar pago</Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Baja el historial completo, no solo la página que se ve, y
+              respetando los filtros que estén puestos en la tabla. */}
+          <BotonDescargarReporte
+            etiqueta="Descargar reporte"
+            titulo="Historial de pagos, con los filtros puestos"
+            onDescargar={(formato) =>
+              descargarReportePagos(formato, {
+                mes: mesFiltro || undefined,
+                estado: estadoFiltro === 'todos' ? undefined : (estadoFiltro as EstadoPago),
+                search: search || undefined,
+              })
+            }
+          />
+          <Button onClick={() => abrirRegistrarPago()}>Registrar pago</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -598,7 +621,7 @@ const Pagos = () => {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') { setPage(1); reload(); }
                 }}
-                placeholder="Buscar cliente, DNI…"
+                placeholder="Buscar cliente o DNI y pulsa Enter"
               />
             </div>
           </div>
@@ -669,9 +692,11 @@ const Pagos = () => {
                       >
                         <Icon icon="tabler:printer" height={18} />
                       </Button>
-                      <Button variant="ghost" size="icon" title="Eliminar pago" onClick={() => setBorrando(p)}>
-                        <Icon icon="tabler:trash" height={18} className="text-error" />
-                      </Button>
+                      {puedeBorrarPago && (
+                        <Button variant="ghost" size="icon" title="Eliminar pago" onClick={() => setBorrando(p)}>
+                          <Icon icon="tabler:trash" height={18} className="text-error" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
+import PageHeader from 'src/components/shared/PageHeader';
+import SectionCard from 'src/components/shared/SectionCard';
 import { Badge } from 'src/components/ui/badge';
 import { Button } from 'src/components/ui/button';
 import { Textarea } from 'src/components/ui/textarea';
@@ -18,6 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from 'src/components/ui/table';
+import BadgeConexion from 'src/components/apps/whatsapp/BadgeConexion';
+import ChipSeleccion from 'src/components/apps/whatsapp/ChipSeleccion';
+import InstruccionesVinculacion from 'src/components/apps/whatsapp/InstruccionesVinculacion';
+import PanelVinculacion from 'src/components/apps/whatsapp/PanelVinculacion';
+import { describirEstado } from 'src/components/apps/whatsapp/estadoConexion';
 import { getWhatsappStatus, getWhatsappQr, type WhatsappStatus } from 'src/lib/whatsapp';
 import {
   contarDestinatariosMasivo,
@@ -70,9 +77,26 @@ function zonaNombres(zonaIds: number[] | null, zonas: Zona[]): string {
     .join(', ');
 }
 
+/** Título de grupo dentro del formulario de envío masivo. */
+const Grupo = ({ titulo, extra, children }: {
+  titulo: string;
+  extra?: React.ReactNode;
+  children: React.ReactNode;
+}) => (
+  <div>
+    <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{titulo}</p>
+      {extra}
+    </div>
+    {children}
+  </div>
+);
+
 const ConfiguracionWhatsapp = () => {
   const [status, setStatus] = useState<WhatsappStatus | null>(null);
+  const [primeraCargaHecha, setPrimeraCargaHecha] = useState(false);
   const [qr, setQr] = useState<string | null>(null);
+  const [pidiendoQr, setPidiendoQr] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [zonas, setZonas] = useState<Zona[]>([]);
@@ -97,11 +121,24 @@ const ConfiguracionWhatsapp = () => {
   async function poll() {
     const s = await getWhatsappStatus().catch(() => null);
     setStatus(s);
+    setPrimeraCargaHecha(true);
     if (s && !s.connected) {
       const q = await getWhatsappQr().catch(() => null);
       setQr(q?.qr ?? null);
     } else {
       setQr(null);
+    }
+  }
+
+  /** Pide el código a mano. Usa las mismas funciones que la consulta
+   *  automática: no hay ningún endpoint ni QR nuevo. */
+  async function pedirQr() {
+    if (pidiendoQr) return;
+    setPidiendoQr(true);
+    try {
+      await poll();
+    } finally {
+      setPidiendoQr(false);
     }
   }
 
@@ -158,6 +195,8 @@ const ConfiguracionWhatsapp = () => {
   }
 
   async function handleEnviar() {
+    // Doble clic en "Confirmar y enviar" mandaría la campaña dos veces.
+    if (enviando) return;
     setError(null);
     if (!mensaje.trim()) {
       setError('Escribe el mensaje.');
@@ -186,6 +225,7 @@ const ConfiguracionWhatsapp = () => {
   }
 
   async function handleEnviarCobros() {
+    if (enviandoCobros) return;
     setErrorCobros(null);
     setEnviandoCobros(true);
     try {
@@ -214,228 +254,171 @@ const ConfiguracionWhatsapp = () => {
     ? Math.round(((campaniaActiva.enviados + campaniaActiva.fallidos) / Math.max(campaniaActiva.total_destinatarios, 1)) * 100)
     : 0;
 
+  const estado = describirEstado(status, primeraCargaHecha);
+  const enviandoCampania = campaniaActiva?.estado === 'en_progreso';
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-2xl">WhatsApp</h1>
-        <span
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-            status?.connected ? 'bg-lightsuccess text-success' : 'bg-lighterror text-error'
-          }`}
-        >
-          <span className="relative flex h-2 w-2">
-            {status?.connected && (
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
-            )}
-            <span className={`relative inline-flex h-2 w-2 rounded-full ${status?.connected ? 'bg-success' : 'bg-error'}`} />
-          </span>
-          {status?.connected ? 'Conectado' : 'Desconectado'}
-        </span>
+      <PageHeader
+        titulo="WhatsApp"
+        icono="tabler:brand-whatsapp"
+        tonoIcono="success"
+        juntoAlTitulo={<BadgeConexion estado={estado} />}
+        descripcion="Configura la integración y envía notificaciones automáticas a tus clientes"
+      />
+
+      {/* Vinculación: panel e instrucciones, lado a lado en escritorio */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <PanelVinculacion
+          estado={estado}
+          qr={qr}
+          pidiendoQr={pidiendoQr}
+          onGenerarQr={pedirQr}
+          telefono={status?.phone}
+        />
+        <InstruccionesVinculacion />
       </div>
 
-      {/* Hero de conexión */}
-      <CardBox className="max-w-lg overflow-hidden !p-0">
-        <div
-          className={`px-6 py-5 ${
-            status?.connected
-              ? 'bg-gradient-to-br from-success to-success/80'
-              : 'bg-gradient-to-br from-error to-error/80'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-white backdrop-blur-sm">
-                <Icon icon="tabler:brand-whatsapp" height={26} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white">
-                  {status?.connected ? 'Número vinculado' : 'Sin vincular'}
-                </p>
-                <p className="text-xs text-white/80">
-                  {status?.connected && status.phone ? status.phone : 'Escanea el QR para conectar'}
-                </p>
-              </div>
-            </div>
-            <Badge className="bg-white/20 text-white rounded-md border-0">
-              {status?.connected ? 'Activo' : 'Pendiente'}
-            </Badge>
-          </div>
-        </div>
-
-        <div className="p-6">
-          {!status?.connected && (
-            <div className="flex flex-col items-center gap-4">
-              {qr ? (
-                <>
-                  <div className="relative rounded-2xl border-4 border-lightsuccess p-2">
-                    <img src={qr} alt="Código QR de WhatsApp" className="w-52 h-52 rounded-lg" />
-                  </div>
-                  <ol className="w-full space-y-2 text-xs text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-lightprimary text-primary text-[10px] font-bold">1</span>
-                      Abre WhatsApp en el teléfono de la empresa
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-lightprimary text-primary text-[10px] font-bold">2</span>
-                      Ve a Configuración → Dispositivos vinculados
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-lightprimary text-primary text-[10px] font-bold">3</span>
-                      Toca "Vincular un dispositivo" y escanea este código
-                    </li>
-                  </ol>
-                </>
-              ) : (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <Icon icon="tabler:loader-2" height={28} className="animate-spin text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Generando código QR…</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {status?.connected && (
-            <p className="text-sm text-muted-foreground flex items-start gap-2">
-              <Icon icon="tabler:info-circle" height={16} className="text-success shrink-0 mt-0.5" />
-              Los avisos de pago, cobro, corte y confirmaciones se envían desde este número.
-            </p>
-          )}
-
-          {status?.error && <p className="text-sm text-error mt-3">{status.error}</p>}
-        </div>
-      </CardBox>
-
       {/* Recordatorio de pago a morosos */}
-      <CardBox className="p-0 overflow-hidden border-l-4 border-l-warning">
-        <div className="flex items-center justify-between flex-wrap gap-3 p-6">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-lightwarning text-warning">
-              <Icon icon="tabler:cash" height={20} />
+      <CardBox className="overflow-hidden border-l-4 border-l-warning !p-0">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lightwarning text-warning">
+              <Icon icon="tabler:calendar-dollar" width={21} />
             </span>
-            <div>
-              <h3 className="text-sm font-semibold">Recordatorio de pago a morosos</h3>
-              <p className="text-xs text-muted-foreground">Avisa a todos los clientes activos que no han pagado este mes.</p>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold leading-tight">Recordatorio de pago a morosos</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Avisa a todos los clientes activos que no han pagado este mes.
+              </p>
             </div>
           </div>
           <Button
             variant="lightwarning"
-            size="sm"
             onClick={() => setConfirmandoCobros(true)}
-            disabled={campaniaActiva?.estado === 'en_progreso'}
+            disabled={enviandoCampania}
           >
-            <Icon icon="tabler:send" height={14} className="mr-1" />
+            <Icon icon="tabler:send" width={16} />
             Enviar recordatorios
           </Button>
         </div>
       </CardBox>
 
-      {/* Mensaje masivo */}
-      <CardBox className="p-6">
-        <div className="flex items-center gap-3 mb-1">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-lightprimary text-primary">
-            <Icon icon="tabler:speakerphone" height={20} />
-          </span>
-          <div>
-            <h3 className="text-sm font-semibold">Mensaje masivo</h3>
-            <p className="text-xs text-muted-foreground">
-              Para avisos a toda una zona (mantenimiento, corte programado, etc.)
-            </p>
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground mb-5 pl-14">
-          Se envía uno por uno con una pausa aleatoria entre cada mensaje para no arriesgar que WhatsApp bloquee el número.
-        </p>
-
-        {campaniaActiva?.estado === 'en_progreso' && (
-          <div className="mb-5 rounded-xl border border-primary/20 bg-lightprimary/50 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold flex items-center gap-2">
-                <Icon icon="tabler:loader-2" height={15} className="animate-spin text-primary" />
-                Enviando… {campaniaActiva.enviados + campaniaActiva.fallidos} / {campaniaActiva.total_destinatarios}
-              </p>
-              <Button size="sm" variant="lighterror" onClick={() => handleCancelar(campaniaActiva.id)}>
-                Detener envío
-              </Button>
-            </div>
-            <div className="h-2.5 w-full rounded-full bg-white/60 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              <span className="text-success font-medium">{campaniaActiva.enviados} enviados</span>
-              {campaniaActiva.fallidos > 0 && <> · <span className="text-error font-medium">{campaniaActiva.fallidos} fallidos</span></>}
-              {' · '}{pct}%
-            </p>
-          </div>
-        )}
-
+      {/* Mensajería masiva */}
+      <SectionCard
+        titulo="Mensajería masiva"
+        icono="tabler:speakerphone"
+        descripcion="Avisos a toda una zona: mantenimiento, corte programado, etc."
+      >
         <div className="flex flex-col gap-5">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">
-              Zonas <span className="font-normal normal-case">(ninguna seleccionada = todas)</span>
+          <div className="flex items-start gap-2.5 rounded-xl bg-surface-2 px-3.5 py-3">
+            <Icon icon="tabler:clock-pause" width={16} className="mt-0.5 shrink-0 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">
+              Se envía uno por uno con una pausa aleatoria entre cada mensaje, para no arriesgar
+              que WhatsApp bloquee el número de la empresa.
             </p>
+          </div>
+
+          {enviandoCampania && campaniaActiva && (
+            <div className="rounded-xl border border-primary/20 bg-lightprimary p-4">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <Icon icon="tabler:loader-2" width={15} className="animate-spin text-primary" />
+                  Enviando… {campaniaActiva.enviados + campaniaActiva.fallidos} / {campaniaActiva.total_destinatarios}
+                </p>
+                <Button size="sm" variant="lighterror" onClick={() => handleCancelar(campaniaActiva.id)}>
+                  Detener envío
+                </Button>
+              </div>
+              <div
+                className="h-2.5 w-full overflow-hidden rounded-full bg-card"
+                role="progressbar"
+                aria-valuenow={pct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                <span className="font-medium text-success">{campaniaActiva.enviados} enviados</span>
+                {campaniaActiva.fallidos > 0 && (
+                  <> · <span className="font-medium text-error">{campaniaActiva.fallidos} fallidos</span></>
+                )}
+                {' · '}{pct}%
+              </p>
+            </div>
+          )}
+
+          <Grupo
+            titulo="Zonas"
+            extra={
+              <span className="text-xs font-normal text-muted-foreground">
+                {zonaIdsSel.length === 0
+                  ? 'ninguna marcada = todas'
+                  : `${zonaIdsSel.length} marcada${zonaIdsSel.length === 1 ? '' : 's'}`}
+              </span>
+            }
+          >
             <div className="flex flex-wrap gap-2">
               {zonas.map((z) => (
-                <button
+                <ChipSeleccion
                   key={z.id}
-                  type="button"
+                  texto={z.nombre}
+                  icono="tabler:map-pin"
+                  activo={zonaIdsSel.includes(z.id)}
                   onClick={() => toggleZona(z.id)}
-                  className={`flex items-center gap-1.5 text-xs rounded-full border px-3 py-1.5 transition-colors ${
-                    zonaIdsSel.includes(z.id)
-                      ? 'border-primary bg-primary/10 text-primary font-semibold'
-                      : 'border-ld hover:bg-primary/5'
-                  }`}
-                >
-                  <Icon icon="tabler:map-pin" height={12} />
-                  {z.nombre}
-                </button>
+                />
               ))}
             </div>
-          </div>
+            {zonaIdsSel.length > 0 && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Se enviará a: <span className="font-medium text-foreground">{zonaNombres(zonaIdsSel, zonas)}</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setZonaIdsSel([])}
+                  className="transition-ui text-xs text-primary underline-offset-2 hover:underline"
+                >
+                  Quitar selección
+                </button>
+              </div>
+            )}
+          </Grupo>
 
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">A quiénes les llega</p>
+          <Grupo titulo="A quiénes les llega">
             <div className="flex flex-wrap gap-2">
               {ESTADOS_DISPONIBLES.map((e) => (
-                <button
+                <ChipSeleccion
                   key={e.value}
-                  type="button"
+                  texto={e.label}
+                  tono="success"
+                  icono="tabler:square-rounded"
+                  iconoActivo="tabler:square-rounded-check-filled"
+                  activo={estadosSel.includes(e.value)}
                   onClick={() => toggleEstado(e.value)}
-                  className={`flex items-center gap-1.5 text-xs rounded-full border px-3 py-1.5 transition-colors ${
-                    estadosSel.includes(e.value)
-                      ? 'border-success bg-success/10 text-success font-semibold'
-                      : 'border-ld hover:bg-success/5'
-                  }`}
-                >
-                  <Icon icon={estadosSel.includes(e.value) ? 'tabler:square-rounded-check-filled' : 'tabler:square-rounded'} height={14} />
-                  {e.label}
-                </button>
+                />
               ))}
             </div>
-          </div>
+          </Grupo>
 
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">Plantillas rápidas</p>
+          <Grupo titulo="Plantillas rápidas">
             <div className="flex flex-wrap gap-2">
               {PLANTILLAS.map((p) => (
-                <button
+                <ChipSeleccion
                   key={p.nombre}
-                  type="button"
+                  texto={p.nombre}
+                  tono="info"
+                  icono="tabler:file-text"
+                  activo={plantillaSel === p.nombre}
                   onClick={() => aplicarPlantilla(p)}
-                  className={`flex items-center gap-1.5 text-xs rounded-full border px-3 py-1.5 transition-colors ${
-                    plantillaSel === p.nombre
-                      ? 'border-info bg-info/10 text-info font-semibold'
-                      : 'border-ld hover:bg-info/5'
-                  }`}
-                >
-                  <Icon icon="tabler:file-text" height={12} />
-                  {p.nombre}
-                </button>
+                />
               ))}
             </div>
-          </div>
+          </Grupo>
 
           <FormField
             label="Mensaje"
@@ -460,82 +443,99 @@ const ConfiguracionWhatsapp = () => {
             />
           </FormField>
 
-          {error && <p className="text-sm text-error">{error}</p>}
+          {error && <FormCallout tone="error">{error}</FormCallout>}
 
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {contando ? 'Calculando destinatarios…' : (
-                <>Se enviará a <span className="font-semibold text-foreground">{destinatariosCount ?? 0}</span> cliente{destinatariosCount === 1 ? '' : 's'}</>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ld pt-4">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Icon
+                icon={contando ? 'tabler:loader-2' : 'tabler:users'}
+                width={16}
+                className={contando ? 'animate-spin' : undefined}
+              />
+              {contando ? (
+                'Calculando destinatarios…'
+              ) : (
+                <>
+                  Se enviará a{' '}
+                  <span className="font-semibold text-foreground">{destinatariosCount ?? 0}</span>{' '}
+                  cliente{destinatariosCount === 1 ? '' : 's'}
+                </>
               )}
             </p>
             <Button
               onClick={() => setConfirmando(true)}
-              disabled={!mensaje.trim() || !destinatariosCount || campaniaActiva?.estado === 'en_progreso'}
+              disabled={!mensaje.trim() || !destinatariosCount || enviandoCampania}
             >
-              <Icon icon="tabler:send" height={16} className="mr-1" />
+              <Icon icon="tabler:send" width={16} />
               Enviar
             </Button>
           </div>
         </div>
-      </CardBox>
+      </SectionCard>
 
       {/* Historial */}
-      <CardBox className="p-6">
-        <div className="flex items-center gap-3 mb-5">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-lightsecondary text-secondary">
-            <Icon icon="tabler:history" height={20} />
-          </span>
-          <div>
-            <h3 className="text-sm font-semibold">Historial de envíos masivos</h3>
-            <p className="text-xs text-muted-foreground">Qué se mandó, a quién y quién lo envió.</p>
-          </div>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Zonas</TableHead>
-              <TableHead>Mensaje</TableHead>
-              <TableHead>Resultado</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Por</TableHead>
-              <TableHead className="text-end">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {campanias.length === 0 && (
+      <SectionCard
+        titulo="Historial de envíos masivos"
+        icono="tabler:history"
+        descripcion="Qué se mandó, a quién y quién lo envió."
+        sinRelleno
+      >
+        <div className="overflow-x-auto px-5 pb-5">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10">
-                  <div className="flex flex-col items-center gap-2">
-                    <Icon icon="tabler:mail-opened" height={32} className="text-muted-foreground/50" />
-                    <p className="text-sm text-muted-foreground">No se ha enviado ningún mensaje masivo todavía.</p>
-                  </div>
-                </TableCell>
+                <TableHead>Zonas</TableHead>
+                <TableHead>Mensaje</TableHead>
+                <TableHead>Resultado</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Por</TableHead>
+                <TableHead className="text-end">Acciones</TableHead>
               </TableRow>
-            )}
-            {campanias.map((c) => (
-              <TableRow key={c.id} className="hover:bg-muted/30">
-                <TableCell className="text-sm max-w-[10rem] truncate">{zonaNombres(c.zona_ids, zonas)}</TableCell>
-                <TableCell className="text-sm max-w-xs truncate">{c.mensaje}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  <span className="text-success font-medium">{c.enviados}</span>/{c.total_destinatarios} enviados
-                  {c.fallidos > 0 && <> · <span className="text-error font-medium">{c.fallidos} fallidos</span></>}
-                </TableCell>
-                <TableCell><Badge className={`${ESTADO_CAMPANIA_BADGE[c.estado]} rounded-md`}>{ESTADO_CAMPANIA_LABEL[c.estado]}</Badge></TableCell>
-                <TableCell className="text-sm text-muted-foreground">{new Date(c.creado_en).toLocaleString('es-PE')}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{c.creado_por?.nombre ?? '—'}</TableCell>
-                <TableCell className="text-end">
-                  {c.estado === 'en_progreso' && (
-                    <Button size="sm" variant="ghost" className="text-error" onClick={() => handleCancelar(c.id)}>
-                      Detener
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardBox>
+            </TableHeader>
+            <TableBody>
+              {campanias.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <Icon icon="tabler:mail-opened" width={32} className="text-muted-foreground/50" />
+                      <p className="text-sm text-muted-foreground">
+                        No se ha enviado ningún mensaje masivo todavía.
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+              {campanias.map((c) => (
+                <TableRow key={c.id} className="hover:bg-muted/30">
+                  <TableCell className="max-w-[10rem] truncate text-sm">{zonaNombres(c.zona_ids, zonas)}</TableCell>
+                  <TableCell className="max-w-xs truncate text-sm">{c.mensaje}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    <span className="font-medium text-success">{c.enviados}</span>/{c.total_destinatarios} enviados
+                    {c.fallidos > 0 && <> · <span className="font-medium text-error">{c.fallidos} fallidos</span></>}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={`${ESTADO_CAMPANIA_BADGE[c.estado]} rounded-md`}>
+                      {ESTADO_CAMPANIA_LABEL[c.estado]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(c.creado_en).toLocaleString('es-PE')}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.creado_por?.nombre ?? '—'}</TableCell>
+                  <TableCell className="text-end">
+                    {c.estado === 'en_progreso' && (
+                      <Button size="sm" variant="ghost" className="text-error" onClick={() => handleCancelar(c.id)}>
+                        Detener
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </SectionCard>
 
       {/* Confirmar envío */}
       <FormDialog

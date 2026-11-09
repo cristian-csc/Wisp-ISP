@@ -10,6 +10,7 @@ const TABS: Tab[] = [
   { id: 'jornada',  label: 'Jornada',     icon: 'walk-outline',          iconActive: 'walk',          path: '/(vendedor)/jornada'        },
   { id: 'clientes', label: 'Mis Clientes', icon: 'people-outline',       iconActive: 'people',        path: '/(vendedor)'               },
   { id: 'nuevo',    label: 'Registrar',    icon: 'person-add-outline',   iconActive: 'person-add',    path: '/(vendedor)/nuevo-cliente' },
+  { id: 'mapa',     label: 'Cobertura',    icon: 'map-outline',          iconActive: 'map',           path: '/(vendedor)/mapa'          },
   { id: 'cuenta',   label: 'Cuenta',       icon: 'person-circle-outline', iconActive: 'person-circle', path: '/(vendedor)/cuenta'        },
 ];
 
@@ -21,6 +22,7 @@ export function VendedorNav() {
   const active =
     pathname.includes('jornada')       ? 'jornada'
     : pathname.includes('nuevo-cliente') ? 'nuevo'
+    : pathname.includes('mapa')        ? 'mapa'
     : pathname.includes('cuenta')      ? 'cuenta'
     : 'clientes';
 

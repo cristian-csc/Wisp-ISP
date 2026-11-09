@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from . import models
 from .billing import monto_mensual
 from .config import settings
+from .mensajeria import cabeceras_bot
 from .database import SessionLocal
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,9 @@ async def job_recordatorio_preventivo(dias_antes: int = 3):
             )
             try:
                 async with httpx.AsyncClient(timeout=8) as c:
-                    await c.post(f"{settings.WHATSAPP_API_URL}/send", json={"phone": phone, "message": mensaje})
+                    await c.post(f"{settings.WHATSAPP_API_URL}/send",
+                                 json={"phone": phone, "message": mensaje},
+                                 headers=cabeceras_bot())
                 enviados += 1
             except Exception as e:
                 logger.warning("Recordatorio falló para %s: %s", cliente.nombre, e)

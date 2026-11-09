@@ -23,6 +23,7 @@ import {
 } from 'src/components/shared/form';
 import { listZonas, createZona, type Zona } from 'src/lib/zonas';
 import { getMe, type Usuario } from 'src/lib/api';
+import { puedeAccion } from 'src/lib/permisos';
 
 const Zonas = () => {
   const navigate = useNavigate();
@@ -34,6 +35,9 @@ const Zonas = () => {
   const [error, setError] = useState<string | null>(null);
 
   const esSuperAdmin = currentUser?.rol === 'super_admin';
+  /** Atención al cliente entra aquí a consultar cobertura: ve las zonas y sus
+   *  clientes, no la configuración de la red. */
+  const veRed = puedeAccion('zonas.verRed', currentUser?.rol);
 
   async function reload() {
     setZonas(await listZonas());
@@ -69,8 +73,10 @@ const Zonas = () => {
         <TableHeader>
           <TableRow>
             <TableHead>Nombre</TableHead>
-            <TableHead>IP WireGuard</TableHead>
-            <TableHead>Router MikroTik</TableHead>
+            {/* La red por dentro solo para quien la administra; el backend
+                tampoco manda estos campos a los demás roles. */}
+            {veRed && <TableHead>IP WireGuard</TableHead>}
+            {veRed && <TableHead>Router MikroTik</TableHead>}
             <TableHead>Clientes</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead className="text-end">Acciones</TableHead>
@@ -79,7 +85,7 @@ const Zonas = () => {
         <TableBody>
           {zonas.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={veRed ? 6 : 4} className="text-center py-8 text-muted-foreground">
                 No hay zonas registradas.
               </TableCell>
             </TableRow>
@@ -87,8 +93,8 @@ const Zonas = () => {
           {zonas.map((z) => (
             <TableRow key={z.id}>
               <TableCell className="font-medium">{z.nombre}</TableCell>
-              <TableCell>{z.ip_wireguard}</TableCell>
-              <TableCell>{z.router_mikrotik ?? '—'}</TableCell>
+              {veRed && <TableCell>{z.ip_wireguard}</TableCell>}
+              {veRed && <TableCell>{z.router_mikrotik ?? '—'}</TableCell>}
               <TableCell>
                 {z.clientes_activos} / {z.total_clientes}
               </TableCell>

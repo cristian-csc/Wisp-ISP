@@ -158,6 +158,9 @@ const GastoZonaDetail = () => {
 
   function TablaGastos({ items, vacio }: { items: Gasto[]; vacio: string }) {
     return (
+      // En el teléfono la tabla es más ancha que la pantalla: se desplaza
+      // dentro de su caja en vez de arrastrar toda la página.
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -196,6 +199,7 @@ const GastoZonaDetail = () => {
           ))}
         </TableBody>
       </Table>
+      </div>
     );
   }
 
@@ -209,7 +213,7 @@ const GastoZonaDetail = () => {
           <h1 className="text-2xl truncate">{esGeneral ? 'General' : zona?.nombre ?? 'Cargando…'}</h1>
           <p className="text-sm text-muted-foreground">{esGeneral ? 'Gastos sin zona asignada' : 'Gastos de esta zona'}</p>
         </div>
-        <div className="flex gap-2 ml-auto">
+        <div className="ml-auto flex flex-wrap justify-end gap-2">
           <Select value={mesSel} onValueChange={setMesSel}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -237,7 +241,7 @@ const GastoZonaDetail = () => {
         </CardBox>
       </div>
 
-      <CardBox>
+      <CardBox className="min-w-0">
         <div className="mb-3">
           <h3 className="text-sm font-semibold">Gastos fijos</h3>
           <p className="text-xs text-muted-foreground">Se repiten solos cada mes hasta que registres uno nuevo con los mismos datos (ej. cambió el monto del proveedor).</p>
@@ -245,7 +249,7 @@ const GastoZonaDetail = () => {
         <TablaGastos items={fijos} vacio="No hay gastos fijos registrados para esta zona." />
       </CardBox>
 
-      <CardBox>
+      <CardBox className="min-w-0">
         <h3 className="text-sm font-semibold mb-3">Gastos variables y otros</h3>
         <TablaGastos items={variables} vacio="No hay gastos variables registrados este mes." />
       </CardBox>

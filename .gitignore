@@ -1,7 +1,33 @@
-# Entorno
+# Entorno — ningún .env sale de esta máquina.
 .env
+.env.*
+!.env.example
+*.env
 .env.local
 .env.production
+
+# Manual privado de seguridad: explica dónde vive cada credencial.
+# Aunque no contiene secretos, es un mapa del sistema. Nunca a GitHub.
+MANUAL_PRIVADO_SEGURIDAD_WISP-ISP.md
+MANUAL_PRIVADO_*.md
+
+# Claves y certificados — nunca, bajo ningún nombre.
+*.pem
+*.key
+*.ppk
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*.kdbx
+wg*.conf
+!nginx/*.conf
+
+# Respaldos de la base de datos (llevan datos personales de los clientes).
+*.sql
+*.sql.gz
+*.dump
+backups/
 
 # Python
 __pycache__/

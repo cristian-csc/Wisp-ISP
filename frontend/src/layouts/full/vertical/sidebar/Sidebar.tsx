@@ -5,8 +5,13 @@ import FullLogo from '../../shared/logo/FullLogo';
 import { Link, useLocation } from 'react-router';
 import { useCurrentUser } from 'src/lib/useCurrentUser';
 import { puedeVer } from 'src/lib/permisos';
-import { AMLogo, AMMenu, AMMenuItem, AMSidebar, AMSubmenu } from 'tailwind-sidebar';
+import { AMMenu, AMMenuItem, AMSidebar, AMSubmenu } from 'tailwind-sidebar';
 import 'tailwind-sidebar/styles.css';
+
+/** Alto del encabezado del sidebar, en píxeles. Lo comparten la cabecera y
+ *  el alto que se le resta a la zona desplazable: si se cambia aquí, las dos
+ *  siguen cuadrando. */
+const ALTO_CABECERA = 72;
 
 interface SidebarItemType {
   heading?: string
@@ -118,27 +123,36 @@ const SidebarLayout = ({ onClose }: { onClose?: () => void }) => {
       mode={sidebarMode}
       className="fixed left-0 top-0 z-10 h-screen border-e border-sidebar-border bg-sidebar dark:border-sidebar-border dark:bg-sidebar"
     >
-      {/* Logo: compacto, para que el peso visual lo lleve la navegación.
-          El eslogan usa el color de texto del sidebar — antes era `text-dark`,
-          que sobre el sidebar oscuro quedaba invisible. */}
-      {/* Encabezado compacto: el logo manda, pero el bloque se mantiene en
-          torno a 195px para dejarle el resto de la altura a la navegación.
-          Los márgenes van al contenedor; el <AMLogo> trae relleno propio y
-          por eso el logo lleva un margen negativo arriba. */}
-      <div className="brand-logo flex flex-col items-center overflow-hidden px-6 pb-7 pt-5">
-        <AMLogo component={Link} href="/dashboard" img="">
-          <FullLogo ancho={200} className="-mb-5" />
-        </AMLogo>
-        <p className="mt-2 text-[18px] font-bold leading-none tracking-tight text-sidebar-foreground-strong">
-          WISP <span className="text-brand">Control</span>
-        </p>
-        <p className="mt-2 text-[13px] leading-none tracking-wide text-sidebar-foreground">
-          Internet para todos
-        </p>
+      {/* Encabezado en horizontal: el logo a la izquierda y la marca al lado.
+          Antes iba en columna y ocupaba ~195px de alto; así baja a ALTO_CABECERA
+          y esa diferencia se la queda la navegación, que es lo que se usa. */}
+      {/* px-6 igual que la lista de abajo, para que el logo y los iconos del
+          menú arranquen en la misma línea vertical. */}
+      <div
+        className="brand-logo flex items-center overflow-hidden border-b border-sidebar-border px-6"
+        style={{ height: ALTO_CABECERA }}
+      >
+        {/* Enlace directo en lugar de <AMLogo>: ese componente de la librería
+            impone un contenedor de 253px de ancho y 50px de alto mínimo, que
+            en una fila horizontal desborda (por eso antes hacía falta un
+            margen negativo). Va al mismo sitio y con el mismo logo. */}
+        <Link
+          to="/dashboard"
+          className="flex min-w-0 items-center gap-2.5"
+          aria-label="WISP Control — ir al inicio"
+        >
+          <FullLogo ancho={96} className="shrink-0" />
+          {/* Solo "Control": la palabra WISP ya la dice el propio logo, y
+              repetirla al lado era decir dos veces lo mismo. */}
+          <span className="truncate text-[18px] font-bold leading-none tracking-tight text-brand">
+            Control
+          </span>
+        </Link>
       </div>
 
-      {/* Sidebar items */}
-      <SimpleBar className="h-[calc(100vh-196px)]">
+      {/* Sidebar items — la altura se descuenta de la cabecera, por eso las
+          dos salen de la misma constante y no de un número suelto. */}
+      <SimpleBar style={{ height: `calc(100vh - ${ALTO_CABECERA}px)` }}>
         <div className="px-6 pb-10">
           {visibleContent.map((section, index) => (
             <div key={index}>

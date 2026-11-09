@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import CardBox from 'src/components/shared/CardBox';
+import PageHeader from 'src/components/shared/PageHeader';
+import SectionCard from 'src/components/shared/SectionCard';
+import StatCard from 'src/components/shared/StatCard';
+import EmptyState from 'src/components/shared/EmptyState';
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
-import { Badge } from 'src/components/ui/badge';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import { Textarea } from 'src/components/ui/textarea';
@@ -25,9 +28,11 @@ import {
   FormSection,
 } from 'src/components/shared/form';
 import BorneDots from 'src/components/apps/cajasnap/BorneDots';
-import RingProgress, { toneForPct } from 'src/components/apps/cajasnap/RingProgress';
+import { toneForPct } from 'src/components/apps/cajasnap/RingProgress';
 import MapaZona from 'src/components/apps/zonas/MapaZona';
 import { listUsuarios } from 'src/lib/usuarios';
+import { useCurrentUser } from 'src/lib/useCurrentUser';
+import { puedeAccion } from 'src/lib/permisos';
 import type { Usuario } from 'src/lib/api';
 import {
   getZona,
@@ -44,21 +49,19 @@ import { listMufas, createMufa, updateMufa, deleteMufa, type Mufa, type TrazadoP
 import { listCajasDeMufa } from 'src/lib/mufas';
 import { listCajasNap, createCajaNap, updateCajaNap, deleteCajaNap, type CajaNap } from 'src/lib/cajasnap';
 
-const StatTile = ({ icon, label, value, bg, text }: { icon: string; label: string; value: number; bg: string; text: string }) => (
-  <div className="flex items-center gap-3">
-    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${bg} ${text}`}>
-      <Icon icon={icon} height={20} />
-    </div>
-    <div className="min-w-0">
-      <p className="text-xl font-bold leading-tight">{value}</p>
-      <p className="text-xs text-muted-foreground truncate">{label}</p>
-    </div>
-  </div>
-);
+
+/** Iniciales para el avatar del técnico. */
+function inicialesNombre(nombre: string): string {
+  return nombre
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .join('');
+}
 
 const ZonaDetail = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [zona, setZona] = useState<Zona | null>(null);
   const [wg, setWg] = useState<WireguardStatus | null>(null);
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
@@ -103,23 +106,39 @@ const ZonaDetail = () => {
   const [editZonaIpRouter, setEditZonaIpRouter] = useState('');
   const [editZonaError, setEditZonaError] = useState<string | null>(null);
 
+  const { user } = useCurrentUser();
+  /** Atención al cliente entra a consultar cobertura: ve el mapa, las mufas y
+   *  las cajas, pero no toca infraestructura ni ve la red por dentro. */
+  const puedeGestionar = puedeAccion('zonas.gestionar', user?.rol);
+  const veRed = puedeAccion('zonas.verRed', user?.rol);
+  const puedeAsignarTecnicos = puedeAccion('zonas.asignarTecnicos', user?.rol);
+
   async function reload() {
     if (!id) return;
     const z = await getZona(Number(id));
     setZona(z);
-    setTecnicos(await listTecnicosZona(Number(id)));
+    // Los técnicos y el estado del túnel son datos de administración: a
+    // quien no puede verlos, ni se le piden (el backend respondería 403).
+    setTecnicos(veRed ? await listTecnicosZona(Number(id)).catch(() => []) : []);
     setMufas(await listMufas(Number(id)));
     setCajas(await listCajasNap(Number(id)));
-    wireguardStatus(Number(id))
-      .then(setWg)
-      .catch(() => setWg(null));
+    if (veRed) {
+      wireguardStatus(Number(id))
+        .then(setWg)
+        .catch(() => setWg(null));
+    }
   }
 
   useEffect(() => {
+    if (user === null) return;   // esperar a saber el rol antes de pedir datos
     reload();
-    listUsuarios().then((all) => setTodosTecnicos(all.filter((u) => u.rol === 'tecnico')));
+    if (puedeAsignarTecnicos) {
+      listUsuarios()
+        .then((all) => setTodosTecnicos(all.filter((u) => u.rol === 'tecnico')))
+        .catch(() => setTodosTecnicos([]));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, user?.rol]);
 
   async function handleAsignar() {
     if (!id || !seleccion) return;
@@ -369,43 +388,48 @@ const ZonaDetail = () => {
   const pctOcupacion = todosLosBornes.length > 0 ? Math.round((bornesOcupados / todosLosBornes.length) * 100) : 0;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/zonas')}>
-          <Icon icon="tabler:arrow-left" height={20} />
-        </Button>
-        <h1 className="text-2xl flex-1">{zona.nombre}</h1>
-        <Button variant="lightprimary" size="sm" onClick={handleAbrirEditarZona}>
-          <Icon icon="tabler:pencil" height={16} className="mr-1" />
-          Editar zona
-        </Button>
-      </div>
+    <div>
+      <PageHeader
+        titulo={zona.nombre}
+        descripcion={
+          veRed
+            ? 'Infraestructura de la zona: servidor, mufas, cajas NAP y técnicos.'
+            : 'Cobertura de la zona: mufas y cajas NAP sobre el mapa.'
+        }
+        icono="tabler:map-pin"
+        volver={{ a: '/zonas', texto: 'Volver a zonas' }}
+        acciones={
+          puedeGestionar ? (
+            <Button variant="lightprimary" size="sm" onClick={handleAbrirEditarZona} className="gap-1.5">
+              <Icon icon="tabler:pencil" height={16} />
+              Editar zona
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <CardBox className="p-6">
-        <h3 className="text-sm font-semibold mb-5 flex items-center gap-2">
-          <Icon icon="tabler:topology-star-3" height={18} className="text-primary" />
-          Resumen de infraestructura
-        </h3>
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-          {todosLosBornes.length > 0 && (
-            <div className="flex flex-col items-center gap-2 shrink-0">
-              <RingProgress pct={pctOcupacion} tone={toneForPct(pctOcupacion)} size="lg" />
-              <p className="text-xs text-muted-foreground text-center leading-tight">Ocupación<br />de bornes</p>
-            </div>
-          )}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-5 w-full">
-            <StatTile icon="tabler:git-merge" label="Mufas" value={totalMufas} bg="bg-info/10" text="text-info" />
-            <StatTile icon="tabler:box" label="Cajas NAP" value={totalCajas} bg="bg-primary/10" text="text-primary" />
-            <StatTile icon="tabler:circle-check" label="Bornes libres" value={bornesLibres} bg="bg-success/10" text="text-success" />
-            <StatTile icon="tabler:plug-connected" label="Ocupados" value={bornesOcupados} bg="bg-warning/10" text="text-warning" />
-            <StatTile icon="tabler:alert-triangle" label="Dañados" value={bornesDanados} bg="bg-error/10" text="text-error" />
-          </div>
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+          <StatCard
+            icono="tabler:chart-donut"
+            etiqueta="Ocupación"
+            valor={`${pctOcupacion}%`}
+            nota={`${bornesOcupados} de ${todosLosBornes.length} bornes`}
+            tono={toneForPct(pctOcupacion)}
+          />
+          <StatCard icono="tabler:git-merge" etiqueta="Mufas" valor={totalMufas} tono="info" />
+          <StatCard icono="tabler:box" etiqueta="Cajas NAP" valor={totalCajas} tono="primary" />
+          <StatCard icono="tabler:circle-check" etiqueta="Bornes libres" valor={bornesLibres} tono="success" />
+          <StatCard icono="tabler:plug-connected" etiqueta="Ocupados" valor={bornesOcupados} tono="warning" />
+          <StatCard icono="tabler:alert-triangle" etiqueta="Dañados" valor={bornesDanados} tono="error" />
         </div>
-      </CardBox>
 
-      <CardBox>
-        <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-          <h3 className="text-lg font-semibold">Mapa de Infraestructura</h3>
+        <SectionCard
+          titulo="Mapa de infraestructura"
+          icono="tabler:map-2"
+          descripcion="Servidor, mufas y cajas NAP ubicadas en el terreno."
+          extra={
+            <>
           {dibujandoTrazadoMufa ? (
             <div className="flex gap-2 items-center">
               <span className="text-xs text-muted-foreground">Dibujando trazado — {dibujandoTrazadoMufa.codigo}</span>
@@ -422,7 +446,7 @@ const ZonaDetail = () => {
               </Button>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <div className={`flex gap-2 ${puedeGestionar ? '' : 'hidden'}`}>
               <Button
                 variant={modoColocar === 'servidor' ? 'default' : 'outline'}
                 size="sm"
@@ -441,7 +465,9 @@ const ZonaDetail = () => {
               </Button>
             </div>
           )}
-        </div>
+            </>
+          }
+        >
 
         <MapaZona
           serverLat={zona.lat}
@@ -456,98 +482,166 @@ const ZonaDetail = () => {
           onAgregarPuntoTrazado={handleAgregarPuntoTrazado}
         />
 
-        <div className="mt-5">
-          {mufas.length === 0 && (
-            <p className="text-sm text-muted-foreground">Sin mufas registradas — usa "Agregar mufa" y toca el mapa donde está el empalme.</p>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mufas.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => handleVerMufa(m)}
-                className="flex items-center gap-3 rounded-lg border border-ld bg-muted/20 p-3.5 text-left hover:shadow-md hover:-translate-y-0.5 hover:border-info/40 transition-all"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-info/10 text-info font-bold text-sm">
-                  M
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate">{m.codigo}</p>
-                  <p className="text-xs text-muted-foreground">{m.total_cajas} caja{m.total_cajas === 1 ? '' : 's'} NAP</p>
-                </div>
-                <Icon icon="tabler:chevron-right" height={16} className="text-muted-foreground shrink-0" />
-              </button>
-            ))}
-          </div>
-        </div>
-      </CardBox>
+        </SectionCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <CardBox className="p-6">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <Icon icon="tabler:shield-lock" height={18} className="text-primary" />
-            Estado WireGuard
-          </h3>
-          {wg ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase">Estado</p>
-                <Badge className={`${wg.online ? 'bg-lightsuccess text-success' : 'bg-lighterror text-error'} mt-1`}>
-                  {wg.status}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase">IP</p>
-                <p className="text-sm mt-1">{wg.ip}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase">Peer WG</p>
-                <p className="text-sm mt-1">{wg.wg_peer_online ? 'En línea' : 'Sin handshake reciente'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase">Último handshake</p>
-                <p className="text-sm mt-1">{wg.last_handshake}</p>
-              </div>
-            </div>
+        <SectionCard
+          titulo="Mufas de la zona"
+          icono="tabler:git-merge"
+          descripcion={`${totalMufas} mufa${totalMufas === 1 ? '' : 's'} · ${totalCajas} caja${totalCajas === 1 ? '' : 's'} NAP`}
+        >
+          {mufas.length === 0 ? (
+            <EmptyState
+              icono="tabler:git-merge"
+              titulo="Sin mufas registradas"
+              descripcion='Usa "Agregar mufa" y toca el mapa donde está el empalme.'
+            />
           ) : (
-            <p className="text-sm text-muted-foreground">No se pudo consultar el estado (¿el backend tiene acceso a WireGuard?).</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {mufas.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => handleVerMufa(m)}
+                  className="transition-ui flex items-center gap-3 rounded-xl border border-ld bg-surface-2 p-3.5 text-left hover:border-info/45 hover:shadow-md"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-lightinfo text-sm font-bold text-info-text">
+                    M
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{m.codigo}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {m.total_cajas} caja{m.total_cajas === 1 ? '' : 's'} NAP
+                    </span>
+                  </span>
+                  <Icon icon="tabler:chevron-right" height={16} className="shrink-0 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
           )}
-        </CardBox>
+        </SectionCard>
 
-        <CardBox className="p-6">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <Icon icon="tabler:users" height={18} className="text-primary" />
-            Técnicos asignados
-          </h3>
-          <div className="flex flex-col gap-1.5 mb-4">
-            {tecnicos.length === 0 && <p className="text-sm text-muted-foreground">Sin técnicos asignados todavía.</p>}
-            {tecnicos.map((t) => (
-              <div key={t.id} className="flex items-center justify-between rounded-lg border border-ld bg-muted/20 px-3 py-2">
-                <span className="text-sm truncate">{t.nombre} <span className="text-xs text-muted-foreground">— {t.email}</span></span>
-                <Button variant="ghost" size="icon" onClick={() => handleQuitar(t.id)} className="shrink-0 h-7 w-7">
-                  <Icon icon="tabler:x" height={14} className="text-error" />
-                </Button>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          {veRed && (
+          <SectionCard
+            titulo="Estado WireGuard"
+            icono="tabler:shield-lock"
+            descripcion="Túnel entre el servidor central y el router de la zona."
+            extra={
+              wg && (
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                    wg.online ? 'bg-lightsuccess text-success-text' : 'bg-lighterror text-error-text'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${wg.online ? 'animate-pulse bg-success' : 'bg-error'}`}
+                  />
+                  {wg.status}
+                </span>
+              )
+            }
+          >
+            {wg ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-ld bg-surface-2 px-3.5 py-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    IP del router
+                  </p>
+                  <p className="mt-0.5 font-mono text-sm">{wg.ip}</p>
+                </div>
+                <div className="rounded-xl border border-ld bg-surface-2 px-3.5 py-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Peer WireGuard
+                  </p>
+                  <p
+                    className={`mt-0.5 text-sm font-medium ${wg.wg_peer_online ? 'text-success-text' : 'text-muted-foreground'}`}
+                  >
+                    {wg.wg_peer_online ? 'En línea' : 'Sin handshake reciente'}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-ld bg-surface-2 px-3.5 py-2.5 sm:col-span-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Último handshake
+                  </p>
+                  <p className="mt-0.5 text-sm">{wg.last_handshake}</p>
+                </div>
               </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Select value={seleccion} onValueChange={setSeleccion}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecciona un técnico" />
-              </SelectTrigger>
-              <SelectContent>
-                {disponibles.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleAsignar} disabled={!seleccion}>
-              Asignar
-            </Button>
-          </div>
-        </CardBox>
+            ) : (
+              <EmptyState
+                icono="tabler:plug-connected-x"
+                titulo="No se pudo consultar el estado"
+                descripcion="¿El backend tiene acceso a WireGuard?"
+              />
+            )}
+          </SectionCard>
+          )}
+
+          {/* La lista lleva el teléfono y el DNI del técnico: es dato
+              personal del trabajador, solo para administración. */}
+          {veRed && (
+          <SectionCard
+            titulo="Técnicos asignados"
+            icono="tabler:users"
+            descripcion={`${tecnicos.length} técnico${tecnicos.length === 1 ? '' : 's'} atendiendo esta zona`}
+          >
+            <div className="flex flex-col gap-2.5">
+              {tecnicos.length === 0 ? (
+                <EmptyState
+                  icono="tabler:user-off"
+                  titulo="Sin técnicos asignados"
+                  descripcion="Elige uno abajo para que pueda atender instalaciones y averías de esta zona."
+                />
+              ) : (
+                tecnicos.map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-ld bg-surface-2 px-3.5 py-2.5"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lightprimary text-[11px] font-bold text-primary-text">
+                        {inicialesNombre(t.nombre)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{t.nombre}</p>
+                        <p className="truncate text-xs text-muted-foreground">{t.email}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleQuitar(t.id)}
+                      title="Quitar de la zona"
+                      aria-label={`Quitar a ${t.nombre} de la zona`}
+                      className="size-8 shrink-0"
+                    >
+                      <Icon icon="tabler:x" height={15} className="text-error" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Select value={seleccion} onValueChange={setSeleccion}>
+                <SelectTrigger className="min-w-48 flex-1">
+                  <SelectValue placeholder="Selecciona un técnico" />
+                </SelectTrigger>
+                <SelectContent>
+                  {disponibles.map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={handleAsignar} disabled={!seleccion} className="gap-1.5">
+                <Icon icon="tabler:user-plus" height={16} />
+                Asignar
+              </Button>
+            </div>
+          </SectionCard>
+          )}
+        </div>
       </div>
 
       {/* Diálogo: crear mufa tras hacer click en el mapa */}

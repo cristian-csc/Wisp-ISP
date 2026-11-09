@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract, or_
 from typing import Optional
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import calendar
 import threading
 import httpx
@@ -14,11 +14,12 @@ import logging
 
 from ..database import get_db
 from .. import models, schemas
-from .auth import get_current_user
+from .auth import get_current_user, require_roles
 from ..config import settings
 from ..billing import monto_mensual, detalle_monto
 from ..recibos import DatosRecibo, LineaRecibo, etiqueta_mes, generar_recibo_pdf
-from ..mensajeria import enviar_archivo, enviar_texto
+from ..mensajeria import enviar_archivo, enviar_texto, oculta
+from .. import reportes
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +215,7 @@ def _enviar_confirmacion_pago(cliente: models.Cliente, datos: DatosRecibo, pdf: 
         return
 
     mensaje = _mensaje_confirmacion_pago(cliente, datos)
-    logger.info("WhatsApp recibo %d: enviando a %s (cliente %d)", datos.numero, phone, cliente.id)
+    logger.info("WhatsApp recibo %d: enviando a %s (cliente %d)", datos.numero, oculta(phone), cliente.id)
 
     def _enviar():
         ok, detalle = _enviar_recibo_whatsapp(phone, mensaje, pdf, datos.numero)
@@ -229,19 +230,25 @@ def _enviar_confirmacion_pago(cliente: models.Cliente, datos: DatosRecibo, pdf: 
 router = APIRouter()
 
 
-@router.get("", response_model=dict)
-def list_pagos(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+def _consulta_pagos(
+    db: Session,
     cliente_id: Optional[int] = None,
     mes: Optional[str] = None,
     estado: Optional[str] = None,
     search: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    con_zona: bool = False,
 ):
+    """Los filtros de la lista de pagos, en un solo sitio.
+
+    La usan la tabla de la pantalla y el reporte que se descarga, así lo que
+    sale en el archivo es exactamente lo que el usuario está viendo. `con_zona`
+    trae además la zona del cliente, que solo necesita el reporte.
+    """
+    carga_cliente = joinedload(models.Pago.cliente)
+    if con_zona:
+        carga_cliente = carga_cliente.joinedload(models.Cliente.zona)
     query = db.query(models.Pago).options(
-        joinedload(models.Pago.cliente),
+        carga_cliente,
         joinedload(models.Pago.registrador),
     )
 
@@ -262,7 +269,21 @@ def list_pagos(
             )
         )
 
-    query = query.order_by(models.Pago.fecha_pago.desc())
+    return query.order_by(models.Pago.fecha_pago.desc())
+
+
+@router.get("", response_model=dict)
+def list_pagos(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    cliente_id: Optional[int] = None,
+    mes: Optional[str] = None,
+    estado: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+):
+    query = _consulta_pagos(db, cliente_id, mes, estado, search)
     total = query.count()
     pagos = query.offset((page - 1) * per_page).limit(per_page).all()
 
@@ -279,7 +300,7 @@ def list_pagos(
 def create_pago(
     data: schemas.PagoCreate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == data.cliente_id).first()
     if not cliente:
@@ -439,7 +460,7 @@ def subir_comprobante_pago(
     pago_id: int,
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     pago = db.query(models.Pago).options(joinedload(models.Pago.cliente)).filter(models.Pago.id == pago_id).first()
     if not pago:
@@ -467,7 +488,7 @@ def subir_comprobante_pago(
 def descargar_comprobante_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     pago = db.query(models.Pago).filter(models.Pago.id == pago_id).first()
     if not pago or not pago.ruta_comprobante or not os.path.isfile(pago.ruta_comprobante):
@@ -479,7 +500,7 @@ def descargar_comprobante_pago(
 def reenviar_confirmacion_whatsapp(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     """Reenvía manualmente la confirmación de pago por WhatsApp — a pedido,
     a diferencia del envío automático al registrar el pago (ej. si el bot
@@ -516,7 +537,7 @@ def reenviar_confirmacion_whatsapp(
 def recibo_pdf(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     """El recibo del pago en PDF, con el formato de ticket de la empresa. Si el
     pago es parte de un cobro adelantado, sale un solo recibo con todos los
@@ -540,7 +561,7 @@ def recibo_pdf(
 def resumen_mensual(
     anio: int = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
 ):
     if not anio:
         anio = date.today().year
@@ -567,16 +588,13 @@ def resumen_mensual(
     return result
 
 
-@router.get("/reporte-caja")
-def reporte_caja(
-    fecha: date = Query(default=None),
-    zona_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
-):
+def _datos_caja(db: Session, fecha: Optional[date], zona_id: Optional[int]) -> dict:
     """Corte de caja del día: cuánto entró, por qué método (para saber qué
     hay que cuadrar en efectivo vs. lo digital) y quién lo cobró — clave
-    para que atención al cliente rinda cuentas al final del turno."""
+    para que atención al cliente rinda cuentas al final del turno.
+
+    Lo usan el endpoint que alimenta la pantalla y el que arma el archivo
+    descargable, para que los dos digan lo mismo."""
     if not fecha:
         fecha = date.today()
 
@@ -634,12 +652,17 @@ def reporte_caja(
     }
 
 
-@router.get("/reporte-mensual-zonas")
-def reporte_mensual_zonas(
-    mes: Optional[str] = Query(None, description="YYYY-MM — por defecto, el mes actual"),
+@router.get("/reporte-caja")
+def reporte_caja(
+    fecha: date = Query(default=None),
+    zona_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
 ):
+    return _datos_caja(db, fecha, zona_id)
+
+
+def _datos_zonas(db: Session, mes: Optional[str]) -> list[dict]:
     """Cuánto se recaudó ese mes en cada zona — para comparar de un vistazo
     qué zonas rinden más."""
     if not mes:
@@ -674,10 +697,19 @@ def reporte_mensual_zonas(
     return result
 
 
+@router.get("/reporte-mensual-zonas")
+def reporte_mensual_zonas(
+    mes: Optional[str] = Query(None, description="YYYY-MM — por defecto, el mes actual"),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+):
+    return _datos_zonas(db, mes)
+
+
 @router.get("/clientes-sin-pago")
 def clientes_sin_pago(
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     """Clientes activos cuyo propio ciclo de pago (fecha_vencimiento) ya
     llegó o ya pasó — no usa el mes calendario: un cliente que vence el 29
@@ -706,7 +738,7 @@ def clientes_sin_pago(
 @router.get("/clientes-cortados")
 def clientes_cortados(
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     """Clientes con el servicio cortado (suspendido), más recientes primero —
     para encontrar rápido a quien quiere pagar y reactivar. No tiene límite
@@ -732,7 +764,7 @@ def clientes_cortados(
 @router.get("/pausas-por-vencer")
 def pausas_por_vencer(
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     """Clientes en pausa temporal (a su propia solicitud) cuyo plazo ya
     venció o está por vencer en los próximos 7 días — para saber a quién
@@ -754,11 +786,243 @@ def pausas_por_vencer(
     return items
 
 
+# ── Reportes descargables ────────────────────────────────────────────────────
+# Estas rutas van antes de "/{pago_id}": si estuvieran después, FastAPI
+# intentaría leer "exportar" como el número de un pago.
+
+def _respuesta_reporte(r: reportes.Reporte, formato: str) -> Response:
+    if formato not in ("excel", "pdf"):
+        raise HTTPException(status_code=400, detail="Formato no válido: use 'excel' o 'pdf'.")
+    contenido, nombre, tipo = reportes.generar(r, formato)
+    return Response(
+        content=contenido,
+        media_type=tipo,
+        headers={
+            "Content-Disposition": f'attachment; filename="{nombre}"',
+            # Sin esto el navegador no deja leer el nombre del archivo.
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+
+
+def _texto_estado(estado) -> str:
+    bruto = estado.value if hasattr(estado, "value") else str(estado or "")
+    return reportes.ESTADO_LABEL.get(bruto, bruto)
+
+
+def _numeros_de_recibo(db: Session, pagos: list[models.Pago]) -> dict[int, int]:
+    """El número de recibo que le corresponde a cada pago.
+
+    Un adelanto de varios meses son varias filas en la base, pero un solo
+    recibo: el del primer mes cobrado. Así el número del reporte coincide con
+    el papel que tiene el cliente en la mano.
+    """
+    grupos = {p.grupo_adelanto for p in pagos if p.grupo_adelanto}
+    primero: dict[str, int] = {}
+    if grupos:
+        filas = (
+            db.query(models.Pago.grupo_adelanto, func.min(models.Pago.id))
+            .filter(models.Pago.grupo_adelanto.in_(grupos))
+            .group_by(models.Pago.grupo_adelanto)
+            .all()
+        )
+        primero = {g: int(n) for g, n in filas}
+    return {p.id: primero.get(p.grupo_adelanto or "", p.id) for p in pagos}
+
+
+@router.get("/exportar")
+def exportar_pagos(
+    formato: str = Query("excel", description="excel | pdf"),
+    cliente_id: Optional[int] = None,
+    mes: Optional[str] = None,
+    estado: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+):
+    """La lista de pagos con los mismos filtros de la pantalla, pero completa
+    (sin paginar) y lista para descargar en Excel o PDF."""
+    pagos = _consulta_pagos(db, cliente_id, mes, estado, search, con_zona=True).all()
+    numero = _numeros_de_recibo(db, pagos)
+
+    filas = [
+        [
+            numero.get(p.id, p.id),
+            p.fecha_pago,
+            p.cliente.nombre if p.cliente else f"#{p.cliente_id}",
+            (p.cliente.dni if p.cliente else "") or "",
+            (p.cliente.zona.nombre if p.cliente and p.cliente.zona else "") or "",
+            reportes.etiqueta_mes(p.mes_pagado),
+            round(p.monto, 2),
+            round(p.descuento, 2) if p.descuento else None,
+            reportes.METODO_LABEL.get(p.metodo_pago, (p.metodo_pago or "").capitalize()),
+            p.numero_operacion or "",
+            _texto_estado(p.estado),
+            p.registrador.nombre if p.registrador else "",
+        ]
+        for p in pagos
+    ]
+
+    total = round(sum(p.monto for p in pagos), 2)
+    descuentos = round(sum(p.descuento or 0 for p in pagos), 2)
+
+    filtros = [f"Mes: {reportes.etiqueta_mes(mes)}" if mes else "Mes: todos"]
+    filtros.append(f"Estado: {_texto_estado(estado) if estado else 'todos'}")
+    archivo = "reporte-pagos"
+    if cliente_id:
+        nombre_cliente = next((p.cliente.nombre for p in pagos if p.cliente), f"#{cliente_id}")
+        filtros.append(f"Cliente: {nombre_cliente}")
+        # El archivo lleva el nombre del cliente: así no se confunden varios
+        # estados de cuenta en la carpeta de descargas.
+        archivo = f"pagos-{reportes.parte_de_nombre(nombre_cliente)}"
+    if search:
+        filtros.append(f"Búsqueda: «{search}»")
+
+    reporte = reportes.Reporte(
+        titulo="Reporte de pagos",
+        archivo=archivo,
+        subtitulo=f"{len(pagos)} pago(s) · S/ {total:,.2f} recaudado",
+        filtros=filtros,
+        generado_por=current_user.nombre,
+        columnas=[
+            reportes.Columna("Recibo N°", "entero", 0.6),
+            reportes.Columna("Fecha", "fecha", 0.85),
+            reportes.Columna("Cliente", "texto", 2.0),
+            reportes.Columna("DNI / RUC", "texto", 0.9),
+            reportes.Columna("Zona", "texto", 1.0),
+            reportes.Columna("Mes pagado", "texto", 1.05),
+            reportes.Columna("Monto", "dinero", 0.9),
+            reportes.Columna("Descuento", "dinero", 0.85),
+            reportes.Columna("Método", "texto", 0.95),
+            reportes.Columna("N° operación", "texto", 1.0),
+            reportes.Columna("Estado", "texto", 0.85),
+            reportes.Columna("Cobrado por", "texto", 1.25),
+        ],
+        filas=filas,
+        totales=[
+            "", "", f"{len(pagos)} pago(s)", "", "", "TOTAL",
+            total, descuentos or None, "", "", "", "",
+        ],
+    )
+    return _respuesta_reporte(reporte, formato)
+
+
+@router.get("/reporte-caja/exportar")
+def exportar_reporte_caja(
+    formato: str = Query("excel", description="excel | pdf"),
+    fecha: date = Query(default=None),
+    zona_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+):
+    """El corte de caja del día, para imprimirlo o archivarlo al cerrar turno."""
+    datos = _datos_caja(db, fecha, zona_id)
+    zona = db.get(models.Zona, zona_id) if zona_id else None
+
+    def hora(valor: Optional[str]) -> str:
+        if not valor:
+            return ""
+        try:
+            return datetime.fromisoformat(valor).strftime("%H:%M")
+        except ValueError:
+            return valor
+
+    def importe(total: float, cantidad: int) -> str:
+        return f"S/ {total:,.2f}  ({cantidad} pago{'' if cantidad == 1 else 's'})"
+
+    bloques = [
+        reportes.Bloque(
+            "Por método de pago",
+            [
+                (reportes.METODO_LABEL.get(m["metodo"], str(m["metodo"]).capitalize()),
+                 importe(m["total"], m["cantidad"]))
+                for m in datos["por_metodo"]
+            ],
+        ),
+        reportes.Bloque(
+            "Quién cobró",
+            [(u["nombre"], importe(u["total"], u["cantidad"])) for u in datos["por_usuario"]],
+        ),
+    ]
+
+    reporte = reportes.Reporte(
+        titulo="Corte de caja del día",
+        archivo=f"corte-caja-{datos['fecha']}",
+        fechar=False,
+        subtitulo=f"{datos['cantidad_pagos']} pago(s) · S/ {datos['total']:,.2f} recaudado",
+        filtros=[
+            f"Fecha: {datetime.fromisoformat(datos['fecha']).strftime('%d/%m/%Y')}",
+            f"Zona: {zona.nombre if zona else 'todas'}",
+        ],
+        generado_por=current_user.nombre,
+        bloques=bloques,
+        columnas=[
+            reportes.Columna("Hora", "texto", 0.6),
+            reportes.Columna("Cliente", "texto", 2.1),
+            reportes.Columna("Zona", "texto", 1.1),
+            reportes.Columna("Método", "texto", 1.0),
+            reportes.Columna("Monto", "dinero", 0.95),
+            reportes.Columna("Cobrado por", "texto", 1.4),
+        ],
+        filas=[
+            [
+                hora(p["hora"]),
+                p["cliente_nombre"] or f"#{p['cliente_id']}",
+                p["zona_nombre"] or "",
+                reportes.METODO_LABEL.get(p["metodo_pago"], str(p["metodo_pago"]).capitalize()),
+                round(p["monto"], 2),
+                p["registrado_por"] or "",
+            ]
+            for p in datos["pagos"]
+        ],
+        totales=["", f"{datos['cantidad_pagos']} pago(s)", "", "TOTAL", datos["total"], ""],
+    )
+    return _respuesta_reporte(reporte, formato)
+
+
+@router.get("/reporte-mensual-zonas/exportar")
+def exportar_reporte_zonas(
+    formato: str = Query("excel", description="excel | pdf"),
+    mes: Optional[str] = Query(None, description="YYYY-MM — por defecto, el mes actual"),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+):
+    """Lo recaudado en el mes, zona por zona."""
+    if not mes:
+        hoy = date.today()
+        mes = f"{hoy.year}-{hoy.month:02d}"
+    datos = _datos_zonas(db, mes)
+
+    total = round(sum(z["total"] for z in datos), 2)
+    pagos = sum(z["cantidad_pagos"] for z in datos)
+    clientes = sum(z["clientes_distintos"] for z in datos)
+
+    reporte = reportes.Reporte(
+        titulo="Recaudación mensual por zona",
+        archivo=f"recaudacion-por-zona-{mes}",
+        fechar=False,
+        subtitulo=f"{reportes.etiqueta_mes(mes)} · S/ {total:,.2f} recaudado",
+        generado_por=current_user.nombre,
+        columnas=[
+            reportes.Columna("Zona", "texto", 2.2),
+            reportes.Columna("Pagos", "entero", 0.8),
+            reportes.Columna("Clientes", "entero", 0.9),
+            reportes.Columna("Recaudado", "dinero", 1.1),
+        ],
+        filas=[
+            [z["zona_nombre"], z["cantidad_pagos"], z["clientes_distintos"], z["total"]]
+            for z in datos
+        ],
+        totales=["TOTAL", pagos, clientes, total],
+    )
+    return _respuesta_reporte(reporte, formato)
+
+
 @router.get("/{pago_id}", response_model=schemas.PagoOut)
 def get_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     pago = db.query(models.Pago).options(
         joinedload(models.Pago.cliente), joinedload(models.Pago.registrador),
@@ -788,7 +1052,7 @@ def get_pago(
 def delete_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
 ):
     pago = db.query(models.Pago).filter(models.Pago.id == pago_id).first()
     if not pago:

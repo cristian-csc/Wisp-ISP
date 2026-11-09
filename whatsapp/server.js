@@ -8,7 +8,39 @@ const app = express()
 app.use(express.json({ limit: '25mb' }))
 
 const PORT = process.env.PORT || 3001
+// Por defecto escucha SOLO en la propia máquina. Antes escuchaba en todas las
+// interfaces: en un servidor con IP pública eso dejaba /qr y /send al alcance
+// de cualquiera en internet, es decir, el WhatsApp de la empresa en manos
+// ajenas. Si algún día el bot debe vivir en otro equipo, se cambia con BIND_HOST
+// y se protege con cortafuegos además del token.
+const BIND_HOST = process.env.BIND_HOST || '127.0.0.1'
 const CHROMIUM = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium'
+
+// Clave compartida con el backend. Si está definida, toda petición debe
+// traerla en la cabecera X-API-Token. Se deja opcional para no romper una
+// instalación existente al actualizar, pero el arranque avisa si falta.
+const API_TOKEN = (process.env.WHATSAPP_API_TOKEN || '').trim()
+
+/** Comparación en tiempo constante: evita adivinar el token midiendo cuánto
+ *  tarda la respuesta en fallar. */
+function tokenValido(recibido) {
+  const a = Buffer.from(String(recibido || ''))
+  const b = Buffer.from(API_TOKEN)
+  if (a.length !== b.length) return false
+  return require('crypto').timingSafeEqual(a, b)
+}
+
+app.use((req, res, next) => {
+  if (!API_TOKEN) return next()
+  if (req.path === '/salud') return next()
+  if (!tokenValido(req.get('X-API-Token'))) {
+    return res.status(401).json({ error: 'No autorizado' })
+  }
+  next()
+})
+
+// Sonda para saber si el servicio está vivo sin revelar nada.
+app.get('/salud', (req, res) => res.json({ ok: true }))
 
 let qrDataUrl = null
 let isConnected = false
@@ -197,7 +229,15 @@ app.post('/send-file', async (req, res) => {
   }
 })
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`WhatsApp API en puerto ${PORT}`)
+app.listen(PORT, BIND_HOST, () => {
+  console.log(`WhatsApp API escuchando en ${BIND_HOST}:${PORT}`)
+  if (!API_TOKEN) {
+    console.warn(
+      '  AVISO DE SEGURIDAD: WHATSAPP_API_TOKEN no está definido.\n' +
+      '  Sin token, cualquiera que alcance este puerto puede pedir el QR de\n' +
+      '  vinculación y enviar mensajes como la empresa. Defínelo en el .env\n' +
+      '  (el mismo valor en el backend) antes de publicar el sistema.'
+    )
+  }
   initClient()
 })

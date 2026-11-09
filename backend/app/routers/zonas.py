@@ -152,23 +152,36 @@ def wg_remove_peer(pubkey: str) -> dict:
     return {"ok": True}
 
 
-def _zona_to_dict(zona, db: Session) -> dict:
+# Roles que pueden ver la red por dentro (túnel, router, direcciones IP).
+# Atención al cliente, técnicos y vendedoras entran a Zonas para consultar
+# cobertura: no necesitan —ni deben recibir— la configuración de la red.
+_ROLES_VEN_RED = (
+    models.RolUsuario.super_admin,
+    models.RolUsuario.admin,
+    models.RolUsuario.subadmin,
+)
+
+
+def _ve_la_red(usuario: Optional[models.Usuario]) -> bool:
+    return bool(usuario) and usuario.rol in _ROLES_VEN_RED
+
+
+def _zona_to_dict(zona, db: Session, usuario: Optional[models.Usuario] = None) -> dict:
+    """La zona tal como la ve `usuario`.
+
+    Los campos de red solo se incluyen para los roles que los administran. No
+    basta con esconderlos en la pantalla: si viajan en la respuesta, quedan al
+    alcance de cualquiera que mire las peticiones del navegador.
+    """
     total = db.query(models.Cliente).filter(models.Cliente.zona_id == zona.id).count()
     activos = db.query(models.Cliente).filter(
         models.Cliente.zona_id == zona.id,
         models.Cliente.estado == models.EstadoCliente.activo,
     ).count()
 
-    return {
+    datos = {
         "id": zona.id,
         "nombre": zona.nombre,
-        "ip_wireguard": zona.ip_wireguard,
-        "ip_lan": zona.ip_lan,
-        "usuario_mikrotik": zona.usuario_mikrotik,
-        "password_mikrotik": zona.password_mikrotik,
-        "wg_public_key": zona.wg_public_key,
-        "router_mikrotik": zona.router_mikrotik,
-        "ip_router": zona.ip_router,
         "lat": zona.lat,
         "lng": zona.lng,
         "descripcion": zona.descripcion,
@@ -177,6 +190,24 @@ def _zona_to_dict(zona, db: Session) -> dict:
         "total_clientes": total,
         "clientes_activos": activos,
     }
+    if not _ve_la_red(usuario):
+        return datos
+
+    datos.update({
+        "ip_wireguard": zona.ip_wireguard,
+        "ip_lan": zona.ip_lan,
+        "usuario_mikrotik": zona.usuario_mikrotik,
+        # La contraseña del router NO sale de aquí. Se guarda y se usa en el
+        # servidor; si viajara en la respuesta quedaría en el navegador de
+        # cualquiera que abra la lista de zonas. El panel solo la escribe.
+        # Se informa si está puesta o no, que es lo único que la pantalla
+        # necesita saber para decir "configurada".
+        "tiene_password_mikrotik": bool(zona.password_mikrotik),
+        "wg_public_key": zona.wg_public_key,
+        "router_mikrotik": zona.router_mikrotik,
+        "ip_router": zona.ip_router,
+    })
+    return datos
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -187,7 +218,7 @@ def list_zonas(
     current_user: models.Usuario = Depends(get_current_user),
 ):
     zonas = db.query(models.Zona).filter(models.Zona.activo == True).all()
-    return [_zona_to_dict(z, db) for z in zonas]
+    return [_zona_to_dict(z, db, current_user) for z in zonas]
 
 
 @router.post("", response_model=schemas.ZonaOut, status_code=201)
@@ -233,7 +264,7 @@ def get_zona(
     zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
     if not zona:
         raise HTTPException(status_code=404, detail="Zona no encontrada")
-    return _zona_to_dict(zona, db)
+    return _zona_to_dict(zona, db, current_user)
 
 
 @router.put("/{zona_id}")
@@ -276,7 +307,7 @@ def update_zona_datos(
         setattr(zona, k, v)
     db.commit()
     db.refresh(zona)
-    return _zona_to_dict(zona, db)
+    return _zona_to_dict(zona, db, current_user)
 
 
 @router.delete("/{zona_id}")
@@ -302,7 +333,7 @@ def delete_zona(
 def wireguard_status(
     zona_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
 ):
     zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
     if not zona:
@@ -405,7 +436,7 @@ def remove_wg_peer(
 
 @router.get("/{zona_id}/wireguard/peers-activos")
 def wg_peers_activos(
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
 ):
     """Lista todos los peers activos en wg0 con su estado."""
     return {"peers": wg_show_dump(), "vps_pubkey": settings.VPS_WG_PUBKEY}
@@ -484,8 +515,12 @@ def exec_terminal(
 def list_tecnicos_zona(
     zona_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(
+        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+    ),
 ):
+    """Quién atiende la zona. Solo administración: la ficha de un técnico
+    lleva su teléfono, DNI y dirección, que es dato personal del trabajador."""
     tecnico_ids = [
         tz.tecnico_id for tz in
         db.query(models.TecnicoZona).filter(models.TecnicoZona.zona_id == zona_id).all()

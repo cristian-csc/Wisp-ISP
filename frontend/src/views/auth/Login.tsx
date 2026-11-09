@@ -7,7 +7,7 @@ import { ROL_LABEL } from 'src/lib/permisos';
 
 /**
  * Login administrativo, portado desde el modal de la web pública
- * (`TUX-ISP/web/`) conservando su diseño exacto: mismos colores, tamaños,
+ * (la carpeta `web/` del proyecto) conservando su diseño exacto: mismos colores, tamaños,
  * degradados, resplandor naranja y animación de entrada.
  *
  * Los colores van escritos a mano a propósito: esta pantalla es SIEMPRE oscura

@@ -14,6 +14,7 @@ from ..database import get_db
 from .. import models, schemas
 from .auth import get_current_user, get_password_hash, require_roles, zonas_asignadas
 from ..config import settings
+from ..mensajeria import cabeceras_bot
 from ..billing import monto_mensual, detalle_monto
 from .whatsapp import wa_request
 
@@ -102,7 +103,9 @@ def _ultimos_n_meses(n: int) -> list[str]:
 def _wa_send(phone: str, message: str):
     try:
         with httpx.Client(timeout=8) as c:
-            c.post(f"{settings.WHATSAPP_API_URL}/send", json={"phone": phone, "message": message})
+            c.post(f"{settings.WHATSAPP_API_URL}/send",
+                   json={"phone": phone, "message": message},
+                   headers=cabeceras_bot())
     except Exception as e:
         logger.warning("WhatsApp send falló: %s", e)
 
@@ -270,7 +273,7 @@ def list_clientes(
 def create_cliente(
     data: schemas.ClienteCreate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda, models.RolUsuario.vendedor_campo, models.RolUsuario.tecnico)),
 ):
     if db.query(models.Cliente).filter(models.Cliente.dni == data.dni).first():
         raise HTTPException(
@@ -750,7 +753,7 @@ def update_cliente(
     cliente_id: int,
     data: schemas.ClienteUpdate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -911,7 +914,7 @@ def cortar_cliente(db: Session, cliente: models.Cliente, motivo: str, usuario_id
 def cortar_servicio(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -934,7 +937,7 @@ def pausar_servicio(
     cliente_id: int,
     data: schemas.ClientePausarRequest,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     """Pausa temporal pedida por el propio cliente (ej. viaje) — distinta de
     un corte por falta de pago: no es morosidad, así que no debe aparecer en
@@ -997,7 +1000,7 @@ def pausar_servicio(
 def reactivar_servicio(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -1074,7 +1077,7 @@ def dar_compromiso_pago(
     cliente_id: int,
     data: schemas.CompromisoPagoRequest,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
 ):
     """El cliente pidió plazo ('espérame hasta el 25'). Mientras el compromiso
     esté vigente, el job de corte automático lo saltea. Si ya estaba cortado,

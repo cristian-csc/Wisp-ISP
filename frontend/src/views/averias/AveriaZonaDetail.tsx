@@ -346,7 +346,7 @@ const AveriaZonaDetail = () => {
           <h1 className="text-2xl truncate">{zona?.nombre ?? 'Cargando…'}</h1>
           <p className="text-sm text-muted-foreground">Averías de esta zona</p>
         </div>
-        <div className="flex gap-2 ml-auto">
+        <div className="ml-auto flex flex-wrap justify-end gap-2">
           {puedeReportarPlanta && (
             <Button variant="outline" onClick={() => setOpenPlanta(true)}>
               <Icon icon="tabler:antenna" height={16} className="mr-1" />

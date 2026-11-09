@@ -237,7 +237,7 @@ const ClienteListing = ({ filter, currentUser, tipo }: Props) => {
                 if (page !== 1) setPage(1);
                 else reload();
               }}
-              placeholder="Buscar por nombre, DNI, usuario PPPoE…"
+              placeholder="Buscar por nombre, DNI o PPPoE y pulsa Enter"
             />
           </div>
         </div>
