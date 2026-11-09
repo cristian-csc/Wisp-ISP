@@ -13,7 +13,7 @@
 services:
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: tuxtell_cloudflared
+    container_name: wisp_cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:

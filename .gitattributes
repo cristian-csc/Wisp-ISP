@@ -1,0 +1,12 @@
+# Finales de línea.
+#
+# Estos archivos se ejecutan o se interpretan DENTRO de contenedores Linux.
+# Si Git los entrega con finales de línea de Windows (CRLF), fallan de formas
+# muy confusas: un script con "#!/bin/sh" seguido de CR hace que Linux busque
+# un programa llamado "/bin/sh\r" y responda "no such file or directory", y
+# Nginx se queja de directivas desconocidas. Por eso aquí se fuerza LF,
+# independientemente del sistema donde se edite el proyecto.
+*.sh        text eol=lf
+*.conf      text eol=lf
+Dockerfile  text eol=lf
+*.ini       text eol=lf

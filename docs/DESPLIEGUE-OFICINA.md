@@ -3,13 +3,15 @@
 Guía para poner **WISP-ISP** a funcionar en una PC propia, publicado en internet
 con el dominio de Cloudflare, sin abrir puertos del router y sin IP pública.
 
-> **Sobre los nombres `tuxtell_*` que verás más abajo.** El proyecto pasó a
-> llamarse WISP-ISP, pero los nombres de los contenedores, de la base de datos,
-> del volumen de Docker y de las carpetas `/opt/tuxtell-isp/...` se dejaron
-> igual **a propósito**: son identificadores con los que ya hay datos guardados.
-> Cambiarlos haría que Docker creara una base vacía y pareciera que se perdió
-> todo. Si algún día se quieren renombrar, hay un procedimiento con respaldo
-> en `MANUAL_PRIVADO_SEGURIDAD_WISP-ISP.md`.
+> **Sobre los nombres.** En una instalación **nueva** todo se llama `wisp`:
+> los contenedores (`wisp_postgres`, `wisp_backend`…), las carpetas de datos
+> en `/opt/wisp-isp/` y la base. En la instalación que ya está en producción
+> siguen diciendo `tuxtell` **a propósito**, porque son identificadores con los
+> que ya hay datos guardados y renombrarlos haría que Docker creara una base
+> vacía. Dos excepciones que **no** se renombran nunca: `SSH_USER` y
+> `SSH_KEY_PATH`, porque el usuario y la llave viven dentro de los MikroTik,
+> no aquí. Procedimiento con respaldo para renombrar una instalación con datos:
+> `MANUAL_PRIVADO_SEGURIDAD_WISP-ISP.md`.
 
 **Hardware de referencia:** AMD A8-7600 (4 núcleos), 4 GB RAM, 450 GB disco.
 Suficiente: el sistema completo consume entre 1.3 y 1.8 GB en reposo.
@@ -95,15 +97,18 @@ docker --version && docker compose version
 ## 5. Copiar el proyecto y configurarlo
 
 ```bash
-sudo mkdir -p /opt/tuxtell-isp/backups /opt/tuxtell-isp/media
-sudo chown -R $USER:$USER /opt/tuxtell-isp
+sudo mkdir -p /opt/wisp-isp/backups /opt/wisp-isp/media
+sudo chown -R $USER:$USER /opt/wisp-isp
 ```
 
-Copia la carpeta `TUX-ISP` a la PC (por ejemplo a `~/TUX-ISP`) y crea el `.env`:
+Clona el repositorio y crea el `.env`:
 
 ```bash
-cd ~/TUX-ISP
+cd ~
+git clone https://github.com/cristian-csc/Wisp-ISP.git
+cd Wisp-ISP
 cp .env.example .env
+chmod 600 .env
 nano .env
 ```
 
@@ -114,8 +119,12 @@ Valores que debes completar de verdad:
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Los que quieras, con una contraseña larga |
 | `DATABASE_URL` | Debe coincidir con los tres de arriba |
 | `SECRET_KEY` | Genérala con `openssl rand -hex 32` — **no reutilices la de desarrollo** |
-| `BACKUP_DIR` | `/opt/tuxtell-isp/backups` |
-| `MEDIA_DIR` | `/opt/tuxtell-isp/media` |
+| `BACKUP_DIR` | `/opt/wisp-isp/backups` |
+| `MEDIA_DIR` | `/opt/wisp-isp/media` |
+| `ENTORNO` | `produccion` — activa las protecciones y esconde `/docs` |
+| `CORS_ORIGINS` | El dominio, ej. `https://wispfibra.com,https://www.wispfibra.com`. En producción es obligatorio: vacío, el backend no arranca |
+| `WHATSAPP_API_TOKEN` | Genérala con `openssl rand -hex 24`. La misma clave la comparten el backend y el bot |
+| `NGINX_CONF` | `nginx.cloudflare.conf` (ver paso 6) |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Lo obtienes en el paso 7 |
 
 ---
@@ -126,13 +135,16 @@ El `nginx/nginx.conf` que viene en el proyecto es para un VPS con IP pública:
 exige certificados de Let's Encrypt y **Nginx no arranca sin ellos**. Detrás del
 túnel no hacen falta, porque el HTTPS lo pone Cloudflare.
 
-```bash
-cd ~/TUX-ISP
-cp nginx/nginx.conf nginx/nginx.letsencrypt.conf
-cp nginx/nginx.cloudflare.conf nginx/nginx.conf
+No hay que copiar ni editar nada: se elige con una variable del `.env`.
+
+```
+NGINX_CONF=nginx.cloudflare.conf
 ```
 
-La primera línea guarda el original, por si algún día vuelves al VPS.
+Los dos archivos quedan en el repositorio, así que volver al modo VPS es
+cambiar esa línea. Se hace con una variable y no copiando archivos a propósito:
+si se editara `nginx/nginx.conf` en el servidor, el siguiente `git pull`
+chocaría con ese cambio local y habría que resolverlo a mano cada vez.
 
 ---
 
@@ -159,7 +171,7 @@ internet. Por eso no hay que abrir ningún puerto en el router.
 ## 8. Levantar todo
 
 ```bash
-cd ~/TUX-ISP
+cd ~/Wisp-ISP
 docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d --build
 ```
 
@@ -190,8 +202,8 @@ crontab -e
 Agrega estas dos líneas, cambiando `USUARIO` y `BASEDATOS` por los de tu `.env`:
 
 ```
-0 3 * * * docker exec tuxtell_postgres pg_dump -U USUARIO BASEDATOS | gzip > /opt/tuxtell-isp/backups/db_$(date +\%F).sql.gz
-0 4 * * 0 find /opt/tuxtell-isp/backups -name "db_*.sql.gz" -mtime +30 -delete
+0 3 * * * docker exec wisp_postgres pg_dump -U USUARIO BASEDATOS | gzip > /opt/wisp-isp/backups/db_$(date +\%F).sql.gz
+0 4 * * 0 find /opt/wisp-isp/backups -name "db_*.sql.gz" -mtime +30 -delete
 ```
 
 La primera hace una copia diaria a las 3 a.m.; la segunda borra las de más de 30
@@ -200,7 +212,7 @@ días para que no se llene el disco.
 Y una vez por semana, cópialas a tu laptop:
 
 ```bash
-scp usuario@IP-DE-LA-PC:/opt/tuxtell-isp/backups/db_*.sql.gz ~/respaldos-wisp/
+scp usuario@IP-DE-LA-PC:/opt/wisp-isp/backups/db_*.sql.gz ~/respaldos-wisp/
 ```
 
 ---
@@ -211,7 +223,7 @@ No es el procesador lo que va a fallar. Vigila esto:
 
 | Qué | Cómo | Señal de alarma |
 |---|---|---|
-| **Chromium de WhatsApp** | `docker stats tuxtell_whatsapp` | Si pasa de 1.5 GB o la sesión se cae seguido: `docker compose restart whatsapp` |
+| **Chromium de WhatsApp** | `docker stats wisp_whatsapp` | Si pasa de 1.5 GB o la sesión se cae seguido: `docker compose restart whatsapp` |
 | **RAM libre** | `free -h` | Si el swap se usa todo el tiempo, el equipo se quedó corto |
 | **Disco** | `df -h` | Las fotos de evidencias crecen; que no se llene |
 | **Cortes de luz** | ¿Volvió solo el servidor? | Si no, revisa la opción de BIOS del paso 1 |
@@ -223,9 +235,9 @@ No es el procesador lo que va a fallar. Vigila esto:
 Está pensado para que sea rápido. En la PC vieja:
 
 ```bash
-cd ~/TUX-ISP
-docker exec tuxtell_postgres pg_dump -U USUARIO BASEDATOS | gzip > ~/migracion-db.sql.gz
-tar czf ~/migracion-media.tar.gz -C /opt/tuxtell-isp media
+cd ~/Wisp-ISP
+docker exec wisp_postgres pg_dump -U USUARIO BASEDATOS | gzip > ~/migracion-db.sql.gz
+tar czf ~/migracion-media.tar.gz -C /opt/wisp-isp media
 ```
 
 Te llevas tres cosas: `migracion-db.sql.gz`, `migracion-media.tar.gz` y el
@@ -237,8 +249,8 @@ restaura la base:
 ```bash
 docker compose up -d postgres
 sleep 10
-gunzip -c migracion-db.sql.gz | docker exec -i tuxtell_postgres psql -U USUARIO BASEDATOS
-tar xzf migracion-media.tar.gz -C /opt/tuxtell-isp
+gunzip -c migracion-db.sql.gz | docker exec -i wisp_postgres psql -U USUARIO BASEDATOS
+tar xzf migracion-media.tar.gz -C /opt/wisp-isp
 docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d --build
 ```
 
