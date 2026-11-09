@@ -19,9 +19,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Solo se agrega el valor, no se usa en esta misma migración — corre bien
-    # dentro de la transacción normal (igual que super_admin/pausado/retiro).
-    op.execute("ALTER TYPE tipoconexion ADD VALUE IF NOT EXISTS 'satelital'")
+    # En esta migración el valor solo se agrega, no se usa — pero una
+    # posterior (zona opcional para satelitales) sí lo usa en un UPDATE.
+    # En una base existente eso corre bien, porque cada "alembic upgrade"
+    # se ejecutó por separado y el valor ya estaba confirmado. En una base
+    # nueva, donde las 26 migraciones corren de un solo golpe dentro de UNA
+    # transacción, Postgres responde "new enum values must be committed
+    # before they can be used". autocommit_block() hace que este ALTER TYPE
+    # se confirme de inmediato, sin esperar a que termine la migración.
+    with op.get_context().autocommit_block():
+        op.execute("ALTER TYPE tipoconexion ADD VALUE IF NOT EXISTS 'satelital'")
 
     op.add_column(
         'planes',
