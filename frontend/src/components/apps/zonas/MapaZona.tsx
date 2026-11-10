@@ -285,7 +285,7 @@ export default function MapaZona({
           ))}
 
         {pinTemporal && (
-          <Marker position={[pinTemporal.lat, pinTemporal.lng]} icon={tempIcon}>
+          <Marker position={[pinTemporal.lat, pinTemporal.lng]} icon={tempIcon} zIndexOffset={1000}>
             <Popup>Nueva ubicación (sin guardar)</Popup>
           </Marker>
         )}
