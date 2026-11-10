@@ -33,6 +33,15 @@ services:
     # "Puertos que deben estar cerrados"). No se cambia aquí porque Nginx
     # llega al backend por host.docker.internal y atarlo a 127.0.0.1 lo
     # dejaría incomunicado.
+    #
+    # CUIDADO al escribir esa regla: Nginx vive dentro de Docker y alcanza
+    # este backend saliendo por la puerta de enlace del host (172.17.0.1).
+    # Un "ufw deny 8000/tcp" a secas también bloquea ESE camino y deja toda
+    # la API en 504 — el sitio público y el panel siguen cargando, porque no
+    # pasan por el 8000, así que el fallo no se nota hasta que alguien
+    # intenta entrar. La regla correcta cierra el puerto por defecto y abre
+    # solo el origen de Docker:
+    #     sudo ufw allow from 172.16.0.0/12 to any port 8000 proto tcp
     network_mode: host          # comparte red del host → accede a wg0 (10.10.0.x) y localhost:5432
     cap_add:
       - NET_ADMIN               # necesario para wg set / wg show
