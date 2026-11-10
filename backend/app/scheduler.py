@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import random
 from datetime import date, timedelta
 
 import httpx
@@ -41,7 +43,12 @@ async def job_recordatorio_preventivo(dias_antes: int = 3):
         ).all()
 
         enviados = 0
-        for cliente in clientes:
+        # Pausa entre mensajes: mandarlos de corrido es la forma más rápida de
+        # que WhatsApp tome el número por spam y lo bloquee. Es la misma espera
+        # que usa el envío masivo del panel (routers/whatsapp.py). Importa más
+        # aquí que allá: este trabajo corre solo, de madrugada, sin que nadie
+        # lo esté mirando.
+        for i, cliente in enumerate(clientes):
             phone = cliente.telefono_whatsapp or cliente.telefono
             plan = cliente.plan
             zona = cliente.zona
@@ -68,6 +75,9 @@ async def job_recordatorio_preventivo(dias_antes: int = 3):
                 enviados += 1
             except Exception as e:
                 logger.warning("Recordatorio falló para %s: %s", cliente.nombre, e)
+
+            if i < len(clientes) - 1:
+                await asyncio.sleep(random.uniform(5, 10))
 
         logger.info("Recordatorios preventivos: %d enviados de %d clientes", enviados, len(clientes))
         return {"enviados": enviados, "total": len(clientes)}

@@ -77,8 +77,19 @@ services:
     container_name: wisp_whatsapp
     restart: unless-stopped
     network_mode: host          # accesible en 127.0.0.1:3001 desde el backend
+    # Techo de recursos. Con Chromium este servicio llegó a 1,17 GB y 176
+    # procesos, dejando sin aire al resto del servidor (4 núcleos, 4,8 GB) y
+    # tumbando el túnel de Cloudflare. Baileys no necesita ni de lejos esto,
+    # así que el límite funciona como red de seguridad: si algún día algo se
+    # desboca, se lleva por delante su propio contenedor y no el servidor.
+    cpus: 0.5
+    mem_limit: 512m
+    pids_limit: 256
     volumes:
-      - whatsapp_session:/app/.wwebjs_auth
+      # La sesión vinculada, para no escanear el QR en cada reinicio.
+      # Baileys la guarda en otro formato que whatsapp-web.js, de ahí la ruta
+      # nueva: la sesión anterior no le sirve y hay que escanear una vez más.
+      - whatsapp_session:/app/sesion
     environment:
       PORT: "3001"
       # Solo escucha en la propia máquina: quien pueda llegar a este puerto
@@ -86,7 +97,7 @@ services:
       BIND_HOST: "127.0.0.1"
       # Misma clave que el backend. Sin ella el bot acepta a cualquiera.
       WHATSAPP_API_TOKEN: ${WHATSAPP_API_TOKEN}
-      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      SESSION_PATH: /app/sesion
 
   # ── Sitio público (estático) ──────────────────────────────────────────────────
   web:

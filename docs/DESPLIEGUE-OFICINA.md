@@ -175,8 +175,7 @@ cd ~/Wisp-ISP
 docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d --build
 ```
 
-La primera vez tarda bastante: compila el frontend y descarga Chromium para el
-servicio de WhatsApp. Verifica:
+La primera vez tarda bastante: compila el frontend y el backend. Verifica:
 
 ```bash
 docker compose ps
@@ -223,7 +222,7 @@ No es el procesador lo que va a fallar. Vigila esto:
 
 | Qué | Cómo | Señal de alarma |
 |---|---|---|
-| **Chromium de WhatsApp** | `docker stats wisp_whatsapp` | Si pasa de 1.5 GB o la sesión se cae seguido: `docker compose restart whatsapp` |
+| **Servicio de WhatsApp** | `docker stats wisp_whatsapp` | Tiene techo de 512 MB y 0.5 CPU. Si se acerca al techo o la sesión se cae seguido: `docker compose restart whatsapp` |
 | **RAM libre** | `free -h` | Si el swap se usa todo el tiempo, el equipo se quedó corto |
 | **Disco** | `df -h` | Las fotos de evidencias crecen; que no se llene |
 | **Cortes de luz** | ¿Volvió solo el servidor? | Si no, revisa la opción de BIOS del paso 1 |
