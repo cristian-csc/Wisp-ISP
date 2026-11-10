@@ -9,7 +9,7 @@ import {
 import { getMe } from 'src/lib/api';
 import { listNotificaciones, type Notificacion } from 'src/lib/notificaciones';
 
-const PUEDE_VER_NOTIFICACIONES = ['admin', 'subadmin', 'super_admin', 'vendedor_tienda'];
+const PUEDE_VER_NOTIFICACIONES = ['admin', 'atencion_cliente'];
 
 const TIPO_ICONO: Record<Notificacion['tipo'], string> = {
   pendiente_aprobacion: 'tabler:clock-exclamation',

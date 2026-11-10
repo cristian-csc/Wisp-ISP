@@ -101,7 +101,7 @@ async def send_message(
 async def aviso_cobro(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -143,7 +143,7 @@ async def aviso_cobro(
 async def aviso_corte(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:

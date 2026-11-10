@@ -52,7 +52,7 @@ export type Usuario = {
   id: number;
   nombre: string;
   email: string;
-  rol: 'super_admin' | 'admin' | 'subadmin' | 'tecnico' | 'vendedor_campo' | 'vendedor_tienda';
+  rol: 'admin' | 'tecnico' | 'vendedor_campo' | 'atencion_cliente';
   activo: boolean;
   telefono: string | null;
   dni: string | null;

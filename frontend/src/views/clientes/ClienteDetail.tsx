@@ -262,7 +262,7 @@ const ClienteDetail = () => {
 
   if (!cliente) return <CardBox>Cargando…</CardBox>;
 
-  const puedeAprobar = currentUser?.rol === 'admin' || currentUser?.rol === 'subadmin' || currentUser?.rol === 'super_admin';
+  const puedeAprobar = currentUser?.rol === 'admin';
 
   async function handleAprobar() {
     await aprobarCliente(cliente!.id);

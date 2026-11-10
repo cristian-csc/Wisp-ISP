@@ -37,7 +37,7 @@ def list_onus(
 def create_onu(
     data: schemas.OnuCreate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     """Ingresa una ONU al almacén (lo que capturó la lectora: serie/MAC/marca)."""
     if db.query(models.Onu).filter(models.Onu.numero_serie == data.numero_serie).first():
@@ -91,9 +91,9 @@ def asignar_onu(
     onu_id: int,
     data: schemas.OnuAsignarRequest,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
-    """Admin/subadmin le entrega una ONU a un técnico (sale del stock general)."""
+    """El admin le entrega una ONU a un técnico (sale del stock general)."""
     onu = db.query(models.Onu).filter(models.Onu.id == onu_id).first()
     if not onu:
         raise HTTPException(status_code=404, detail="ONU no encontrada")
@@ -115,7 +115,7 @@ def asignar_onu(
 def delete_onu(
     onu_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     """Borra una ONU del inventario (equipo registrado por error, duplicado,
     etc). Bloqueado si está instalada en un cliente — hay que retirarla
@@ -136,7 +136,7 @@ def marcar_onu(
     data: schemas.OnuMarcarRequest,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.tecnico)
+        require_roles(models.RolUsuario.admin, models.RolUsuario.tecnico)
     ),
 ):
     """Marca una ONU dañada/perdida, o la regresa al almacén (devolución)."""

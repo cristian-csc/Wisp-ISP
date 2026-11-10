@@ -164,7 +164,7 @@ def marcar_borne(
     data: schemas.BorneDanarRequest,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.tecnico)
+        require_roles(models.RolUsuario.admin, models.RolUsuario.tecnico)
     ),
 ):
     """Un técnico reporta un borne dañado (o el admin lo vuelve a marcar libre
@@ -192,7 +192,7 @@ def actualizar_precinto(
     data: schemas.BornePrecintoUpdate,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.tecnico)
+        require_roles(models.RolUsuario.admin, models.RolUsuario.tecnico)
     ),
 ):
     """Registra o corrige el código del precinto físico amarrado al cable drop
@@ -215,7 +215,7 @@ def estado_pppoe_caja(
     caja_id: int,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.tecnico)
+        require_roles(models.RolUsuario.admin, models.RolUsuario.tecnico)
     ),
 ):
     """Consulta en una sola sesión SSH si cada abonado ocupando un borne de

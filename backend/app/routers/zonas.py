@@ -156,9 +156,7 @@ def wg_remove_peer(pubkey: str) -> dict:
 # Atención al cliente, técnicos y vendedoras entran a Zonas para consultar
 # cobertura: no necesitan —ni deben recibir— la configuración de la red.
 _ROLES_VEN_RED = (
-    models.RolUsuario.super_admin,
     models.RolUsuario.admin,
-    models.RolUsuario.subadmin,
 )
 
 
@@ -225,7 +223,7 @@ def list_zonas(
 def create_zona(
     data: schemas.ZonaCreate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.super_admin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     if db.query(models.Zona).filter(models.Zona.nombre == data.nombre).first():
         raise HTTPException(status_code=400, detail="Zona ya existe")
@@ -272,7 +270,7 @@ def update_zona(
     zona_id: int,
     data: schemas.ZonaCreate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.super_admin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
     if not zona:
@@ -291,11 +289,13 @@ def update_zona_datos(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
-    """El admin del negocio corrige nombre/descripción/tiendas de pago,
-    ubicación del servidor, y sus propias credenciales de MikroTik (usuario,
-    clave, IP LAN, router) — es su router, lo administra él. A diferencia de
-    PUT /zonas/{id}, no toca el túnel WireGuard, así que no requiere
-    super_admin."""
+    """Corrige nombre/descripción/tiendas de pago, ubicación del servidor
+    y las credenciales del MikroTik (usuario, clave, IP LAN, router).
+
+    Existe aparte de PUT /zonas/{id} aunque hoy ambos los use el mismo rol:
+    este NO toca el túnel WireGuard. La separación se mantiene porque es la
+    diferencia entre equivocarse en un router y dejar sin acceso remoto a
+    toda una zona."""
     zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
     if not zona:
         raise HTTPException(status_code=404, detail="Zona no encontrada")
@@ -314,7 +314,7 @@ def update_zona_datos(
 def delete_zona(
     zona_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.super_admin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
     if not zona:
@@ -333,7 +333,7 @@ def delete_zona(
 def wireguard_status(
     zona_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
     if not zona:
@@ -376,7 +376,7 @@ def add_wg_peer(
     pubkey: str,
     lan_network: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.super_admin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     """
     Agrega el peer WireGuard de la zona.
@@ -417,7 +417,7 @@ def add_wg_peer(
 def remove_wg_peer(
     zona_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.super_admin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
     if not zona:
@@ -436,7 +436,7 @@ def remove_wg_peer(
 
 @router.get("/{zona_id}/wireguard/peers-activos")
 def wg_peers_activos(
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     """Lista todos los peers activos en wg0 con su estado."""
     return {"peers": wg_show_dump(), "vps_pubkey": settings.VPS_WG_PUBKEY}
@@ -492,7 +492,7 @@ def exec_terminal(
     zona_id: int,
     body: TerminalCmd,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.super_admin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
     if not zona:
@@ -516,7 +516,7 @@ def list_tecnicos_zona(
     zona_id: int,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     """Quién atiende la zona. Solo administración: la ficha de un técnico

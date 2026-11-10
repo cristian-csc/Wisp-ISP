@@ -3,22 +3,19 @@ import SidebarContent from 'src/layouts/full/vertical/sidebar/sidebaritems';
 /** Cómo se le dice a cada rol en pantalla. Vive acá para que el recibo, el
  *  panel y la ficha del usuario digan todos lo mismo. */
 export const ROL_LABEL: Record<string, string> = {
-  super_admin: 'Desarrollador',
   admin: 'Administrador',
-  subadmin: 'Sub-administrador',
   tecnico: 'Técnico',
   vendedor_campo: 'Vendedor de campo',
-  vendedor_tienda: 'Atención al cliente',
+  atencion_cliente: 'Atención al cliente',
 };
 
-/** super_admin ve todo lo que ve admin (es un superset, no un rol aparte que
- * haya que listar en cada item de sidebaritems.ts) — misma regla que
- * require_roles() en el backend. */
+/** Los cuatro roles son planos: ninguno hereda de otro. Cada lista de
+ * sidebaritems.ts y cada entrada de ACCIONES dice exactamente quién entra,
+ * igual que require_roles() en el backend. */
 export function puedeVer(roles: string[] | undefined, rol?: string): boolean {
   if (!roles) return true;
   if (!rol) return false;
-  if (roles.includes(rol)) return true;
-  return rol === 'super_admin' && roles.includes('admin');
+  return roles.includes(rol);
 }
 
 /** Permisos por acción, no solo por pantalla.
@@ -27,25 +24,22 @@ export function puedeVer(roles: string[] | undefined, rol?: string): boolean {
  *  Atención al cliente entra a Zonas para consultar la cobertura, pero no
  *  crea zonas ni ve la configuración del túnel. Esta tabla es el único sitio
  *  donde se decide eso en el panel; el backend lo vuelve a comprobar por su
- *  cuenta (esconder un botón no es seguridad).
- *
- *  `super_admin` no hace falta listarlo cuando ya está `admin`: lo añade
- *  `puedeAccion`, igual que hace `require_roles()` en el backend. */
+ *  cuenta (esconder un botón no es seguridad). */
 export const ACCIONES = {
   /** Crear, editar o borrar zonas; reubicar el servidor; agregar mufas. */
   'zonas.gestionar': ['admin'],
   /** Ver la red por dentro: IP de WireGuard, router MikroTik, peers, claves. */
-  'zonas.verRed': ['admin', 'subadmin'],
+  'zonas.verRed': ['admin'],
   /** Asignar o quitar técnicos de una zona. */
   'zonas.asignarTecnicos': ['admin'],
   /** Dar de alta, asignar o borrar equipos del inventario. */
-  'onus.gestionar': ['admin', 'subadmin'],
+  'onus.gestionar': ['admin'],
   /** Asignar técnico a una avería, editarla o cerrarla. */
-  'averias.gestionar': ['admin', 'subadmin'],
+  'averias.gestionar': ['admin'],
   /** Borrar un pago ya registrado. */
-  'pagos.borrar': ['admin', 'subadmin'],
+  'pagos.borrar': ['admin'],
   /** Cifras de toda la empresa: gastos, márgenes, ingresos históricos. */
-  'finanzas.verGlobal': ['admin', 'subadmin'],
+  'finanzas.verGlobal': ['admin'],
 } as const;
 
 export type Accion = keyof typeof ACCIONES;
@@ -53,8 +47,7 @@ export type Accion = keyof typeof ACCIONES;
 export function puedeAccion(accion: Accion, rol?: string): boolean {
   if (!rol) return false;
   const permitidos: readonly string[] = ACCIONES[accion];
-  if (permitidos.includes(rol)) return true;
-  return rol === 'super_admin' && permitidos.includes('admin');
+  return permitidos.includes(rol);
 }
 
 type ItemConRoles = { url?: string; roles?: string[]; children?: ItemConRoles[] };

@@ -8,9 +8,9 @@ export type SessionRole =
   | 'cliente'
   | null;
 
-/** Roles que tienen permitido usar la app móvil. Administradores,
- * sub-administradores y atención al cliente (vendedor_tienda) trabajan
- * siempre desde el sistema web en PC — nunca desde el móvil. */
+/** Roles que tienen permitido usar la app móvil. Administración y
+ * atención al cliente trabajan siempre desde el sistema web en PC —
+ * nunca desde el móvil. */
 export const ROLES_MOBILE_PERMITIDOS = ['tecnico', 'vendedor_campo'] as const;
 
 /** A qué grupo de rutas pertenece cada rol. */

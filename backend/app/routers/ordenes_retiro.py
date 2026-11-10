@@ -63,7 +63,7 @@ def create_orden_retiro(
     data: schemas.OrdenRetiroCreate,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)
+        require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)
     ),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == data.cliente_id).first()
@@ -118,7 +118,7 @@ def asignar_orden_retiro(
     data: schemas.OrdenRetiroAsignar,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)
+        require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)
     ),
 ):
     orden = db.query(models.OrdenRetiro).filter(models.OrdenRetiro.id == orden_id).first()

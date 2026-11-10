@@ -281,7 +281,7 @@ def list_pagos(
     estado: Optional[str] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     query = _consulta_pagos(db, cliente_id, mes, estado, search)
     total = query.count()
@@ -300,7 +300,7 @@ def list_pagos(
 def create_pago(
     data: schemas.PagoCreate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == data.cliente_id).first()
     if not cliente:
@@ -460,7 +460,7 @@ def subir_comprobante_pago(
     pago_id: int,
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     pago = db.query(models.Pago).options(joinedload(models.Pago.cliente)).filter(models.Pago.id == pago_id).first()
     if not pago:
@@ -488,7 +488,7 @@ def subir_comprobante_pago(
 def descargar_comprobante_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     pago = db.query(models.Pago).filter(models.Pago.id == pago_id).first()
     if not pago or not pago.ruta_comprobante or not os.path.isfile(pago.ruta_comprobante):
@@ -500,7 +500,7 @@ def descargar_comprobante_pago(
 def reenviar_confirmacion_whatsapp(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     """Reenvía manualmente la confirmación de pago por WhatsApp — a pedido,
     a diferencia del envío automático al registrar el pago (ej. si el bot
@@ -537,7 +537,7 @@ def reenviar_confirmacion_whatsapp(
 def recibo_pdf(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     """El recibo del pago en PDF, con el formato de ticket de la empresa. Si el
     pago es parte de un cobro adelantado, sale un solo recibo con todos los
@@ -561,7 +561,7 @@ def recibo_pdf(
 def resumen_mensual(
     anio: int = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     if not anio:
         anio = date.today().year
@@ -657,7 +657,7 @@ def reporte_caja(
     fecha: date = Query(default=None),
     zona_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     return _datos_caja(db, fecha, zona_id)
 
@@ -701,7 +701,7 @@ def _datos_zonas(db: Session, mes: Optional[str]) -> list[dict]:
 def reporte_mensual_zonas(
     mes: Optional[str] = Query(None, description="YYYY-MM — por defecto, el mes actual"),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     return _datos_zonas(db, mes)
 
@@ -709,7 +709,7 @@ def reporte_mensual_zonas(
 @router.get("/clientes-sin-pago")
 def clientes_sin_pago(
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     """Clientes activos cuyo propio ciclo de pago (fecha_vencimiento) ya
     llegó o ya pasó — no usa el mes calendario: un cliente que vence el 29
@@ -738,7 +738,7 @@ def clientes_sin_pago(
 @router.get("/clientes-cortados")
 def clientes_cortados(
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     """Clientes con el servicio cortado (suspendido), más recientes primero —
     para encontrar rápido a quien quiere pagar y reactivar. No tiene límite
@@ -764,7 +764,7 @@ def clientes_cortados(
 @router.get("/pausas-por-vencer")
 def pausas_por_vencer(
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     """Clientes en pausa temporal (a su propia solicitud) cuyo plazo ya
     venció o está por vencer en los próximos 7 días — para saber a quién
@@ -838,7 +838,7 @@ def exportar_pagos(
     estado: Optional[str] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     """La lista de pagos con los mismos filtros de la pantalla, pero completa
     (sin paginar) y lista para descargar en Excel o PDF."""
@@ -913,7 +913,7 @@ def exportar_reporte_caja(
     fecha: date = Query(default=None),
     zona_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     """El corte de caja del día, para imprimirlo o archivarlo al cerrar turno."""
     datos = _datos_caja(db, fecha, zona_id)
@@ -985,7 +985,7 @@ def exportar_reporte_zonas(
     formato: str = Query("excel", description="excel | pdf"),
     mes: Optional[str] = Query(None, description="YYYY-MM — por defecto, el mes actual"),
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     """Lo recaudado en el mes, zona por zona."""
     if not mes:
@@ -1022,7 +1022,7 @@ def exportar_reporte_zonas(
 def get_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     pago = db.query(models.Pago).options(
         joinedload(models.Pago.cliente), joinedload(models.Pago.registrador),
@@ -1052,7 +1052,7 @@ def get_pago(
 def delete_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     pago = db.query(models.Pago).filter(models.Pago.id == pago_id).first()
     if not pago:

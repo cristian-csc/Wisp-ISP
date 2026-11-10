@@ -93,10 +93,10 @@ const AveriaZonaDetail = () => {
   const { zonaId } = useParams();
   const zid = Number(zonaId);
   const { user } = useCurrentUser();
-  const puedeAsignar = user?.rol === 'admin' || user?.rol === 'subadmin' || user?.rol === 'super_admin';
+  const puedeAsignar = user?.rol === 'admin';
   const puedeOperar = puedeAsignar || user?.rol === 'tecnico';
-  const puedeReportarPlanta = user?.rol !== 'vendedor_tienda';
-  const puedeEliminar = user?.rol === 'admin' || user?.rol === 'super_admin';
+  const puedeReportarPlanta = user?.rol !== 'atencion_cliente';
+  const puedeEliminar = user?.rol === 'admin';
 
   const [zona, setZona] = useState<Zona | null>(null);
   const [cajas, setCajas] = useState<CajaNap[]>([]);

@@ -82,14 +82,14 @@ def create_averia(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
         require_roles(
-            models.RolUsuario.admin, models.RolUsuario.subadmin,
-            models.RolUsuario.tecnico, models.RolUsuario.vendedor_tienda,
+            models.RolUsuario.admin,
+            models.RolUsuario.tecnico, models.RolUsuario.atencion_cliente,
         )
     ),
 ):
     if not data.cliente_id and not data.caja_nap_id:
         raise HTTPException(status_code=400, detail="Debe indicar un cliente o una caja NAP")
-    if data.caja_nap_id and current_user.rol == models.RolUsuario.vendedor_tienda:
+    if data.caja_nap_id and current_user.rol == models.RolUsuario.atencion_cliente:
         raise HTTPException(status_code=403, detail="Atención al cliente solo puede reportar averías de clientes")
 
     averia = models.Averia(
@@ -124,7 +124,7 @@ def editar_averia(
     data: schemas.AveriaEditar,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     """Corrige el motivo reportado — ej. un error de tipeo al registrarla.
@@ -172,7 +172,7 @@ async def asignar_averia(
     data: schemas.AveriaAsignarRequest,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     averia = db.query(models.Averia).filter(models.Averia.id == averia_id).first()

@@ -146,13 +146,12 @@ def require_roles(*roles: models.RolUsuario):
     """Dependencia que exige que el usuario autenticado tenga uno de los roles dados.
     Uso: current_user: models.Usuario = Depends(require_roles(RolUsuario.admin))
 
-    `super_admin` siempre pasa cualquier chequeo que incluya `admin` — es un
-    superset (todo lo del admin de negocio + infraestructura), no un rol
-    aparte que haya que listar en cada endpoint uno por uno."""
+    Hasta el 2026-11-10 existía `super_admin`, que pasaba cualquier chequeo
+    que incluyera `admin`. Se eliminó junto con `subadmin`: ahora `admin` es
+    el rol más alto y no hay herencia entre roles, cada endpoint lista
+    exactamente quién entra."""
     def dependency(current_user: models.Usuario = Depends(get_current_user)) -> models.Usuario:
         allowed = set(roles)
-        if models.RolUsuario.admin in allowed:
-            allowed.add(models.RolUsuario.super_admin)
         if current_user.rol not in allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -164,7 +163,7 @@ def require_roles(*roles: models.RolUsuario):
 
 def zonas_asignadas(db: Session, usuario: models.Usuario) -> list[int]:
     """IDs de zona asignadas a un técnico. Vacío si el usuario no es técnico
-    (no se usa para filtrar en ese caso — admin/subadmin ven todas las zonas)."""
+    (no se usa para filtrar en ese caso — el admin ve todas las zonas)."""
     return [
         tz.zona_id for tz in
         db.query(models.TecnicoZona).filter(models.TecnicoZona.tecnico_id == usuario.id).all()

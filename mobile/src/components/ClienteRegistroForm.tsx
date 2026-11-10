@@ -66,7 +66,7 @@ function PlanChip({ plan, selected, onSelect }: { plan: Opcion; selected: boolea
 
 /** Formulario de captación de cliente — usado por admin, técnico y vendedor
  * de campo. El backend deriva usuario/clave PPPoE del DNI y el cliente queda
- * `pendiente_aprobacion` hasta que un admin/subadmin lo apruebe. El negocio
+ * `pendiente_aprobacion` hasta que un administrador lo apruebe. El negocio
  * es exclusivamente fibra óptica, así que no hay opción de conexión inalámbrica. */
 export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => void }) {
   const { session } = useSession();

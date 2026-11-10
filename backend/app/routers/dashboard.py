@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("/stats", response_model=schemas.DashboardStats)
 def get_stats(
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     hoy = date.today()
     mes_actual = f"{hoy.year}-{hoy.month:02d}"
@@ -42,9 +42,7 @@ def get_stats(
     # al resto se les manda 0 en vez de omitir el campo, para no cambiarle la
     # forma a la respuesta y romper la pantalla.
     ve_gastos = current_user.rol in (
-        models.RolUsuario.super_admin,
         models.RolUsuario.admin,
-        models.RolUsuario.subadmin,
     )
     gastos_actual = 0
     if ve_gastos:
@@ -80,7 +78,7 @@ def get_stats(
 def ingresos_mensual(
     anio: int = None,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
     if not anio:
         anio = date.today().year
@@ -113,16 +111,14 @@ def ingresos_mensual(
 def ultimas_activaciones(
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     # La descripción de un movimiento de pago lleva el importe, así que sólo se
     # incluye para los roles que tienen acceso al módulo Pagos — los demás no
     # deben recibir cifras de dinero ni siquiera en la respuesta.
     tipos = ["activacion", "corte"]
     if current_user.rol in (
-        models.RolUsuario.super_admin,
         models.RolUsuario.admin,
-        models.RolUsuario.subadmin,
     ):
         tipos.append("pago")
 

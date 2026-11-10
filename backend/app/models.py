@@ -9,12 +9,19 @@ import enum
 
 
 class RolUsuario(str, enum.Enum):
-    super_admin = "super_admin"
+    """Los cuatro roles del sistema. No hay más, y es a propósito: cada rol
+    que existe es uno que alguien tiene que entender y mantener.
+
+    `atencion_cliente` es el personal de caja y mostrador; en pantalla se lee
+    "Atención al cliente" (ver ROL_LABEL en el panel). Hasta el 2026-11-10
+    ese rol se llamaba "vendedor de tienda", y existían además dos roles más
+    que se eliminaron: uno por encima de admin para la infraestructura, y un
+    sub-administrador que ningún flujo del negocio llegó a usar.
+    """
     admin = "admin"
-    subadmin = "subadmin"
     tecnico = "tecnico"
     vendedor_campo = "vendedor_campo"
-    vendedor_tienda = "vendedor_tienda"
+    atencion_cliente = "atencion_cliente"
 
 
 class EstadoCliente(str, enum.Enum):

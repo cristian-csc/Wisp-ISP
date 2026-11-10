@@ -60,7 +60,7 @@ const RetiroZonaDetail = () => {
   const { zonaId } = useParams();
   const zid = Number(zonaId);
   const { user } = useCurrentUser();
-  const puedeCrear = user?.rol === 'admin' || user?.rol === 'subadmin' || user?.rol === 'vendedor_tienda' || user?.rol === 'super_admin';
+  const puedeCrear = user?.rol === 'admin' || user?.rol === 'atencion_cliente';
   const puedeAsignar = puedeCrear;
   const puedeCompletar = puedeCrear || user?.rol === 'tecnico';
 

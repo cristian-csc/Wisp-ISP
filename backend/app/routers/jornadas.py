@@ -146,7 +146,7 @@ def reintegrar_reclamo_pasaje(
     jornada_id: int,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     """El admin confirma que ya le pagó al vendedor lo que reclamó — ese
@@ -181,7 +181,7 @@ def mi_jornada_activa(
 def listar_jornadas_activas(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     jornadas = db.query(models.JornadaVendedor).options(
@@ -199,7 +199,7 @@ def listar_jornadas(
     per_page: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     query = db.query(models.JornadaVendedor).options(
@@ -230,7 +230,7 @@ def actualizar_pasaje(
     data: schemas.JornadaPasajeUpdate,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     jornada = db.query(models.JornadaVendedor).options(
@@ -251,7 +251,7 @@ def resumen_pasajes(
     mes: Optional[str] = None,  # "YYYY-MM" — por defecto, el mes actual
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     hoy = date.today()
@@ -286,7 +286,7 @@ def recorrido_jornada(
     jornada_id: int,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     jornada = db.query(models.JornadaVendedor).options(

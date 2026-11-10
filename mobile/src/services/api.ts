@@ -57,7 +57,7 @@ export async function loginAdmin(
   return res.json();
 }
 
-export type RolStaff = 'super_admin' | 'admin' | 'subadmin' | 'tecnico' | 'vendedor_campo' | 'vendedor_tienda';
+export type RolStaff = 'admin' | 'tecnico' | 'vendedor_campo' | 'atencion_cliente';
 export type UsuarioMe = {
   id: number;
   nombre: string;

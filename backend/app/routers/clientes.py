@@ -199,7 +199,7 @@ def list_clientes(
             query = query.filter(models.Cliente.tecnico_instalador_id == current_user.id)
         else:
             query = query.filter(models.Cliente.zona_id.in_(zonas_asignadas(db, current_user) or [-1]))
-    elif current_user.rol in (models.RolUsuario.vendedor_campo, models.RolUsuario.vendedor_tienda):
+    elif current_user.rol in (models.RolUsuario.vendedor_campo, models.RolUsuario.atencion_cliente):
         query = query.filter(models.Cliente.vendedor_id == current_user.id)
 
     if search:
@@ -273,7 +273,7 @@ def list_clientes(
 def create_cliente(
     data: schemas.ClienteCreate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda, models.RolUsuario.vendedor_campo, models.RolUsuario.tecnico)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente, models.RolUsuario.vendedor_campo, models.RolUsuario.tecnico)),
 ):
     if db.query(models.Cliente).filter(models.Cliente.dni == data.dni).first():
         raise HTTPException(
@@ -325,7 +325,7 @@ def aprobar_cliente(
     cliente_id: int,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
@@ -379,7 +379,7 @@ def activar_satelital(
     data: schemas.ClienteActivarSatelitalRequest,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     """Activa un cliente satelital ya aprobado — no hay fibra que tender, así
@@ -430,7 +430,7 @@ def rechazar_cliente(
     data: schemas.ClienteRechazarRequest,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin)
+        require_roles(models.RolUsuario.admin)
     ),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
@@ -584,7 +584,7 @@ def _sin_tz(dt: Optional[datetime]) -> Optional[datetime]:
 async def get_notificaciones(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
-        require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)
+        require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)
     ),
 ):
     ahora = datetime.utcnow()
@@ -737,7 +737,7 @@ def get_cliente(
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
     _check_zona_access(db, current_user, cliente.zona_id)
-    if current_user.rol in (models.RolUsuario.vendedor_campo, models.RolUsuario.vendedor_tienda):
+    if current_user.rol in (models.RolUsuario.vendedor_campo, models.RolUsuario.atencion_cliente):
         if cliente.vendedor_id != current_user.id:
             raise HTTPException(status_code=403, detail="No tiene acceso a este cliente")
     out = schemas.ClienteOut.model_validate(cliente).model_dump(mode="json")
@@ -753,7 +753,7 @@ def update_cliente(
     cliente_id: int,
     data: schemas.ClienteUpdate,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -914,7 +914,7 @@ def cortar_cliente(db: Session, cliente: models.Cliente, motivo: str, usuario_id
 def cortar_servicio(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -937,7 +937,7 @@ def pausar_servicio(
     cliente_id: int,
     data: schemas.ClientePausarRequest,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     """Pausa temporal pedida por el propio cliente (ej. viaje) — distinta de
     un corte por falta de pago: no es morosidad, así que no debe aparecer en
@@ -1000,7 +1000,7 @@ def pausar_servicio(
 def reactivar_servicio(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
@@ -1077,7 +1077,7 @@ def dar_compromiso_pago(
     cliente_id: int,
     data: schemas.CompromisoPagoRequest,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.subadmin, models.RolUsuario.vendedor_tienda)),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
 ):
     """El cliente pidió plazo ('espérame hasta el 25'). Mientras el compromiso
     esté vigente, el job de corte automático lo saltea. Si ya estaba cortado,

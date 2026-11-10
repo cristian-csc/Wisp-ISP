@@ -10,7 +10,7 @@ from .auth import require_roles
 
 router = APIRouter()
 
-SOLO_GERENCIA = require_roles(models.RolUsuario.admin)  # admin ya incluye a super_admin
+SOLO_GERENCIA = require_roles(models.RolUsuario.admin)
 
 
 def _gastos_vigentes_del_mes(db: Session, anio: int, mes: int) -> List[models.Gasto]:

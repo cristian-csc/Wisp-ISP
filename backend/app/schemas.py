@@ -149,9 +149,8 @@ class ZonaDatosUpdate(BaseModel):
     tiendas de pago, ubicación del servidor y las credenciales del MikroTik
     (usuario/clave/IP LAN/router) — es su propio router, lo administra él.
     Lo que NUNCA toca es el túnel WireGuard (ip_wireguard/wg_public_key) ni
-    la terminal SSH: eso es la conexión al hub central que solo super_admin
-    (Desarrollador) conoce y mantiene — ahí si algo se rompe, se cae el
-    acceso remoto a toda la zona, no solo a un router."""
+    la terminal SSH: esa es la conexión al hub central, y si algo se rompe
+    ahí se cae el acceso remoto a toda la zona, no solo a un router."""
     nombre: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None

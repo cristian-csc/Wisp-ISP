@@ -78,7 +78,7 @@ interface Props {
   tipo?: 'fibra_optica' | 'inalambrico';
 }
 
-const puedeAprobar = (rol?: string) => rol === 'admin' || rol === 'subadmin' || rol === 'super_admin';
+const puedeAprobar = (rol?: string) => rol === 'admin';
 
 const ClienteListing = ({ filter, currentUser, tipo }: Props) => {
   const navigate = useNavigate();

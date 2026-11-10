@@ -41,12 +41,9 @@ import {
 import type { Usuario } from 'src/lib/api';
 import { ROL_LABEL } from 'src/lib/permisos';
 
-// super_admin no se ofrece aquí a propósito — es un rol de infraestructura
-// que se asigna a mano (ver PUT /auth/usuarios/{id}), no algo que cualquier
-// admin deba poder autoasignarle a otro usuario desde este formulario.
-// subadmin tampoco se ofrece — quedó confirmado como un rol sin uso real,
-// ningún flujo de negocio lo necesita.
-const ROLES: Usuario['rol'][] = ['admin', 'tecnico', 'vendedor_campo', 'vendedor_tienda'];
+// Los cuatro roles del sistema, todos asignables desde aquí. No hay más ni
+// hay jerarquía entre ellos: Administrador es el más alto y puede todo.
+const ROLES: Usuario['rol'][] = ['admin', 'tecnico', 'vendedor_campo', 'atencion_cliente'];
 
 function antiguedad(fechaIngreso: string | null): string | null {
   if (!fechaIngreso) return null;

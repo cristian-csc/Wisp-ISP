@@ -34,7 +34,7 @@ const Zonas = () => {
   const [ipWireguard, setIpWireguard] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const esSuperAdmin = currentUser?.rol === 'super_admin';
+  const puedeGestionar = puedeAccion('zonas.gestionar', currentUser?.rol);
   /** Atención al cliente entra aquí a consultar cobertura: ve las zonas y sus
    *  clientes, no la configuración de la red. */
   const veRed = puedeAccion('zonas.verRed', currentUser?.rol);
@@ -66,7 +66,7 @@ const Zonas = () => {
     <CardBox>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Zonas</h2>
-        {esSuperAdmin && <Button onClick={() => setOpen(true)}>Agregar zona</Button>}
+        {puedeGestionar && <Button onClick={() => setOpen(true)}>Agregar zona</Button>}
       </div>
 
       <Table>
