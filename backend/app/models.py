@@ -158,7 +158,9 @@ class Zona(Base):
     usuario_mikrotik = Column(String(100))
     password_mikrotik = Column(String(255))
     router_mikrotik = Column(String(100))
-    ip_wireguard = Column(String(20), nullable=False)
+    # Puede estar vacía: una zona se registra cuando se decide abrirla,
+    # y el túnel se configura después, cuando el MikroTik ya está en sitio.
+    ip_wireguard = Column(String(20))
     wg_public_key = Column(String(255))
     ip_router = Column(String(20))
     lat = Column(Float)

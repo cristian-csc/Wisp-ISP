@@ -339,6 +339,12 @@ def wireguard_status(
     if not zona:
         raise HTTPException(status_code=404, detail="Zona no encontrada")
 
+    if not zona.ip_wireguard:
+        raise HTTPException(
+            status_code=400,
+            detail="Esta zona todavía no tiene túnel WireGuard configurado.",
+        )
+
     ip = zona.ip_wireguard
     ping_ok = ping_host(ip)
     ssh_ok = check_ssh_port(ip) if ping_ok else False
@@ -386,6 +392,12 @@ def add_wg_peer(
     zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
     if not zona:
         raise HTTPException(status_code=404, detail="Zona no encontrada")
+
+    if not zona.ip_wireguard:
+        raise HTTPException(
+            status_code=400,
+            detail="Primero asigna una IP de WireGuard a la zona.",
+        )
 
     allowed_ips = f"{zona.ip_wireguard}/32"
     if lan_network:

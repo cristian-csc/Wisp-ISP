@@ -104,6 +104,7 @@ const ZonaDetail = () => {
   const [editZonaPasswordMikrotik, setEditZonaPasswordMikrotik] = useState('');
   const [editZonaRouterMikrotik, setEditZonaRouterMikrotik] = useState('');
   const [editZonaIpRouter, setEditZonaIpRouter] = useState('');
+  const [editZonaIpWireguard, setEditZonaIpWireguard] = useState('');
   const [editZonaError, setEditZonaError] = useState<string | null>(null);
 
   const { user } = useCurrentUser();
@@ -173,6 +174,7 @@ const ZonaDetail = () => {
     setEditZonaPasswordMikrotik('');
     setEditZonaRouterMikrotik(zona.router_mikrotik ?? '');
     setEditZonaIpRouter(zona.ip_router ?? '');
+    setEditZonaIpWireguard(zona.ip_wireguard ?? '');
     setEditZonaError(null);
     setEditandoZona(true);
   }
@@ -194,6 +196,7 @@ const ZonaDetail = () => {
         password_mikrotik: editZonaPasswordMikrotik.trim() || undefined,
         router_mikrotik: editZonaRouterMikrotik.trim() || undefined,
         ip_router: editZonaIpRouter.trim() || undefined,
+        ip_wireguard: editZonaIpWireguard.trim() || undefined,
       });
       setEditandoZona(false);
       reload();
@@ -903,10 +906,25 @@ const ZonaDetail = () => {
           </FormSection>
 
           <FormSection
-            title="Credenciales del MikroTik"
+            title="Red de la zona"
             icon="tabler:router"
-            hint="El túnel WireGuard no se edita aquí"
+            hint="Se completa cuando el router ya está instalado"
           >
+            <FormField
+              label="IP de WireGuard"
+              htmlFor="editZonaIpWireguard"
+              wide
+              hint="La del túnel con el servidor central. Déjala vacía mientras la zona no esté conectada."
+            >
+              <FieldIcon icon="tabler:shield-lock">
+                <Input
+                  id="editZonaIpWireguard"
+                  placeholder="10.10.0.5"
+                  value={editZonaIpWireguard}
+                  onChange={(e) => setEditZonaIpWireguard(e.target.value)}
+                />
+              </FieldIcon>
+            </FormField>
             <FormField label="IP LAN" htmlFor="editZonaIpLan">
               <FieldIcon icon="tabler:network">
                 <Input

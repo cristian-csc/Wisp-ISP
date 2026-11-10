@@ -20,7 +20,8 @@ export type Zona = {
 
 export type ZonaCreateInput = {
   nombre: string;
-  ip_wireguard: string;
+  /** Opcional: la zona se registra antes de que el router esté en sitio. */
+  ip_wireguard?: string;
   ip_lan?: string;
   usuario_mikrotik?: string;
   password_mikrotik?: string;
@@ -64,6 +65,8 @@ export async function updateZonaDatos(id: number, data: {
   password_mikrotik?: string;
   router_mikrotik?: string;
   ip_router?: string;
+  /** Se completa cuando el túnel ya está levantado, no al crear la zona. */
+  ip_wireguard?: string;
 }): Promise<Zona> {
   const res = await api.put(`/zonas/${id}/datos`, data);
   return res.data;

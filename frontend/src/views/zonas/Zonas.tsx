@@ -55,7 +55,9 @@ const Zonas = () => {
     e.preventDefault();
     setError(null);
     try {
-      await createZona({ nombre, ip_wireguard: ipWireguard });
+      // Si se deja vacía se omite, para que la columna quede nula y no
+      // con una cadena vacía que parezca un valor configurado.
+      await createZona({ nombre, ip_wireguard: ipWireguard.trim() || undefined });
       setOpen(false);
       setNombre('');
       setIpWireguard('');
@@ -177,8 +179,7 @@ const Zonas = () => {
               label="IP WireGuard"
               icon="tabler:shield-lock"
               htmlFor="ipWg"
-              required
-              hint="Dirección del túnel con el MikroTik de la zona."
+              hint="Opcional. Déjala vacía si el router todavía no está instalado: se completa después desde la zona."
             >
               <FieldIcon icon="tabler:network">
                 <Input
@@ -186,7 +187,6 @@ const Zonas = () => {
                   placeholder="10.10.0.5"
                   value={ipWireguard}
                   onChange={(e) => setIpWireguard(e.target.value)}
-                  required
                 />
               </FieldIcon>
             </FormField>

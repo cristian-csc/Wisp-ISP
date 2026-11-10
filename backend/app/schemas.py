@@ -117,7 +117,9 @@ class ZonaBase(BaseModel):
     aquí a propósito — vive solo en los esquemas de entrada, para que no
     pueda colarse en una respuesta por heredarla sin darse cuenta."""
     nombre: str
-    ip_wireguard: str
+    # Opcional: la zona se crea primero y el túnel se añade después,
+    # cuando el router ya está instalado y conectado.
+    ip_wireguard: Optional[str] = None
     ip_lan: Optional[str] = None
     usuario_mikrotik: Optional[str] = None
     wg_public_key: Optional[str] = None
@@ -161,6 +163,10 @@ class ZonaDatosUpdate(BaseModel):
     password_mikrotik: Optional[str] = None
     router_mikrotik: Optional[str] = None
     ip_router: Optional[str] = None
+    # El túnel se configura cuando el router ya está en sitio, así que se
+    # puede completar después de haber creado la zona.
+    ip_wireguard: Optional[str] = None
+    wg_public_key: Optional[str] = None
 
 class TecnicoZonaAsignar(BaseModel):
     tecnico_id: int
