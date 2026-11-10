@@ -81,7 +81,7 @@ const Login = () => {
       `}</style>
 
       <section
-        className="login-card relative max-h-[calc(100dvh-36px)] w-[min(100%,470px)] overflow-y-auto rounded-[28px] border border-[#ffffff25] px-[39px] pb-[30px] pt-[34px] text-white"
+        className="login-card relative max-h-[calc(100dvh-36px)] w-[min(100%,470px)] overflow-x-hidden overflow-y-auto rounded-[28px] border border-[#ffffff25] px-[39px] pb-[30px] pt-[34px] text-white"
         style={{
           background: 'linear-gradient(145deg, #1b2230, #0b101a 70%)',
           boxShadow: '0 35px 100px #000b, 0 0 60px #ff760019',
