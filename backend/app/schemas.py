@@ -25,6 +25,13 @@ class TokenData(BaseModel):
 
 class UsuarioBase(BaseModel):
     nombre: str
+    # Se exige formato de correo a propósito. Por decisión de la empresa las
+    # cuentas del personal son `nombre.apellido@wispfibra.com`, aunque esos
+    # buzones no existan todavía: así no chocan con las cuentas de los
+    # clientes, y el día que se contrate correo real en el dominio ya
+    # coinciden. Validarlo evita el error que no tiene arreglo: un
+    # `cristian@wispfibra` sin el .com quedaría como una cuenta con la que
+    # nadie puede entrar, y el usuario no se puede editar después.
     email: EmailStr
     rol: RolUsuario
 
@@ -39,7 +46,10 @@ class UsuarioOut(UsuarioBase):
     id: int
     activo: bool
     creado_en: datetime
-    email: str  # se relaja el formato solo al leer: la creación (UsuarioCreate) sigue exigiendo EmailStr
+    # Al LEER se relaja: la cuenta `admin` que crea el sistema en el primer
+    # arranque no tiene formato de correo, y sin esto la lista de usuarios
+    # reventaría al devolverla.
+    email: str
     telefono: Optional[str] = None
     dni: Optional[str] = None
     direccion: Optional[str] = None

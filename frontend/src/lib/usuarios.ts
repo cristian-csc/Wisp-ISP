@@ -33,3 +33,10 @@ export async function updateUsuario(id: number, patch: Partial<Pick<Usuario, 'no
 export async function eliminarUsuario(id: number): Promise<void> {
   await api.delete(`/auth/usuarios/${id}`);
 }
+
+/** Le pone una contraseña nueva a otra persona, para cuando la olvidó.
+ * Solo un administrador puede hacerlo, y queda anotado en el registro del
+ * servidor quién se la cambió a quién. Mínimo 8 caracteres. */
+export async function restablecerPassword(id: number, passwordNueva: string): Promise<void> {
+  await api.put(`/auth/usuarios/${id}/password`, { password_nueva: passwordNueva });
+}

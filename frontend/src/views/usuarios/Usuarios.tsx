@@ -31,7 +31,13 @@ import {
   FormGrid,
   FormSection,
 } from 'src/components/shared/form';
-import { listUsuarios, createUsuario, updateUsuario, eliminarUsuario } from 'src/lib/usuarios';
+import {
+  listUsuarios,
+  createUsuario,
+  updateUsuario,
+  eliminarUsuario,
+  restablecerPassword,
+} from 'src/lib/usuarios';
 import type { Usuario } from 'src/lib/api';
 import { ROL_LABEL } from 'src/lib/permisos';
 
@@ -76,6 +82,12 @@ const Usuarios = () => {
   const [eFechaIngreso, setEFechaIngreso] = useState('');
 
   const [eliminando, setEliminando] = useState<Usuario | null>(null);
+
+  // Restablecer la contraseña de otra persona (cuando la olvidó).
+  const [restableciendo, setRestableciendo] = useState<Usuario | null>(null);
+  const [rPassword, setRPassword] = useState('');
+  const [rError, setRError] = useState<string | null>(null);
+  const [rGuardando, setRGuardando] = useState(false);
 
   async function reload() {
     setUsuarios(await listUsuarios());
@@ -147,6 +159,35 @@ const Usuarios = () => {
     reload();
   }
 
+  function abrirRestablecer(u: Usuario) {
+    setRestableciendo(u);
+    setRPassword('');
+    setRError(null);
+  }
+
+  async function handleRestablecer(e: FormEvent) {
+    e.preventDefault();
+    if (!restableciendo || rGuardando) return;
+    if (rPassword.length < 8) {
+      setRError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    setRGuardando(true);
+    setRError(null);
+    try {
+      await restablecerPassword(restableciendo.id, rPassword);
+      toast.success(`Contraseña cambiada a ${restableciendo.nombre}`, {
+        description: 'Dísela en persona y pídele que la cambie al entrar.',
+      });
+      setRestableciendo(null);
+      setRPassword('');
+    } catch (err: any) {
+      setRError(err?.response?.data?.detail ?? 'No se pudo cambiar la contraseña');
+    } finally {
+      setRGuardando(false);
+    }
+  }
+
   async function handleEliminar() {
     if (!eliminando) return;
     try {
@@ -200,10 +241,18 @@ const Usuarios = () => {
                 </div>
               </TableCell>
               <TableCell className="text-end">
-                <Button variant="ghost" size="icon" onClick={() => abrirEditar(u)}>
+                <Button variant="ghost" size="icon" onClick={() => abrirEditar(u)} title="Editar ficha">
                   <Icon icon="tabler:pencil" height={18} />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setEliminando(u)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => abrirRestablecer(u)}
+                  title="Restablecer contraseña"
+                >
+                  <Icon icon="tabler:key" height={18} />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setEliminando(u)} title="Eliminar">
                   <Icon icon="tabler:trash" height={18} className="text-error" />
                 </Button>
               </TableCell>
@@ -244,11 +293,21 @@ const Usuarios = () => {
                   />
                 </FieldIcon>
               </FormField>
-              <FormField label="Correo" htmlFor="emailUsuario" required>
+              {/* Es con lo que la persona entra al sistema. La convención de
+                  la empresa es nombre.apellido@wispfibra.com, aunque el buzón
+                  no exista: así no choca con las cuentas de los clientes. */}
+              <FormField
+                label="Correo"
+                htmlFor="emailUsuario"
+                required
+                hint="Con esto entrará al sistema. Usa nombre.apellido@wispfibra.com"
+              >
                 <FieldIcon icon="tabler:mail">
                   <Input
                     id="emailUsuario"
                     type="email"
+                    autoComplete="off"
+                    placeholder="nombre.apellido@wispfibra.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -395,6 +454,48 @@ const Usuarios = () => {
             </FieldIcon>
           </FormField>
         </FormGrid>
+      </FormDialog>
+
+      <FormDialog
+        open={!!restableciendo}
+        onOpenChange={(o) => !o && setRestableciendo(null)}
+        title="Restablecer contraseña"
+        subtitle={restableciendo ? `Para ${restableciendo.nombre} · ${restableciendo.email}` : undefined}
+        icon="tabler:key"
+        footer={
+          <FormActions
+            onCancel={() => setRestableciendo(null)}
+            submitLabel={rGuardando ? 'Cambiando…' : 'Cambiar contraseña'}
+            submitIcon="tabler:key"
+            submitForm="usuario-reset-form"
+          />
+        }
+      >
+        <form id="usuario-reset-form" onSubmit={handleRestablecer} className="flex flex-col gap-5">
+          <FormCallout icon="tabler:info-circle">
+            Para cuando alguien olvidó su contraseña. No puedes ver la anterior:
+            esta la reemplaza. Dísela en persona y pídele que la cambie desde su
+            perfil al entrar.
+          </FormCallout>
+          <FormField
+            label="Contraseña nueva"
+            htmlFor="rPassword"
+            required
+            hint="Mínimo 8 caracteres"
+            error={rError}
+          >
+            <FieldIcon icon="tabler:key">
+              <Input
+                id="rPassword"
+                type="text"
+                autoComplete="off"
+                value={rPassword}
+                onChange={(e) => setRPassword(e.target.value)}
+                required
+              />
+            </FieldIcon>
+          </FormField>
+        </form>
       </FormDialog>
 
       <ConfirmDialog
