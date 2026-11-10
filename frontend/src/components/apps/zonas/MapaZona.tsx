@@ -44,21 +44,6 @@ const cajaIcon = L.divIcon({
   iconAnchor: [10, 10],
 });
 
-// Pin temporal (ubicación sin guardar todavía): mismo arreglo que los íconos
-// de arriba, antes caía en el ícono roto por defecto de Leaflet.
-const tempIcon = L.divIcon({
-  html: `<div style="position:relative;width:28px;height:28px;">
-    <div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(246,181,30,0.35);animation:napServerPulse 2s ease-out infinite;"></div>
-    <div style="position:relative;background:#f6b51e;width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">
-      <div style="transform:rotate(45deg);width:8px;height:8px;border-radius:50%;background:white;"></div>
-    </div>
-    <style>@keyframes napServerPulse { 0% { transform: scale(0.6); opacity: 0.8; } 100% { transform: scale(1.6); opacity: 0; } }</style>
-  </div>`,
-  className: '',
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-});
-
 // Esri no tiene imagen satelital en máxima resolución para todas las zonas
 // rurales — sin este tope, al acercar el zoom más allá de lo que Esri cubre
 // ahí, muestra un tile con "Map data not yet available for this region".
@@ -67,7 +52,6 @@ const tempIcon = L.divIcon({
 const MAX_NATIVE_ZOOM_SATELITE = 18;
 const MAX_ZOOM_MAPA = 21;
 
-type PinPendiente = { lat: number; lng: number } | null;
 type CapaMapa = 'calle' | 'satelite';
 
 const CAPAS: Record<CapaMapa, { url: string; attribution: string }> = {
@@ -120,7 +104,6 @@ export default function MapaZona({
   /** Alto del mapa en píxeles — la pantalla decide cuánto espacio darle */
   alto?: number;
 }) {
-  const [pinTemporal, setPinTemporal] = useState<PinPendiente>(null);
   const [capa, setCapa] = useState<CapaMapa>('calle');
 
   const centro: [number, number] =
@@ -143,7 +126,6 @@ export default function MapaZona({
       return;
     }
     if (!modoColocar) return;
-    setPinTemporal({ lat, lng });
     onColocarPin(lat, lng);
   }
 
@@ -284,11 +266,6 @@ export default function MapaZona({
             </Marker>
           ))}
 
-        {pinTemporal && (
-          <Marker position={[pinTemporal.lat, pinTemporal.lng]} icon={tempIcon} zIndexOffset={1000}>
-            <Popup>Nueva ubicación (sin guardar)</Popup>
-          </Marker>
-        )}
       </MapContainer>
 
       <LeyendaMapa items={itemsLeyenda} />
