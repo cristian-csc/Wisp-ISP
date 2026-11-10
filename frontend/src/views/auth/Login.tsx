@@ -60,7 +60,7 @@ const Login = () => {
 
   return (
     <div
-      className="grid min-h-dvh place-items-center p-[18px]"
+      className="grid min-h-dvh place-items-center overflow-x-hidden p-[18px]"
       style={{ background: 'rgba(3, 6, 12, 0.98)' }}
     >
       {/* La animación de entrada y el relleno en móvil replican el original */}
