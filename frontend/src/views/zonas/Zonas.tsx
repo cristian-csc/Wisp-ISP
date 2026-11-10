@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
+import ConfirmDialog from 'src/components/shared/ConfirmDialog';
 import { Badge } from 'src/components/ui/badge';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
@@ -21,7 +23,7 @@ import {
   FormField,
   FormGrid,
 } from 'src/components/shared/form';
-import { listZonas, createZona, type Zona } from 'src/lib/zonas';
+import { listZonas, createZona, deleteZona, type Zona } from 'src/lib/zonas';
 import { getMe, type Usuario } from 'src/lib/api';
 import { puedeAccion } from 'src/lib/permisos';
 
@@ -33,6 +35,7 @@ const Zonas = () => {
   const [nombre, setNombre] = useState('');
   const [ipWireguard, setIpWireguard] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [borrando, setBorrando] = useState<Zona | null>(null);
 
   const puedeGestionar = puedeAccion('zonas.gestionar', currentUser?.rol);
   /** Atención al cliente entra aquí a consultar cobertura: ve las zonas y sus
@@ -59,6 +62,21 @@ const Zonas = () => {
       reload();
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'No se pudo crear la zona');
+    }
+  }
+
+  async function handleBorrar() {
+    if (!borrando) return;
+    try {
+      await deleteZona(borrando.id);
+      toast.success(`Zona "${borrando.nombre}" eliminada`);
+      setBorrando(null);
+      reload();
+    } catch (err: any) {
+      // El servidor explica por qué se negó (normalmente: tiene clientes
+      // asignados y dice cuántos). Se muestra tal cual.
+      toast.error(err?.response?.data?.detail ?? 'No se pudo eliminar la zona');
+      setBorrando(null);
     }
   }
 
@@ -104,9 +122,24 @@ const Zonas = () => {
                 </Badge>
               </TableCell>
               <TableCell className="text-end">
-                <Button variant="ghost" size="icon" onClick={() => navigate(`/zonas/${z.id}`)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(`/zonas/${z.id}`)}
+                  title="Ver la zona"
+                >
                   <Icon icon="tabler:eye" height={18} />
                 </Button>
+                {puedeGestionar && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setBorrando(z)}
+                    title="Eliminar zona"
+                  >
+                    <Icon icon="tabler:trash" height={18} className="text-error" />
+                  </Button>
+                )}
               </TableCell>
             </TableRow>
           ))}
@@ -161,6 +194,18 @@ const Zonas = () => {
           {error && <FormCallout tone="error">{error}</FormCallout>}
         </form>
       </FormDialog>
+
+      <ConfirmDialog
+        open={!!borrando}
+        onOpenChange={(o) => !o && setBorrando(null)}
+        title="Eliminar zona"
+        description={
+          borrando
+            ? `¿Eliminar la zona "${borrando.nombre}"? Se van con ella sus mufas y cajas NAP, y no se puede deshacer. Si tiene clientes asignados, el sistema no te va a dejar.`
+            : undefined
+        }
+        onConfirm={handleBorrar}
+      />
     </CardBox>
   );
 };

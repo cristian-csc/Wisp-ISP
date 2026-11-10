@@ -45,6 +45,14 @@ export async function createZona(data: ZonaCreateInput) {
   return res.data;
 }
 
+/** Borra una zona. El servidor se niega si tiene clientes asignados y
+ *  devuelve cuántos son, así que el error se le puede mostrar tal cual a
+ *  quien lo intentó. Borrar una zona se lleva por delante sus mufas y cajas
+ *  NAP: no hay deshacer. */
+export async function deleteZona(id: number): Promise<void> {
+  await api.delete(`/zonas/${id}`);
+}
+
 export async function updateZonaDatos(id: number, data: {
   nombre?: string;
   lat?: number;
