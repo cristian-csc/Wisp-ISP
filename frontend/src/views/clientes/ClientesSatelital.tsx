@@ -33,6 +33,8 @@ import {
 } from 'src/components/shared/form';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from 'src/components/ui/tooltip';
 import {
+  consultarDocumento,
+  type ConsultaDocumento,
   listClientes,
   listPlanes,
   createCliente,
@@ -76,6 +78,11 @@ const ClientesSatelital = () => {
   const [crearOpen, setCrearOpen] = useState(false);
   const [nombre, setNombre] = useState('');
   const [dni, setDni] = useState('');
+  // Si el nombre lo trajo la consulta, una consulta posterior puede
+  // reemplazarlo; si lo escribió la persona a mano, se respeta.
+  const [nombreAuto, setNombreAuto] = useState(false);
+  const [consultaDni, setConsultaDni] = useState<ConsultaDocumento | null>(null);
+  const [buscandoDni, setBuscandoDni] = useState(false);
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
   const [planId, setPlanId] = useState('');
@@ -106,8 +113,66 @@ const ClientesSatelital = () => {
 
   function resetForm() {
     setNombre(''); setDni(''); setTelefono(''); setDireccion('');
+    setNombreAuto(false); setConsultaDni(null);
     setPlanId(''); setCuentaEmail(''); setEquipoModelo('');
     setEquipoSerial(''); setEquipoValor(''); setError(null);
+  }
+
+  /** Al completar los 8 dígitos se busca el nombre. Es la misma consulta que
+   *  usa el alta de fibra e inalámbrico: un cliente satelital se da de alta
+   *  igual de rápido que cualquier otro. Si falla, queda escrito el motivo y
+   *  el campo sigue editable — el alta nunca se bloquea por esto. */
+  async function buscarNombre(numero: string) {
+    setBuscandoDni(true);
+    try {
+      const r = await consultarDocumento('dni', numero);
+      setConsultaDni(r);
+      if (r.encontrado && r.nombre) {
+        // Solo se pisa lo que puso una consulta anterior o un campo vacío:
+        // si la persona escribió el nombre a mano, se queda como lo dejó.
+        if (nombreAuto || !nombre.trim()) {
+          setNombre(r.nombre);
+          setNombreAuto(true);
+        }
+      } else if (nombreAuto) {
+        // Cambió el DNI y este no se encontró: el nombre anterior ya no
+        // corresponde, así que se limpia en vez de dejarlo desfasado.
+        setNombre('');
+        setNombreAuto(false);
+      }
+    } catch {
+      setConsultaDni({
+        encontrado: false,
+        nombre: null,
+        origen: 'sin_respuesta',
+        motivo: 'No se pudo consultar. Escribe el nombre a mano.',
+      } as ConsultaDocumento);
+    } finally {
+      setBuscandoDni(false);
+    }
+  }
+
+  /** Aviso bajo el campo del DNI, con el tono según lo que pasó. */
+  function AvisoConsulta() {
+    if (buscandoDni) {
+      return <p className="mt-1.5 text-xs text-muted-foreground">Buscando el nombre…</p>;
+    }
+    if (!consultaDni) return null;
+    if (consultaDni.origen === 'sistema') {
+      return <p className="mt-1.5 text-xs text-warning-text">{consultaDni.motivo}</p>;
+    }
+    if (consultaDni.encontrado) {
+      return (
+        <p className="mt-1.5 text-xs text-success-text">
+          Nombre traído automáticamente
+          {consultaDni.estado ? ` · ${consultaDni.estado}` : ''}
+          {consultaDni.uso && consultaDni.uso.aviso
+            ? ` · quedan ${consultaDni.uso.restantes} consultas este mes`
+            : ''}
+        </p>
+      );
+    }
+    return <p className="mt-1.5 text-xs text-muted-foreground">{consultaDni.motivo}</p>;
   }
 
   async function handleCrear(e: FormEvent) {
@@ -297,12 +362,19 @@ const ClientesSatelital = () => {
                   <Input
                     id="sdni"
                     value={dni}
-                    onChange={(e) => setDni(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '');
+                      setDni(v);
+                      setConsultaDni(null);
+                      if (v.length === 8) void buscarNombre(v);
+                    }}
                     maxLength={8}
+                    inputMode="numeric"
                     pattern="\d{8}"
                     required
                   />
                 </FieldIcon>
+                <AvisoConsulta />
               </FormField>
             </FormSection>
 
