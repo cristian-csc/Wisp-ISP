@@ -23,6 +23,9 @@ export const COLORS = {
   placeholder: '#94a3b8',
 
   lightprimary: 'rgba(93,135,255,0.12)',
+  // Opaco: para fondos de pantalla completa. Un color rgba() ahí se ve bien en
+  // Expo Go (host blanco detrás) pero se mezcla con negro en el build nativo.
+  authBg: '#eef3ff',
   lightsecondary: 'rgba(73,190,255,0.12)',
   lightinfo: 'rgba(135,84,236,0.12)',
   lightsuccess: 'rgba(19,222,185,0.12)',

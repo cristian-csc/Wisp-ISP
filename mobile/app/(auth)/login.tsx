@@ -149,7 +149,7 @@ export default function LoginScreen() {
 }
 
 const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: COLORS.lightprimary },
+  bg: { flex: 1, backgroundColor: COLORS.authBg },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 24 },
 
   deco: { position: 'absolute', borderRadius: 999, backgroundColor: COLORS.primary },
