@@ -12,7 +12,7 @@
       "backgroundColor": "#ffffff"
     },
     "android": {
-      "package": "com.tuxtell.isp",
+      "package": "com.wispfibra.app",
       "softwareKeyboardLayoutMode": "pan",
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
@@ -22,7 +22,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.tuxtell.isp"
+      "bundleIdentifier": "com.wispfibra.app"
     },
     "scheme": "wisp",
     "plugins": [
