@@ -2,8 +2,15 @@ import * as SecureStore from 'expo-secure-store';
 
 /** En desarrollo apunta al backend local (mobile/.env, EXPO_PUBLIC_API_URL) —
  * necesita ser la IP LAN de la PC, no localhost, para que el celular lo alcance
- * por WiFi. Sin esa variable, cae a producción (usado en builds reales). */
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://dominiowisp.com/api';
+ * por WiFi.
+ *
+ * Sin esa variable cae al servidor de producción. Ojo: en los APK que se
+ * construyen con EAS la variable NO viene de mobile/.env (ese archivo está en
+ * .gitignore y no se sube), sino de `env` en eas.json. Este respaldo es la
+ * última red: hasta el 2026-11-11 apuntaba a dominiowisp.com, un dominio de
+ * relleno que ni siquiera existe, así que un APK sin la variable quedaba
+ * inservible sin que nada lo avisara. */
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://wispfibra.com/api';
 
 async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync('token');
