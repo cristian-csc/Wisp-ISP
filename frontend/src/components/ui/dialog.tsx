@@ -19,7 +19,11 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      // z-[1200]: no solo z-50 — Leaflet usa panes internos con z-index hasta
+      // 700, y cuando el diálogo se monta dentro del mapa en pantalla
+      // completa (ver el `container` de DialogPortal abajo) pasa a competir
+      // en esa misma capa de apilamiento.
+      'fixed inset-0 z-[1200] bg-black/55 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className,
     )}
     {...props}
@@ -31,12 +35,16 @@ const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
-  <DialogPortal>
+  // Si el mapa (u otro elemento) está en pantalla completa nativa, el portal
+  // tiene que montarse ahí dentro — fuera de ese elemento queda invisible,
+  // aunque el z-index sea alto: la API de pantalla completa oculta todo lo
+  // que no esté dentro de su propio elemento.
+  <DialogPortal container={(document.fullscreenElement as HTMLElement | null) ?? undefined}>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 grid max-h-[92vh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-2xl border border-ld bg-card p-6 shadow-xl duration-200',
+        'fixed left-1/2 top-1/2 z-[1200] grid max-h-[92vh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-2xl border border-ld bg-card p-6 shadow-xl duration-200',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',

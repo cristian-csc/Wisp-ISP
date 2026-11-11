@@ -17,7 +17,10 @@ const AlertDialogOverlay = React.forwardRef<
   <AlertDialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      // Mismo motivo que en dialog.tsx: por encima de los paneles internos
+      // de Leaflet (hasta z-index 700) cuando se monta dentro del mapa en
+      // pantalla completa.
+      'fixed inset-0 z-[1200] bg-black/55 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className,
     )}
     {...props}
@@ -29,12 +32,14 @@ const AlertDialogContent = React.forwardRef<
   React.ComponentRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
 >(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
+  // Mismo motivo que en Dialog: si algo está en pantalla completa nativa, el
+  // portal tiene que montarse ahí dentro o queda invisible.
+  <AlertDialogPortal container={(document.fullscreenElement as HTMLElement | null) ?? undefined}>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl border border-ld bg-card p-6 text-card-foreground shadow-xl duration-200',
+        'fixed left-1/2 top-1/2 z-[1200] grid w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl border border-ld bg-card p-6 text-card-foreground shadow-xl duration-200',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',

@@ -432,46 +432,28 @@ const ZonaDetail = () => {
           icono="tabler:map-2"
           descripcion="Servidor, mufas y cajas NAP ubicadas en el terreno."
           extra={
-            <>
-          {dibujandoTrazadoMufa ? (
-            <div className="flex gap-2 items-center">
-              <span className="text-xs text-muted-foreground">Dibujando trazado — {dibujandoTrazadoMufa.codigo}</span>
-              <Button variant="outline" size="sm" onClick={handleDeshacerPuntoTrazado} disabled={puntosTrazado.length === 0}>
-                <Icon icon="tabler:arrow-back-up" height={16} className="mr-1" />
-                Deshacer
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleCancelarTrazado}>
-                Cancelar
-              </Button>
-              <Button size="sm" onClick={handleGuardarTrazado} disabled={puntosTrazado.length < 2}>
-                <Icon icon="tabler:check" height={16} className="mr-1" />
-                Guardar trazado
-              </Button>
-            </div>
-          ) : (
-            <div className={`flex gap-2 ${puedeGestionar ? '' : 'hidden'}`}>
-              <Button
-                variant={modoColocar === 'servidor' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setModoColocar(modoColocar === 'servidor' ? null : 'servidor')}
-              >
-                <Icon icon="tabler:server-2" height={16} className="mr-1" />
-                {zona.lat != null ? 'Reubicar servidor' : 'Marcar servidor'}
-              </Button>
-              <Button
-                variant={modoColocar === 'mufa' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setModoColocar(modoColocar === 'mufa' ? null : 'mufa')}
-              >
-                <Icon icon="tabler:plus" height={16} className="mr-1" />
-                Agregar mufa
-              </Button>
-            </div>
-          )}
-            </>
+            dibujandoTrazadoMufa && (
+              <div className="flex gap-2 items-center">
+                <span className="text-xs text-muted-foreground">Dibujando trazado — {dibujandoTrazadoMufa.codigo}</span>
+                <Button variant="outline" size="sm" onClick={handleDeshacerPuntoTrazado} disabled={puntosTrazado.length === 0}>
+                  <Icon icon="tabler:arrow-back-up" height={16} className="mr-1" />
+                  Deshacer
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleCancelarTrazado}>
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={handleGuardarTrazado} disabled={puntosTrazado.length < 2}>
+                  <Icon icon="tabler:check" height={16} className="mr-1" />
+                  Guardar trazado
+                </Button>
+              </div>
+            )
           }
         >
 
+        {/* Los botones de "Reubicar servidor" / "Agregar mufa" viven dentro
+            del propio mapa (junto al selector Calle/Satélite), no acá arriba:
+            así siguen alcanzables cuando el mapa entra en pantalla completa. */}
         <MapaZona
           serverLat={zona.lat}
           serverLng={zona.lng}
@@ -480,6 +462,8 @@ const ZonaDetail = () => {
           onMufaClick={handleVerMufa}
           modoColocar={modoColocar}
           onColocarPin={handleColocarPin}
+          onCambiarModo={setModoColocar}
+          puedeGestionar={puedeGestionar}
           dibujandoTrazadoMufa={dibujandoTrazadoMufa}
           puntosTrazado={puntosTrazado}
           onAgregarPuntoTrazado={handleAgregarPuntoTrazado}

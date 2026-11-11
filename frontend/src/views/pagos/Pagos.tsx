@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import CardBox from 'src/components/shared/CardBox';
+import StatCard from 'src/components/shared/StatCard';
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
 import BotonDescargarReporte from 'src/components/shared/BotonDescargarReporte';
 import { useCurrentUser } from 'src/lib/useCurrentUser';
@@ -136,32 +137,6 @@ const CATEGORIA_FILTRO_LABEL: Record<'todos' | CategoriaControl, string> = {
   cortado: 'Cortados',
   pausado: 'Pausados',
 };
-
-const StatCard = ({
-  icon,
-  label,
-  value,
-  bg,
-  text,
-}: {
-  icon: string;
-  label: string;
-  value: React.ReactNode;
-  bg: string;
-  text: string;
-}) => (
-  <CardBox className="p-4">
-    <div className="flex items-center gap-3">
-      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${bg} ${text}`}>
-        <Icon icon={icon} height={22} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground truncate">{label}</p>
-        <p className="text-sm font-semibold truncate">{value}</p>
-      </div>
-    </div>
-  </CardBox>
-);
 
 const Pagos = () => {
   const { user } = useCurrentUser();
@@ -426,25 +401,22 @@ const Pagos = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard
-          icon="tabler:cash"
-          label="Recaudado este mes"
-          value={`S/ ${ingresosMes.toFixed(2)}`}
-          bg="bg-success/10"
-          text="text-success"
+          icono="tabler:cash"
+          etiqueta="Recaudado este mes"
+          valor={`S/ ${ingresosMes.toFixed(2)}`}
+          tono="success"
         />
         <StatCard
-          icon="tabler:alert-triangle"
-          label="Clientes sin pagar"
-          value={sinPago.length}
-          bg="bg-warning/10"
-          text="text-warning"
+          icono="tabler:alert-triangle"
+          etiqueta="Clientes sin pagar"
+          valor={sinPago.length}
+          tono="warning"
         />
         <StatCard
-          icon="tabler:receipt-2"
-          label="Gastos este mes"
-          value={`S/ ${gastosMes.toFixed(2)}`}
-          bg="bg-error/10"
-          text="text-error"
+          icono="tabler:receipt-2"
+          etiqueta="Gastos este mes"
+          valor={`S/ ${gastosMes.toFixed(2)}`}
+          tono="error"
         />
       </div>
 

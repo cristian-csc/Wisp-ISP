@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
+import StatCard from 'src/components/shared/StatCard';
+import EmptyState from 'src/components/shared/EmptyState';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import {
@@ -27,37 +29,11 @@ import { getZona, type Zona } from 'src/lib/zonas';
 import { listMufas, type Mufa } from 'src/lib/mufas';
 
 const STAT_CARDS = [
-  { key: 'cajas', icon: 'tabler:box', label: 'Cajas NAP', bg: 'bg-primary/10', text: 'text-primary' },
-  { key: 'libres', icon: 'tabler:circle-check', label: 'Bornes libres', bg: 'bg-success/10', text: 'text-success' },
-  { key: 'ocupados', icon: 'tabler:plug-connected', label: 'Bornes ocupados', bg: 'bg-info/10', text: 'text-info' },
-  { key: 'danados', icon: 'tabler:alert-triangle', label: 'Bornes dañados', bg: 'bg-error/10', text: 'text-error' },
+  { key: 'cajas', icono: 'tabler:box', etiqueta: 'Cajas NAP', tono: 'primary' },
+  { key: 'libres', icono: 'tabler:circle-check', etiqueta: 'Bornes libres', tono: 'success' },
+  { key: 'ocupados', icono: 'tabler:plug-connected', etiqueta: 'Bornes ocupados', tono: 'info' },
+  { key: 'danados', icono: 'tabler:alert-triangle', etiqueta: 'Bornes dañados', tono: 'error' },
 ] as const;
-
-const StatCard = ({
-  icon,
-  label,
-  value,
-  bg,
-  text,
-}: {
-  icon: string;
-  label: string;
-  value: React.ReactNode;
-  bg: string;
-  text: string;
-}) => (
-  <CardBox className="p-4">
-    <div className="flex items-center gap-3">
-      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${bg} ${text}`}>
-        <Icon icon={icon} height={22} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground truncate">{label}</p>
-        <p className="text-sm font-semibold truncate">{value}</p>
-      </div>
-    </div>
-  </CardBox>
-);
 
 const CajaNapZona = () => {
   const { zonaId } = useParams();
@@ -148,17 +124,19 @@ const CajaNapZona = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {STAT_CARDS.map((s) => (
-          <StatCard key={s.key} icon={s.icon} label={s.label} value={statValues[s.key]} bg={s.bg} text={s.text} />
+          <StatCard key={s.key} icono={s.icono} etiqueta={s.etiqueta} valor={statValues[s.key]} tono={s.tono} />
         ))}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cajasFiltradas.length === 0 && (
-          <CardBox>
-            <p className="text-center text-muted-foreground py-4">
-              {cajas.length === 0 ? 'No hay cajas NAP registradas en esta zona.' : 'Ninguna caja coincide con la búsqueda.'}
-            </p>
-          </CardBox>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <EmptyState
+              icono="tabler:box-off"
+              titulo={cajas.length === 0 ? 'Sin cajas NAP registradas' : 'Ninguna caja coincide con la búsqueda'}
+              descripcion={cajas.length === 0 ? 'Todavía no hay cajas NAP en esta zona.' : undefined}
+            />
+          </div>
         )}
         {cajasFiltradas.map((c) => {
           const libres = c.bornes.filter((b) => b.estado === 'libre').length;

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
 import {
   AjustarTamanoMapa,
+  BOTON,
   ControlesCapa,
   ControlesZoom,
   LeyendaMapa,
@@ -83,6 +84,8 @@ export default function MapaZona({
   onMufaClick,
   modoColocar,
   onColocarPin,
+  onCambiarModo,
+  puedeGestionar = true,
   dibujandoTrazadoMufa,
   puntosTrazado = [],
   onAgregarPuntoTrazado,
@@ -95,6 +98,13 @@ export default function MapaZona({
   onMufaClick: (mufa: Mufa) => void;
   modoColocar: 'servidor' | 'mufa' | 'caja' | null;
   onColocarPin: (lat: number, lng: number) => void;
+  /** Botones de "Marcar/Reubicar servidor" y "Agregar mufa" dentro del propio
+   * mapa — así siguen a mano cuando el mapa entra en pantalla completa, donde
+   * los botones de la cabecera de la tarjeta (fuera de este componente) ya
+   * no son alcanzables. Si no se pasa, esos botones simplemente no se pintan
+   * (por ejemplo, mapas de solo lectura). */
+  onCambiarModo?: (modo: 'servidor' | 'mufa' | null) => void;
+  puedeGestionar?: boolean;
   /** Mientras no sea null, cada click en el mapa agrega un punto al trazado
    * en vez de disparar onColocarPin — es un modo de "dibujar línea", no de
    * "un solo click y listo" como los demás. */
@@ -155,6 +165,32 @@ export default function MapaZona({
           { valor: 'satelite', etiqueta: 'Satélite' },
         ] as const}
       />
+
+      {onCambiarModo && puedeGestionar && !dibujandoTrazadoMufa && (
+        <div className="absolute right-3 top-14 z-[1000] flex flex-col overflow-hidden rounded-xl border border-ld bg-card/95 shadow-md backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={() => onCambiarModo(modoColocar === 'servidor' ? null : 'servidor')}
+            aria-label={serverLat != null ? 'Reubicar servidor' : 'Marcar servidor'}
+            title={serverLat != null ? 'Reubicar servidor' : 'Marcar servidor'}
+            aria-pressed={modoColocar === 'servidor'}
+            className={`${BOTON} ${modoColocar === 'servidor' ? '!bg-primary !text-white hover:!bg-primary' : ''}`}
+          >
+            <Icon icon="tabler:server-2" width={16} />
+          </button>
+          <span className="h-px bg-border" />
+          <button
+            type="button"
+            onClick={() => onCambiarModo(modoColocar === 'mufa' ? null : 'mufa')}
+            aria-label="Agregar mufa"
+            title="Agregar mufa"
+            aria-pressed={modoColocar === 'mufa'}
+            className={`${BOTON} ${modoColocar === 'mufa' ? '!bg-primary !text-white hover:!bg-primary' : ''}`}
+          >
+            <Icon icon="tabler:plus" width={16} />
+          </button>
+        </div>
+      )}
 
       <MapContainer
         center={centro}

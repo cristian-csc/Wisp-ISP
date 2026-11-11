@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, Image, TextInput, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Modal,
 } from 'react-native';
-import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
+import { CameraView, useCameraPermissions, scanFromURLAsync, type BarcodeScanningResult } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { registrarOnuPropio, detectarMarcaOnu, WifiVersion } from '@/services/api';
@@ -14,42 +14,53 @@ type Campo = 'mac' | 'serie' | null;
 const BARCODE_TYPES = ['code128', 'code39', 'ean13', 'qr'] as const;
 
 // La etiqueta trae varios códigos de barras pegados (MAC, GPON S/N, proveedor,
-// QR) — aceptar la primera lectura tal cual agarra el que se cruce dentro del
-// recuadro, que a veces incluye al vecino (ej. detecta el LOTE en vez de la
-// MAC). Por eso ahora es como tomar una foto: el recuadro es angosto (una
-// sola línea de código a la vez) y, apenas detecta algo, se congela y muestra
-// lo leído para que el técnico confirme con "Usar este código" o reintente
-// si agarró el que no era — nunca se registra solo.
-const SCAN_ARM_DELAY_MS = 600;
+// QR). Un escaneo "en vivo" (cuadro a cuadro) no sirve acá: expo-camera
+// analiza toda la imagen de cada cuadro y devuelve cualquier código que
+// detecte ahí, sin importar qué parte caiga dentro del recuadro que se ve en
+// pantalla — ese recuadro es solo decorativo. Con varios códigos juntos,
+// siempre terminaba agarrando el más fácil de leer, no el que el técnico
+// apuntaba, ni con zoom.
+//
+// En cambio esto funciona como una cámara de fotos: el técnico encuadra y
+// toca el botón, se toma UNA foto, se buscan todos los códigos que haya en
+// esa foto (scanFromURLAsync) y se le muestran como lista para que elija cuál
+// es — nunca se adivina ni se registra solo.
+const ZOOM_INICIAL = 0.45;
 
 function ScannerModal({ visible, onClose, onScanned }: {
   visible: boolean; onClose: () => void; onScanned: (valor: string) => void;
 }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [candidato, setCandidato] = useState<string | null>(null);
-  const armadoRef = useRef(false);
+  const cameraRef = useRef<CameraView>(null);
+  const [foto, setFoto] = useState<string | null>(null);
+  const [analizando, setAnalizando] = useState(false);
+  const [codigos, setCodigos] = useState<BarcodeScanningResult[]>([]);
 
   function handleShow() {
-    setCandidato(null);
-    armadoRef.current = false;
-    setTimeout(() => { armadoRef.current = true; }, SCAN_ARM_DELAY_MS);
+    setFoto(null);
+    setCodigos([]);
+    setAnalizando(false);
   }
 
-  function handleScan(result: BarcodeScanningResult) {
-    if (candidato || !armadoRef.current) return;
-    const data = result.data.trim();
-    if (!data) return;
-    setCandidato(data);
+  async function tomarFoto() {
+    if (!cameraRef.current || analizando) return;
+    try {
+      const captura = await cameraRef.current.takePictureAsync({ quality: 0.6 });
+      setFoto(captura.uri);
+      setAnalizando(true);
+      const encontrados = await scanFromURLAsync(captura.uri, [...BARCODE_TYPES]);
+      setCodigos(encontrados);
+    } catch {
+      Alert.alert('Error', 'No se pudo tomar la foto. Intenta de nuevo.');
+      setFoto(null);
+    } finally {
+      setAnalizando(false);
+    }
   }
 
   function reintentar() {
-    setCandidato(null);
-    armadoRef.current = true;
-  }
-
-  function confirmar() {
-    if (!candidato) return;
-    onScanned(candidato);
+    setFoto(null);
+    setCodigos([]);
   }
 
   if (!visible) return null;
@@ -69,40 +80,71 @@ function ScannerModal({ visible, onClose, onScanned }: {
               <Text style={sc.cancelText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : !foto ? (
           <>
             <CameraView
+              ref={cameraRef}
               style={{ flex: 1 }}
               facing="back"
-              barcodeScannerSettings={{ barcodeTypes: [...BARCODE_TYPES] }}
-              onBarcodeScanned={handleScan}
+              zoom={ZOOM_INICIAL}
             />
             <View style={sc.overlay} pointerEvents="none">
-              <View style={[sc.frame, candidato && sc.frameConfirmando]} />
-              {!candidato && <Text style={sc.hint}>Centra una sola línea de código en el recuadro</Text>}
+              <View style={sc.frame} />
+              <Text style={sc.hint}>
+                Encuadra un solo código{'\n'}y toca el botón para capturar
+              </Text>
             </View>
-            {candidato && (
-              <View style={sc.confirmPanel}>
-                <Text style={sc.confirmLabel}>¿Es este el código correcto?</Text>
-                <Text style={sc.confirmValue}>{candidato}</Text>
-                <View style={sc.confirmRow}>
-                  <TouchableOpacity style={sc.retryBtn} onPress={reintentar}>
-                    <Ionicons name="refresh" size={17} color={COLORS.dark} />
-                    <Text style={sc.retryBtnText}>Reintentar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={sc.useBtn} onPress={confirmar}>
-                    <Ionicons name="checkmark" size={18} color={COLORS.white} />
-                    <Text style={sc.useBtnText}>Usar este código</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-            <TouchableOpacity style={sc.closeBtn} onPress={onClose}>
-              <Ionicons name="close" size={15} color="#fff" />
-              <Text style={sc.closeBtnText}>Cerrar</Text>
+            <TouchableOpacity style={sc.shutterBtn} onPress={tomarFoto} disabled={analizando}>
+              <View style={sc.shutterInner} />
             </TouchableOpacity>
           </>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <Image source={{ uri: foto }} style={sc.fotoPreview} resizeMode="cover" />
+            <View style={sc.resultPanel}>
+              {analizando ? (
+                <View style={sc.resultCentro}>
+                  <ActivityIndicator color={COLORS.primary} />
+                  <Text style={sc.resultLoadingText}>Buscando códigos en la foto…</Text>
+                </View>
+              ) : codigos.length === 0 ? (
+                <View style={sc.resultCentro}>
+                  <Ionicons name="alert-circle-outline" size={28} color={COLORS.warning} />
+                  <Text style={sc.resultEmptyText}>No se detectó ningún código en la foto.</Text>
+                  <TouchableOpacity style={sc.retryBtn} onPress={reintentar}>
+                    <Ionicons name="camera-outline" size={17} color={COLORS.dark} />
+                    <Text style={sc.retryBtnText}>Tomar otra foto</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <Text style={sc.resultLabel}>
+                    {codigos.length === 1 ? '¿Es este el código?' : `Se encontraron ${codigos.length} códigos — ¿cuál es?`}
+                  </Text>
+                  <ScrollView style={{ maxHeight: 220 }}>
+                    {codigos.map((c, i) => (
+                      <TouchableOpacity key={`${c.data}-${i}`} style={sc.codigoBtn} onPress={() => onScanned(c.data)}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={sc.codigoValue}>{c.data}</Text>
+                          <Text style={sc.codigoTipo}>{c.type}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color={COLORS.mutedForeground} />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <TouchableOpacity style={sc.retryBtn} onPress={reintentar}>
+                    <Ionicons name="camera-outline" size={17} color={COLORS.dark} />
+                    <Text style={sc.retryBtnText}>Tomar otra foto</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
         )}
+        <TouchableOpacity style={sc.closeBtn} onPress={onClose}>
+          <Ionicons name="close" size={15} color="#fff" />
+          <Text style={sc.closeBtnText}>Cerrar</Text>
+        </TouchableOpacity>
       </View>
     </Modal>
   );
@@ -239,19 +281,36 @@ const s = StyleSheet.create({
 
 const sc = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  frame: { width: 300, height: 40, borderWidth: 3, borderColor: COLORS.secondary, borderRadius: 10, backgroundColor: 'transparent' },
-  frameConfirmando: { borderColor: COLORS.success },
-  hint: { color: '#fff', marginTop: 16, fontSize: 13, fontWeight: '600', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  frame: { width: 280, height: 90, borderWidth: 3, borderColor: COLORS.secondary, borderRadius: 10, backgroundColor: 'transparent' },
+  hint: { color: '#fff', marginTop: 16, fontSize: 13, fontWeight: '600', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  shutterBtn: {
+    position: 'absolute', bottom: 40, alignSelf: 'center',
+    width: 74, height: 74, borderRadius: 37, borderWidth: 4, borderColor: '#fff',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#fff' },
   closeBtn: { position: 'absolute', top: 50, right: 20, flexDirection: 'row', gap: 5, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
   closeBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  confirmPanel: { position: 'absolute', left: 16, right: 16, bottom: 36, backgroundColor: COLORS.card, borderRadius: 16, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
-  confirmLabel: { fontSize: 12, fontWeight: '700', color: COLORS.mutedForeground },
-  confirmValue: { fontSize: 17, fontWeight: '900', color: COLORS.dark, marginTop: 4, marginBottom: 14, textAlign: 'center' },
-  confirmRow: { flexDirection: 'row', gap: 10, width: '100%' },
-  retryBtn: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 12 },
+  fotoPreview: { flex: 1 },
+  resultPanel: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    backgroundColor: COLORS.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 18, paddingBottom: 28, maxHeight: '55%',
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
+  },
+  resultCentro: { alignItems: 'center', paddingVertical: 8 },
+  resultLoadingText: { marginTop: 10, fontSize: 13, color: COLORS.mutedForeground },
+  resultEmptyText: { marginTop: 10, fontSize: 13, color: COLORS.dark, textAlign: 'center' },
+  resultLabel: { fontSize: 13, fontWeight: '700', color: COLORS.dark, marginBottom: 10, textAlign: 'center' },
+  codigoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8, backgroundColor: COLORS.background,
+  },
+  codigoValue: { fontSize: 15, fontWeight: '800', color: COLORS.dark },
+  codigoTipo: { fontSize: 11, color: COLORS.mutedForeground, marginTop: 2, textTransform: 'uppercase' },
+  retryBtn: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 12, marginTop: 6 },
   retryBtnText: { color: COLORS.dark, fontWeight: '700', fontSize: 13 },
-  useBtn: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.success, borderRadius: 10, paddingVertical: 12 },
-  useBtnText: { color: COLORS.white, fontWeight: '800', fontSize: 13 },
   permWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 },
   permText: { color: '#fff', textAlign: 'center', fontSize: 14 },
   permBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },

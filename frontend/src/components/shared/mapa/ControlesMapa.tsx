@@ -8,7 +8,7 @@ import { Icon } from '@iconify/react';
  * manejando sus propios marcadores, eventos y datos.
  */
 
-const BOTON =
+export const BOTON =
   'transition-ui grid h-8 w-8 place-items-center text-muted-foreground hover:bg-lightprimary hover:text-primary-text disabled:opacity-40 disabled:hover:bg-transparent';
 
 /**
