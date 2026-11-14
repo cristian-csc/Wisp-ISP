@@ -41,7 +41,14 @@ class Settings(BaseSettings):
     # publicar la IP ni el usuario reales del servidor en el codigo fuente.
     VPS_IP: str = ""
     SSH_KEY_PATH: str = "/root/.ssh/id_ed25519"
+    # Usuario con el que el backend entra por SSH a los MikroTik de las zonas.
     SSH_USER: str = ""
+    # Usuario con el que entra a la VPS. Va aparte del anterior porque allí
+    # hace falta root: el backend lee y escribe /etc/wireguard/wg0.conf (600,
+    # de root) y ejecuta `wg set`, que necesita privilegios de red. En el
+    # MikroTik, en cambio, conviene un usuario limitado. Si se deja vacío se
+    # usa SSH_USER, para no romper instalaciones que ya venían con uno solo.
+    VPS_SSH_USER: str = ""
     WG_CONFIG_PATH: str = "/etc/wireguard/wg0.conf"
     VPS_WG_PUBKEY: str = ""
     PHONE_CONTACTO: str = "990807069"

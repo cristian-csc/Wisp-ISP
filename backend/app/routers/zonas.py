@@ -51,7 +51,7 @@ def wg_show_dump() -> list[dict]:
     Retorna lista de peers con: pubkey, endpoint, allowed_ips,
     last_handshake (epoch), rx_bytes, tx_bytes.
     """
-    result = _ssh_exec(settings.VPS_IP, "wg show wg0 dump")
+    result = _ssh_vps("wg show wg0 dump")
     if not result["ok"]:
         logger.warning("wg show dump falló: %s", result["output"])
         return []
@@ -90,7 +90,7 @@ def wg_add_peer(pubkey: str, allowed_ips: str, comment: str = "") -> dict:
     SSH, porque el backend corre en el servidor local, no en la VPS."""
     conf_path = settings.WG_CONFIG_PATH
 
-    leido = _ssh_exec(settings.VPS_IP, f"cat {conf_path}")
+    leido = _ssh_vps(f"cat {conf_path}")
     if not leido["ok"]:
         return {"ok": False, "error": f"No se pudo leer {conf_path} en la VPS: {leido['output']}"}
     content = leido["output"]
@@ -111,13 +111,13 @@ def wg_add_peer(pubkey: str, allowed_ips: str, comment: str = "") -> dict:
     # Va codificado en base64 para no pelear con comillas/espacios al pasar
     # el bloque como una sola línea de comando remoto.
     b64_block = base64.b64encode(block.encode()).decode()
-    escrito = _ssh_exec(settings.VPS_IP, f"echo {b64_block} | base64 -d >> {conf_path}")
+    escrito = _ssh_vps(f"echo {b64_block} | base64 -d >> {conf_path}")
     if not escrito["ok"]:
         return {"ok": False, "error": f"Error escribiendo config en la VPS: {escrito['output']}"}
 
     # Aplicar sin reiniciar
     ips_clean = allowed_ips.replace(" ", "")
-    aplicado = _ssh_exec(settings.VPS_IP, f"wg set wg0 peer {pubkey} allowed-ips {ips_clean}")
+    aplicado = _ssh_vps(f"wg set wg0 peer {pubkey} allowed-ips {ips_clean}")
     if not aplicado["ok"]:
         return {"ok": False, "error": f"wg set falló: {aplicado['output']}"}
     return {"ok": True}
@@ -128,7 +128,7 @@ def wg_remove_peer(pubkey: str) -> dict:
     SSH, mismo motivo que wg_add_peer."""
     conf_path = settings.WG_CONFIG_PATH
 
-    leido = _ssh_exec(settings.VPS_IP, f"cat {conf_path}")
+    leido = _ssh_vps(f"cat {conf_path}")
     if not leido["ok"]:
         return {"ok": False, "error": f"No se pudo leer {conf_path} en la VPS: {leido['output']}"}
     content = leido["output"]
@@ -142,11 +142,11 @@ def wg_remove_peer(pubkey: str) -> dict:
     new_content = "\n".join(new_sections)
 
     b64_content = base64.b64encode(new_content.encode()).decode()
-    escrito = _ssh_exec(settings.VPS_IP, f"echo {b64_content} | base64 -d > {conf_path}")
+    escrito = _ssh_vps(f"echo {b64_content} | base64 -d > {conf_path}")
     if not escrito["ok"]:
         return {"ok": False, "error": f"Error escribiendo config en la VPS: {escrito['output']}"}
 
-    quitado = _ssh_exec(settings.VPS_IP, f"wg set wg0 peer {pubkey} remove")
+    quitado = _ssh_vps(f"wg set wg0 peer {pubkey} remove")
     if not quitado["ok"]:
         return {"ok": False, "error": f"wg set remove falló: {quitado['output']}"}
     return {"ok": True}
@@ -461,13 +461,29 @@ class TerminalCmd(BaseModel):
     cmd: str
 
 
-def _ssh_exec(host: str, cmd: str, timeout: int = 30) -> dict:
+def _ssh_vps(cmd: str, timeout: int = 30) -> dict:
+    """Un comando en la VPS, donde vive el túnel WireGuard.
+
+    Entra con VPS_SSH_USER y no con SSH_USER: allí hace falta root (wg0.conf
+    es 600 de root y `wg set` necesita privilegios de red), mientras que en
+    los MikroTik el usuario debe ser uno limitado. Antes compartían variable
+    porque el backend corría dentro de la propia VPS y nunca entraba a sí
+    mismo por SSH."""
+    return _ssh_exec(
+        settings.VPS_IP, cmd, timeout=timeout,
+        usuario=settings.VPS_SSH_USER or settings.SSH_USER,
+    )
+
+
+def _ssh_exec(host: str, cmd: str, timeout: int = 30, usuario: Optional[str] = None) -> dict:
+    """Ejecuta un comando por SSH. Sin `usuario` entra como SSH_USER, que es
+    el de los MikroTik; para la VPS se usa _ssh_vps(), que pasa el suyo."""
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(
             hostname=host,
-            username=settings.SSH_USER,
+            username=usuario or settings.SSH_USER,
             key_filename=settings.SSH_KEY_PATH,
             timeout=10,
             look_for_keys=False,
