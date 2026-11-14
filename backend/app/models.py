@@ -163,6 +163,10 @@ class Zona(Base):
     ip_wireguard = Column(String(20))
     wg_public_key = Column(String(255))
     ip_router = Column(String(20))
+    # Nombre del pool de direcciones del MikroTik del que salen las IP de los
+    # clientes PPPoE. Hace falta para crear perfiles que de verdad den
+    # servicio: sin remote-address el cliente se autentica y se queda sin IP.
+    pool_pppoe = Column(String(100))
     lat = Column(Float)
     lng = Column(Float)
     descripcion = Column(Text)

@@ -6,7 +6,7 @@ import logging
 from ..database import get_db
 from .. import models, schemas
 from .auth import get_current_user, require_roles
-from .clientes import _mikrotik_exec
+from .clientes import _mikrotik_exec, _ros_str
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -35,24 +35,74 @@ def _sync_plan_mikrotik(plan: models.Plan, db: Session, action: str):
     # notarse porque los perfiles de los routers en producción estaban puestos
     # a mano y el sistema no los había tocado.
     rate = f"{plan.subida_mbps}M/{plan.bajada_mbps}M"
+    codigo = _ros_str(plan.codigo)
     results = []
     for zona in zonas:
         if action == "add":
+            # Un perfil solo con nombre y velocidad NO da servicio: el cliente
+            # se autentica y se queda sin IP, sin DNS y sin puerta de enlace.
+            # Si a la zona le falta alguno de esos datos, es preferible no
+            # crear nada y decirlo, antes que dejar un perfil a medias que
+            # parece configurado.
+            faltan = []
+            if not zona.ip_lan:
+                faltan.append("la IP LAN")
+            if not zona.pool_pppoe:
+                faltan.append("el pool PPPoE")
+            if faltan:
+                motivo = (
+                    f"No se creó el perfil: falta {' y '.join(faltan)} en la zona. "
+                    "Complétalo en la ficha de la zona y vuelve a guardar el plan."
+                )
+                results.append({"zona": zona.nombre, "ok": False, "error": motivo})
+                logger.warning("Perfil %s no creado en %s: %s", codigo, zona.nombre, motivo)
+                continue
             cmd = (
-                f'/ppp profile add name="{plan.codigo}" '
+                f'/ppp profile add name="{codigo}" '
+                f'local-address={_ros_str(zona.ip_lan)} '
+                f'remote-address={_ros_str(zona.pool_pppoe)} '
+                f'dns-server={_ros_str(zona.ip_lan)} '
                 f'rate-limit="{rate}" '
                 f'only-one=yes change-tcp-mss=yes'
             )
         elif action == "set":
-            cmd = f'/ppp profile set [find name="{plan.codigo}"] rate-limit="{rate}"'
+            # Al editar solo se toca la velocidad: la red de la zona
+            # (direcciones, pool, DNS) es cosa del router, no del plan.
+            cmd = f'/ppp profile set [find name="{codigo}"] rate-limit="{rate}"'
         elif action == "remove":
-            cmd = f'/ppp profile remove [find name="{plan.codigo}"]'
+            cmd = f'/ppp profile remove [find name="{codigo}"]'
         else:
             continue
+
         r = _mikrotik_exec(zona.ip_wireguard, [cmd])
+
+        # El SSH puede funcionar y el comando fallar igual (perfil duplicado,
+        # pool inexistente…). _mikrotik_exec devuelve ok=True en ese caso, así
+        # que hay que mirar lo que contestó RouterOS.
+        salida_error = ""
+        if r.get("ok") and r.get("results"):
+            salida_error = (r["results"][0].get("err") or "").strip()
+
+        if action == "add" and "already have" in salida_error.lower():
+            # El perfil ya existía en ese router (típico cuando el MikroTik se
+            # configuró a mano antes de entrar al sistema). No se toca su
+            # configuración de red; solo se alinea la velocidad con el plan.
+            r = _mikrotik_exec(
+                zona.ip_wireguard,
+                [f'/ppp profile set [find name="{codigo}"] rate-limit="{rate}"'],
+            )
+            results.append({"zona": zona.nombre, "ya_existia": True, **r})
+            continue
+
+        if salida_error:
+            r = {**r, "ok": False, "error": salida_error}
+
         results.append({"zona": zona.nombre, **r})
         if not r["ok"]:
-            logger.warning("Sync plan %s en %s falló: %s", plan.codigo, zona.nombre, r.get("error"))
+            logger.warning(
+                "Sync plan %s en %s falló: %s",
+                codigo, zona.nombre, r.get("error") or salida_error,
+            )
     return results
 
 

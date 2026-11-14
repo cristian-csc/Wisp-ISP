@@ -125,6 +125,9 @@ class ZonaBase(BaseModel):
     wg_public_key: Optional[str] = None
     router_mikrotik: Optional[str] = None
     ip_router: Optional[str] = None
+    # Nombre del pool de direcciones del MikroTik del que salen las IP de los
+    # clientes. Sin esto el sistema no puede crear perfiles que den servicio.
+    pool_pppoe: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     descripcion: Optional[str] = None
@@ -163,6 +166,7 @@ class ZonaDatosUpdate(BaseModel):
     password_mikrotik: Optional[str] = None
     router_mikrotik: Optional[str] = None
     ip_router: Optional[str] = None
+    pool_pppoe: Optional[str] = None
     # El túnel se configura cuando el router ya está en sitio, así que se
     # puede completar después de haber creado la zona.
     ip_wireguard: Optional[str] = None

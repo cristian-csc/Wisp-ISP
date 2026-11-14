@@ -105,6 +105,7 @@ const ZonaDetail = () => {
   const [editZonaRouterMikrotik, setEditZonaRouterMikrotik] = useState('');
   const [editZonaIpRouter, setEditZonaIpRouter] = useState('');
   const [editZonaIpWireguard, setEditZonaIpWireguard] = useState('');
+  const [editZonaPool, setEditZonaPool] = useState('');
   const [editZonaError, setEditZonaError] = useState<string | null>(null);
 
   const { user } = useCurrentUser();
@@ -175,6 +176,7 @@ const ZonaDetail = () => {
     setEditZonaRouterMikrotik(zona.router_mikrotik ?? '');
     setEditZonaIpRouter(zona.ip_router ?? '');
     setEditZonaIpWireguard(zona.ip_wireguard ?? '');
+    setEditZonaPool(zona.pool_pppoe ?? '');
     setEditZonaError(null);
     setEditandoZona(true);
   }
@@ -197,6 +199,7 @@ const ZonaDetail = () => {
         router_mikrotik: editZonaRouterMikrotik.trim() || undefined,
         ip_router: editZonaIpRouter.trim() || undefined,
         ip_wireguard: editZonaIpWireguard.trim() || undefined,
+        pool_pppoe: editZonaPool.trim() || undefined,
       });
       setEditandoZona(false);
       reload();
@@ -909,6 +912,22 @@ const ZonaDetail = () => {
                 />
               </FieldIcon>
             </FormField>
+            <FormField
+              label="Pool PPPoE"
+              htmlFor="editZonaPool"
+              wide
+              hint="Nombre del pool del MikroTik del que salen las IP de los clientes (por ejemplo: pool-pppoe). Sin esto el sistema no puede crear los perfiles de los planes."
+            >
+              <FieldIcon icon="tabler:list-numbers">
+                <Input
+                  id="editZonaPool"
+                  placeholder="pool-pppoe"
+                  value={editZonaPool}
+                  onChange={(e) => setEditZonaPool(e.target.value)}
+                />
+              </FieldIcon>
+            </FormField>
+
             <FormField label="IP LAN" htmlFor="editZonaIpLan">
               <FieldIcon icon="tabler:network">
                 <Input

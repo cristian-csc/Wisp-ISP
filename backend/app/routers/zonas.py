@@ -204,6 +204,7 @@ def _zona_to_dict(zona, db: Session, usuario: Optional[models.Usuario] = None) -
         "wg_public_key": zona.wg_public_key,
         "router_mikrotik": zona.router_mikrotik,
         "ip_router": zona.ip_router,
+        "pool_pppoe": zona.pool_pppoe,
     })
     return datos
 

@@ -9,6 +9,8 @@ export type Zona = {
   wg_public_key: string | null;
   router_mikrotik: string | null;
   ip_router: string | null;
+  /** Pool de direcciones del MikroTik del que salen las IP de los clientes. */
+  pool_pppoe: string | null;
   lat: number | null;
   lng: number | null;
   descripcion: string | null;
@@ -65,6 +67,8 @@ export async function updateZonaDatos(id: number, data: {
   password_mikrotik?: string;
   router_mikrotik?: string;
   ip_router?: string;
+  /** Pool de direcciones del MikroTik del que salen las IP de los clientes. */
+  pool_pppoe?: string;
   /** Se completa cuando el túnel ya está levantado, no al crear la zona. */
   ip_wireguard?: string;
 }): Promise<Zona> {
