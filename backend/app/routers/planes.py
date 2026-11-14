@@ -27,7 +27,14 @@ def _sync_plan_mikrotik(plan: models.Plan, db: Session, action: str):
         models.Zona.ip_wireguard != None,
     ).all()
 
-    rate = f"{plan.bajada_mbps}M/{plan.subida_mbps}M"
+    # RouterOS espera rate-limit como "subida/bajada", no al revés: los dos
+    # valores son desde el punto de vista del ROUTER (rx = lo que recibe del
+    # cliente = su subida; tx = lo que le envía = su bajada). Hasta el
+    # 2026-11-14 se escribía al revés, así que un plan de 100 de bajada y 20
+    # de subida le daba al cliente 100 de subida y 20 de bajada. Nunca llegó a
+    # notarse porque los perfiles de los routers en producción estaban puestos
+    # a mano y el sistema no los había tocado.
+    rate = f"{plan.subida_mbps}M/{plan.bajada_mbps}M"
     results = []
     for zona in zonas:
         if action == "add":
