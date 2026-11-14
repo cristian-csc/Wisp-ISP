@@ -56,9 +56,57 @@ services:
       WHATSAPP_API_TOKEN: ${WHATSAPP_API_TOKEN}
       SSH_KEY_PATH: ${SSH_KEY_PATH}
       SSH_USER: ${SSH_USER}
+      # Para la VPS hace falta root; para los MikroTik, un usuario limitado.
+      VPS_SSH_USER: ${VPS_SSH_USER}
       WG_CONFIG_PATH: ${WG_CONFIG_PATH}
       VPS_WG_PUBKEY: ${VPS_WG_PUBKEY}
       VPS_IP: ${VPS_IP}
+
+      # ── Todo lo de abajo faltaba ────────────────────────────────────────
+      # El backend lee su configuración de dos sitios: las variables que
+      # reciba aquí, y un archivo backend/.env. Ese archivo está en
+      # .gitignore, así que en una máquina de desarrollo existe pero en el
+      # servidor NO: tras un `git clone` no hay ninguno. Las variables que no
+      # estén en esta lista se quedan con el valor por defecto del código, en
+      # silencio. Así se descubrió: el token de APIs Perú estaba puesto en el
+      # .env del servidor y la consulta de DNI seguía diciendo que no estaba
+      # configurada, porque nunca llegaba al contenedor.
+      #
+      # Los `:-` repiten el valor por defecto de app/config.py: si la
+      # variable falta en el .env, el comportamiento es el mismo que antes
+      # en vez de quedar en blanco.
+
+      # Sesión
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      # Freno contra adivinación de contraseñas
+      LOGIN_MAX_INTENTOS: ${LOGIN_MAX_INTENTOS:-8}
+      LOGIN_VENTANA_SEGUNDOS: ${LOGIN_VENTANA_SEGUNDOS:-300}
+      LOGIN_BLOQUEO_SEGUNDOS: ${LOGIN_BLOQUEO_SEGUNDOS:-900}
+
+      # Consulta de nombres por DNI/RUC
+      APISPERU_URL: ${APISPERU_URL:-https://dniruc.apisperu.com/api/v1}
+      APISPERU_TOKEN: ${APISPERU_TOKEN}
+      CONSULTAS_LIMITE_MENSUAL: ${CONSULTAS_LIMITE_MENSUAL:-1000}
+      CONSULTAS_AVISO_DESDE: ${CONSULTAS_AVISO_DESDE:-950}
+
+      # Facturación
+      PRECIO_TV_ADICIONAL: ${PRECIO_TV_ADICIONAL:-10.0}
+      DIAS_GRACIA: ${DIAS_GRACIA:-3}
+
+      # Rutas dentro del contenedor (los volúmenes de arriba)
+      PHONE_CONTACTO: ${PHONE_CONTACTO:-990807069}
+      BACKUP_DIR: ${BACKUP_DIR:-/backups}
+      MEDIA_DIR: ${MEDIA_DIR:-/media}
+
+      # Datos impresos en el recibo. Los vacíos no se imprimen.
+      EMPRESA_NOMBRE: ${EMPRESA_NOMBRE:-WISP}
+      EMPRESA_RUBRO: ${EMPRESA_RUBRO:-Ingeniería en Redes y Telecomunicaciones}
+      EMPRESA_RUC: ${EMPRESA_RUC}
+      EMPRESA_DIRECCION: ${EMPRESA_DIRECCION}
+      EMPRESA_CIUDAD: ${EMPRESA_CIUDAD:-Juliaca - Puno - Perú}
+      EMPRESA_TELEFONOS: ${EMPRESA_TELEFONOS:-990807069}
+      EMPRESA_CORREO: ${EMPRESA_CORREO}
     volumes:
       - ./backend:/app
       - /root/.ssh:/root/.ssh:ro              # llave SSH para MikroTik
