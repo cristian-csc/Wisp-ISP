@@ -35,6 +35,7 @@ import {
   listPlanes, createPlan, updatePlan, deletePlan, verificarPlanes,
   perfilesDeZona, velocidadesDeRateLimit,
   type Plan, type TipoConexion, type VerificacionZona, type PerfilDeRouter,
+  type EstadoPlanEnZona,
 } from 'src/lib/planes';
 import { listZonas, type Zona } from 'src/lib/zonas';
 
@@ -48,6 +49,27 @@ const TIPO_BADGE: Record<TipoConexion, string> = {
   fibra_optica: 'bg-lightprimary text-primary',
   inalambrico: 'bg-lightinfo text-info',
   satelital: 'bg-lightsecondary text-secondary',
+};
+
+/** Un plan es global, no de una zona. Que un router no tenga su perfil solo
+ *  es un problema si hay clientes de esa zona usando ese plan; si no, ese plan
+ *  simplemente no se ofrece ahi. Pintarlos igual hacía que la pantalla pareciera
+ *  llena de errores que no existían. */
+const ESTILO_ESTADO: Record<EstadoPlanEnZona['estado'], string> = {
+  ok: 'bg-lightsuccess text-success',
+  difiere: 'bg-lightwarning text-warning',
+  falta: 'bg-lighterror text-error',
+  no_usado: 'bg-muted text-muted-foreground',
+};
+
+const TEXTO_ESTADO: Record<
+  EstadoPlanEnZona['estado'],
+  (p: EstadoPlanEnZona) => string
+> = {
+  ok: () => 'correcto',
+  difiere: (p) => p.detalle,
+  falta: (p) => `falta en el router · ${p.clientes} cliente(s)`,
+  no_usado: () => 'no se ofrece aquí',
 };
 
 const vacio = {
@@ -221,9 +243,9 @@ const Planes = () => {
     try {
       const r = await verificarPlanes();
       setVerificacion(r.zonas);
-      const problemas = r.zonas.filter(
-        (z) => z.sin_contacto || z.planes.some((p) => p.estado !== 'ok'),
-      ).length;
+      // Un plan que esa zona no ofrece no es un problema, es lo normal: solo
+      // cuentan los que tienen clientes sin perfil y los que difieren.
+      const problemas = r.zonas.filter((z) => z.sin_contacto || z.problemas > 0).length;
       if (problemas === 0) {
         toast.success('Todos los routers coinciden con el panel');
       } else {
@@ -268,6 +290,19 @@ const Planes = () => {
                 />
                 <span className="text-sm font-semibold">{z.zona}</span>
                 <span className="text-xs text-muted-foreground">{z.detalle}</span>
+                {!z.sin_contacto && (
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-xs font-medium ${
+                      z.problemas === 0
+                        ? 'bg-lightsuccess text-success'
+                        : 'bg-lighterror text-error'
+                    }`}
+                  >
+                    {z.problemas === 0
+                      ? 'nada que arreglar'
+                      : `${z.problemas} por arreglar`}
+                  </span>
+                )}
               </div>
               {!z.sin_contacto && (
                 <div className="flex flex-wrap gap-1.5">
@@ -275,15 +310,9 @@ const Planes = () => {
                     <span
                       key={p.codigo}
                       title={p.detalle}
-                      className={`rounded-md px-2 py-0.5 text-xs ${
-                        p.estado === 'ok'
-                          ? 'bg-lightsuccess text-success'
-                          : p.estado === 'difiere'
-                            ? 'bg-lightwarning text-warning'
-                            : 'bg-lighterror text-error'
-                      }`}
+                      className={`rounded-md px-2 py-0.5 text-xs ${ESTILO_ESTADO[p.estado]}`}
                     >
-                      {p.codigo} · {p.estado === 'ok' ? 'correcto' : p.estado === 'difiere' ? p.detalle : 'no existe'}
+                      {p.codigo} · {TEXTO_ESTADO[p.estado](p)}
                     </span>
                   ))}
                 </div>

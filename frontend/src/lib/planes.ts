@@ -51,12 +51,23 @@ export async function deletePlan(id: number): Promise<void> {
   await api.delete(`/planes/${id}`);
 }
 
-/** Estado de un plan en un router concreto. */
+/** Estado de un plan en un router concreto.
+ *
+ *  Un plan es global, no de una zona, asi que "el router no tiene ese perfil"
+ *  solo es un problema si hay clientes de esa zona usando el plan:
+ *   - `falta`     hay clientes y el perfil no esta -> no conectan;
+ *   - `no_usado`  no hay clientes -> ese plan no se ofrece ahi, no hay nada
+ *                 que arreglar;
+ *   - `difiere`   el perfil esta pero con otra velocidad;
+ *   - `ok`        coinciden.
+ */
 export type EstadoPlanEnZona = {
   codigo: string;
   nombre: string;
-  estado: 'ok' | 'falta' | 'difiere';
+  estado: 'ok' | 'falta' | 'difiere' | 'no_usado';
   detalle: string;
+  /** Clientes de esa zona con ese plan, sin contar anulados ni rechazados. */
+  clientes: number;
 };
 
 export type VerificacionZona = {
@@ -64,6 +75,8 @@ export type VerificacionZona = {
   sin_contacto: boolean;
   detalle: string;
   perfiles_del_router?: string[];
+  /** Cuantos planes hay que arreglar en esta zona (falta + difiere). */
+  problemas: number;
   planes: EstadoPlanEnZona[];
 };
 

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 import logging
 import re
@@ -112,6 +113,31 @@ def verificar_planes(
     Es una operación lenta (habla con todos los routers), así que va detrás de
     un botón y no se ejecuta al guardar un plan.
     """
+    # Un plan no pertenece a ninguna zona: es global. Asi que "el router no
+    # tiene este perfil" puede significar dos cosas muy distintas, y hay que
+    # separarlas o la pantalla no sirve para nada:
+    #   - hay clientes con ese plan en esa zona -> problema de verdad, esos
+    #     clientes apuntan a un perfil que no existe y no conectan;
+    #   - no hay ninguno -> ese plan no se ofrece ahi, y no hay nada que
+    #     arreglar en ese router.
+    # Quien lo sabe es la propia base de datos, no hace falta preguntarselo a
+    # nadie ni mantener una lista aparte.
+    MUERTOS = (
+        models.EstadoCliente.rechazado,
+        models.EstadoCliente.anulado,
+        models.EstadoCliente.no_instalado,
+    )
+    conteos = {
+        (zid, pid): n
+        for zid, pid, n in db.query(
+            models.Cliente.zona_id,
+            models.Cliente.plan_id,
+            func.count(models.Cliente.id),
+        ).filter(
+            models.Cliente.estado.notin_(MUERTOS),
+        ).group_by(models.Cliente.zona_id, models.Cliente.plan_id).all()
+    }
+
     zonas = db.query(models.Zona).filter(
         models.Zona.activo == True,
         models.Zona.ip_wireguard != None,
@@ -128,28 +154,40 @@ def verificar_planes(
                 "zona": zona.nombre,
                 "sin_contacto": True,
                 "detalle": error,
+                "problemas": 0,
                 "planes": [],
             })
             continue
 
         estado_planes = []
+        problemas = 0
         for plan in planes:
             esperado = f"{plan.subida_mbps}M/{plan.bajada_mbps}M"
             en_router = perfiles.get(plan.codigo)
-            if en_router is None:
+            clientes = conteos.get((zona.id, plan.id), 0)
+            if en_router is None and clientes == 0:
+                estado = "no_usado"
+                detalle = "Ningún cliente de esta zona tiene este plan"
+            elif en_router is None:
                 estado = "falta"
-                detalle = "El router no tiene ese perfil"
+                detalle = (
+                    f"{clientes} cliente(s) de esta zona tienen este plan y el "
+                    f"router no tiene el perfil «{plan.codigo}»"
+                )
             elif en_router != esperado:
                 estado = "difiere"
                 detalle = f"Router: {en_router} · Panel: {esperado}"
             else:
                 estado = "ok"
                 detalle = en_router
+            if estado in ("falta", "difiere"):
+                problemas += 1
             estado_planes.append({
                 "codigo": plan.codigo,
                 "nombre": plan.nombre,
                 "estado": estado,
                 "detalle": detalle,
+                "clientes": clientes,
             })
 
         filas.append({
@@ -157,6 +195,7 @@ def verificar_planes(
             "sin_contacto": False,
             "detalle": f"{len(perfiles)} perfil(es) en el router",
             "perfiles_del_router": sorted(perfiles.keys()),
+            "problemas": problemas,
             "planes": estado_planes,
         })
 
