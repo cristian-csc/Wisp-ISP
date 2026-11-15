@@ -295,3 +295,35 @@ export async function consultarDocumento(tipo: 'dni' | 'ruc', numero: string) {
   return res.data;
 }
 
+/** Cuantos clientes hay en cada estado. Una sola consulta al servidor: antes
+ *  la pantalla pedia una lista entera por tarjeta solo para leer su total. */
+export type ResumenEstados = {
+  total: number;
+  /** Todos los estados vienen siempre, aunque esten a cero. */
+  por_estado: Record<EstadoCliente, number>;
+};
+
+export async function resumenEstados(params?: {
+  tipo_conexion?: string;
+  zona_id?: number;
+}): Promise<ResumenEstados> {
+  const { data } = await api.get('/clientes/resumen-estados', { params });
+  return data;
+}
+
+/** Como se llama cada estado en pantalla, y de que color va. En un solo sitio
+ *  para que el filtro, las tarjetas y la tabla no se contradigan. */
+export const ESTADOS_CLIENTE: {
+  valor: EstadoCliente;
+  etiqueta: string;
+  tono: 'success' | 'warning' | 'error' | 'primary' | 'muted';
+}[] = [
+  { valor: 'activo', etiqueta: 'Activos', tono: 'success' },
+  { valor: 'pendiente_aprobacion', etiqueta: 'Pendientes de aprobacion', tono: 'warning' },
+  { valor: 'aprobado', etiqueta: 'Aprobados, sin instalar', tono: 'primary' },
+  { valor: 'no_instalado', etiqueta: 'No instalados', tono: 'error' },
+  { valor: 'suspendido', etiqueta: 'Suspendidos', tono: 'error' },
+  { valor: 'pausado', etiqueta: 'Pausados', tono: 'warning' },
+  { valor: 'rechazado', etiqueta: 'Rechazados', tono: 'muted' },
+  { valor: 'anulado', etiqueta: 'Anulados', tono: 'muted' },
+];

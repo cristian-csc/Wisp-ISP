@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from typing import Optional, List
 from datetime import date, datetime, timedelta
 import calendar
@@ -228,6 +228,27 @@ def _interpretar_pool(pool, salida_rangos, error_rangos, salida_secretos, salida
     return todas, ocupadas, ""
 
 
+def _alcance_clientes(query, db: Session, current_user, solo_mis_instalaciones: bool = False):
+    """Recorta una consulta de clientes a lo que ese rol tiene derecho a ver.
+
+    Esta en un solo sitio a proposito: la lista y el contador por estado tienen
+    que recortar igual, o los numeros de las tarjetas no cuadrarian con lo que
+    sale debajo en la tabla.
+    """
+    if current_user.rol == models.RolUsuario.tecnico:
+        if solo_mis_instalaciones:
+            # "Mis instalaciones" — lo que este tecnico instalo de verdad, no
+            # todo lo que pasa por su zona (ahi puede haber instalado otro
+            # tecnico que tambien cubre esa misma zona).
+            return query.filter(models.Cliente.tecnico_instalador_id == current_user.id)
+        return query.filter(
+            models.Cliente.zona_id.in_(zonas_asignadas(db, current_user) or [-1])
+        )
+    if current_user.rol in (models.RolUsuario.vendedor_campo, models.RolUsuario.atencion_cliente):
+        return query.filter(models.Cliente.vendedor_id == current_user.id)
+    return query
+
+
 def _check_zona_access(db: Session, current_user: models.Usuario, zona_id: int):
     """Un técnico solo puede ver/operar clientes de sus zonas asignadas."""
     if current_user.rol == models.RolUsuario.tecnico:
@@ -309,16 +330,7 @@ def list_clientes(
         tipos = [t.strip() for t in tipo_conexion.split(",") if t.strip()]
         query = query.filter(models.Cliente.tipo_conexion.in_(tipos))
 
-    if current_user.rol == models.RolUsuario.tecnico:
-        if solo_mis_instalaciones:
-            # "Mis instalaciones" — lo que este técnico instaló de verdad, no
-            # todo lo que pasa por su zona (ahí puede haber instalado otro
-            # técnico que también cubre esa misma zona).
-            query = query.filter(models.Cliente.tecnico_instalador_id == current_user.id)
-        else:
-            query = query.filter(models.Cliente.zona_id.in_(zonas_asignadas(db, current_user) or [-1]))
-    elif current_user.rol in (models.RolUsuario.vendedor_campo, models.RolUsuario.atencion_cliente):
-        query = query.filter(models.Cliente.vendedor_id == current_user.id)
+    query = _alcance_clientes(query, db, current_user, solo_mis_instalaciones)
 
     if search:
         query = query.filter(
@@ -789,6 +801,42 @@ def no_instalar_cliente(
 
 def _sin_tz(dt: Optional[datetime]) -> Optional[datetime]:
     return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
+
+
+@router.get("/resumen-estados")
+def resumen_estados(
+    tipo_conexion: Optional[str] = Query(None),
+    zona_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user),
+):
+    """Cuantos clientes hay en cada estado, en UNA consulta.
+
+    Antes la pantalla pedia una lista entera por cada tarjeta solo para leer su
+    total: cuatro llamadas, y nueve si se quieren todos los estados. Con mil
+    clientes eso es absurdo. Esto es un GROUP BY y vuelve en una.
+
+    Recorta por rol igual que la lista, para que las tarjetas no digan 40
+    cuando debajo se ven 7.
+    """
+    query = db.query(
+        models.Cliente.estado, func.count(models.Cliente.id)
+    )
+    query = _alcance_clientes(query, db, current_user)
+    if tipo_conexion:
+        tipos = [t.strip() for t in tipo_conexion.split(",") if t.strip()]
+        query = query.filter(models.Cliente.tipo_conexion.in_(tipos))
+    if zona_id:
+        query = query.filter(models.Cliente.zona_id == zona_id)
+
+    conteos = dict(query.group_by(models.Cliente.estado).all())
+    # Todos los estados salen siempre, aunque esten a cero: el filtro necesita
+    # poder ofrecerlos igual, y un hueco en el diccionario obligaria al
+    # frontend a adivinar.
+    por_estado = {
+        e.value: int(conteos.get(e, 0)) for e in models.EstadoCliente
+    }
+    return {"total": sum(por_estado.values()), "por_estado": por_estado}
 
 
 @router.get("/notificaciones", response_model=List[schemas.NotificacionOut])

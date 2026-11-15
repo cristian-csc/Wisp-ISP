@@ -69,8 +69,8 @@ function App() {
                 `/clientes` se mantiene por compatibilidad con enlaces guardados
                 y con el panel, que enlaza ahí desde varias tarjetas. */}
             <Route path="/clientes" element={<Clientes />} />
-            <Route path="/clientes/fibra" element={<Clientes tipo="fibra_optica" />} />
-            <Route path="/clientes/inalambricos" element={<Clientes tipo="inalambrico" />} />
+            <Route path="/clientes/fibra" element={<Clientes tipo="fibra_optica" initialFilter="activo" />} />
+            <Route path="/clientes/inalambricos" element={<Clientes tipo="inalambrico" initialFilter="activo" />} />
             <Route path="/clientes/pendientes" element={<Clientes initialFilter="pendiente_aprobacion" />} />
             <Route path="/clientes/:id" element={<ClienteDetail />} />
             <Route path="/clientes-satelital" element={<ClientesSatelital />} />

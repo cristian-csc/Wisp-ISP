@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { listClientes, type EstadoCliente } from 'src/lib/clientes';
+import {
+  ESTADOS_CLIENTE,
+  resumenEstados,
+  type EstadoCliente,
+  type ResumenEstados,
+} from 'src/lib/clientes';
 
 interface Props {
   filter: EstadoCliente | 'todos';
@@ -8,63 +13,95 @@ interface Props {
   tipo?: 'fibra_optica' | 'inalambrico';
 }
 
+/** Las cuatro de siempre, las que se miran a diario. El resto de estados está
+ *  en la fila de abajo: están todos, pero sin robar el sitio a estos. */
+const DESTACADOS: EstadoCliente[] = [
+  'activo',
+  'pendiente_aprobacion',
+  'suspendido',
+  'no_instalado',
+];
+
+const TONO_TARJETA: Record<string, { caja: string; texto: string }> = {
+  success: { caja: 'bg-lightsuccess dark:bg-lightsuccess', texto: 'text-success' },
+  warning: { caja: 'bg-lightwarning dark:bg-lightwarning', texto: 'text-warning' },
+  error: { caja: 'bg-lighterror dark:bg-lighterror', texto: 'text-error' },
+  primary: { caja: 'bg-lightprimary dark:bg-lightprimary', texto: 'text-primary' },
+  muted: { caja: 'bg-muted', texto: 'text-muted-foreground' },
+};
+
 const ClienteFilter = ({ filter, setFilter, tipo }: Props) => {
-  const [counts, setCounts] = useState({ total: 0, pendiente_aprobacion: 0, activo: 0, suspendido: 0 });
+  const [resumen, setResumen] = useState<ResumenEstados | null>(null);
 
   useEffect(() => {
-    const RED = tipo ?? 'fibra_optica,inalambrico';
-    Promise.all([
-      listClientes({ page: 1, tipo_conexion: RED }),
-      listClientes({ page: 1, estado: 'pendiente_aprobacion', tipo_conexion: RED }),
-      listClientes({ page: 1, estado: 'activo', tipo_conexion: RED }),
-      listClientes({ page: 1, estado: 'suspendido', tipo_conexion: RED }),
-    ]).then(([total, pendientes, activos, suspendidos]) => {
-      setCounts({
-        total: total.total,
-        pendiente_aprobacion: pendientes.total,
-        activo: activos.total,
-        suspendido: suspendidos.total,
-      });
-    });
-  }, [filter, tipo]);
+    // Una sola llamada para todos los estados. No depende de `filter`: los
+    // totales no cambian porque se mire un estado u otro, y recargarlos en
+    // cada clic era pedirle al servidor lo mismo una y otra vez.
+    resumenEstados({ tipo_conexion: tipo ?? 'fibra_optica,inalambrico' })
+      .then(setResumen)
+      .catch(() => setResumen(null));
+  }, [tipo]);
+
+  const n = (e: EstadoCliente) => resumen?.por_estado[e] ?? 0;
+  const secundarios = ESTADOS_CLIENTE.filter((e) => !DESTACADOS.includes(e.valor));
 
   return (
-    <div className="grid grid-cols-12 gap-6 mb-6">
-      <div className="lg:col-span-3 md:col-span-6 col-span-12">
-        <div
-          className="p-[30px] bg-lightprimary dark:bg-lightprimary text-center rounded-md cursor-pointer"
-          onClick={() => setFilter('todos')}
-        >
-          <h3 className="text-primary text-2xl">{counts.total}</h3>
-          <h6 className="text-base text-primary">Total clientes</h6>
+    <div className="mb-6 flex flex-col gap-3">
+      <div className="grid grid-cols-12 gap-6">
+        <div className="lg:col-span-2 md:col-span-4 col-span-12">
+          <button
+            type="button"
+            onClick={() => setFilter('todos')}
+            className={`w-full rounded-md p-[30px] text-center transition-shadow ${
+              TONO_TARJETA.primary.caja
+            } ${filter === 'todos' ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}
+          >
+            <h3 className={`text-2xl ${TONO_TARJETA.primary.texto}`}>
+              {resumen?.total ?? 0}
+            </h3>
+            <h6 className={`text-base ${TONO_TARJETA.primary.texto}`}>Todos</h6>
+          </button>
         </div>
+
+        {DESTACADOS.map((valor) => {
+          const def = ESTADOS_CLIENTE.find((e) => e.valor === valor)!;
+          const tono = TONO_TARJETA[def.tono];
+          return (
+            <div key={valor} className="lg:col-span-2 md:col-span-4 col-span-12">
+              <button
+                type="button"
+                onClick={() => setFilter(valor)}
+                className={`w-full rounded-md p-[30px] text-center transition-shadow ${
+                  tono.caja
+                } ${filter === valor ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}
+              >
+                <h3 className={`text-2xl ${tono.texto}`}>{n(valor)}</h3>
+                <h6 className={`text-base ${tono.texto}`}>{def.etiqueta}</h6>
+              </button>
+            </div>
+          );
+        })}
       </div>
-      <div className="lg:col-span-3 md:col-span-6 col-span-12">
-        <div
-          className="p-[30px] bg-lightwarning dark:bg-lightwarning text-center rounded-md cursor-pointer"
-          onClick={() => setFilter('pendiente_aprobacion')}
-        >
-          <h3 className="text-warning text-2xl">{counts.pendiente_aprobacion}</h3>
-          <h6 className="text-base text-warning">Pendientes de aprobación</h6>
-        </div>
-      </div>
-      <div className="lg:col-span-3 md:col-span-6 col-span-12">
-        <div
-          className="p-[30px] bg-lightsuccess dark:bg-lightsuccess text-center rounded-md cursor-pointer"
-          onClick={() => setFilter('activo')}
-        >
-          <h3 className="text-success text-2xl">{counts.activo}</h3>
-          <h6 className="text-base text-success">Activos</h6>
-        </div>
-      </div>
-      <div className="lg:col-span-3 md:col-span-6 col-span-12">
-        <div
-          className="p-[30px] bg-lighterror dark:bg-lighterror text-center rounded-md cursor-pointer"
-          onClick={() => setFilter('suspendido')}
-        >
-          <h3 className="text-error text-2xl">{counts.suspendido}</h3>
-          <h6 className="text-base text-error">Suspendidos</h6>
-        </div>
+
+      {/* Los demás estados. Se ven de un vistazo con su cuenta, así que no hay
+          que abrir un desplegable para descubrir si hay alguno. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Otros estados:</span>
+        {secundarios.map((e) => (
+          <button
+            key={e.valor}
+            type="button"
+            onClick={() => setFilter(e.valor)}
+            className={`rounded-lg border px-2.5 py-1 text-xs transition-colors ${
+              filter === e.valor
+                ? 'border-primary bg-lightprimary text-primary-text'
+                : 'border-border hover:bg-muted'
+            }`}
+          >
+            {e.etiqueta}
+            <span className="ml-1.5 font-medium">{n(e.valor)}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
