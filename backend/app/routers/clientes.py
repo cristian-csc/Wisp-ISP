@@ -115,6 +115,21 @@ def _get_wg_ip(db: Session, zona_id: int) -> Optional[str]:
     return zona.ip_wireguard if zona else None
 
 
+def _lista_corte(db: Session, zona_id) -> str:
+    """Nombre de la lista del firewall donde el router mete a los cortados.
+
+    No es igual en todos los routers: el de SUCASCO la llama "CORTE MOROSO",
+    con espacio, y sus reglas de redirección miran ese nombre exacto. Si el
+    sistema usara otro, metería la IP en una lista que ninguna regla consulta:
+    el corte no cortaría nada y no daría ningún error.
+
+    El valor por defecto es el que usa la empresa hoy.
+    """
+    zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
+    nombre = (zona.lista_corte or "").strip() if zona else ""
+    return _ros_str(nombre or "CORTE MOROSO")
+
+
 def _check_zona_access(db: Session, current_user: models.Usuario, zona_id: int):
     """Un técnico solo puede ver/operar clientes de sus zonas asignadas."""
     if current_user.rol == models.RolUsuario.tecnico:
@@ -900,8 +915,9 @@ def cortar_cliente(db: Session, cliente: models.Cliente, motivo: str, usuario_id
         cmds = []
         if cliente.ip_estatica:
             ip_safe = _validate_ip(cliente.ip_estatica)
+            lista = _lista_corte(db, cliente.zona_id)
             cmds.append(
-                f'/ip firewall address-list add list=CORTE-MOROSO '
+                f'/ip firewall address-list add list=\"{lista}\" '
                 f'address={ip_safe} comment="{user}"'
             )
         cmds.append(f'/ppp active remove [find name="{user}"]')
@@ -984,8 +1000,9 @@ def pausar_servicio(
         cmds = []
         if cliente.ip_estatica:
             ip_safe = _validate_ip(cliente.ip_estatica)
+            lista = _lista_corte(db, cliente.zona_id)
             cmds.append(
-                f'/ip firewall address-list add list=CORTE-MOROSO '
+                f'/ip firewall address-list add list=\"{lista}\" '
                 f'address={ip_safe} comment="{user}"'
             )
         cmds.append(f'/ppp active remove [find name="{user}"]')
@@ -1035,9 +1052,10 @@ def reactivar_servicio(
     wg_ip = _get_wg_ip(db, cliente.zona_id)
     if wg_ip and cliente.ip_estatica:
         ip_safe = _validate_ip(cliente.ip_estatica)
+        lista = _lista_corte(db, cliente.zona_id)
         cmd = (
             f'/ip firewall address-list remove '
-            f'[find where list=CORTE-MOROSO address={ip_safe}]'
+            f'[find where list=\"{lista}\" address={ip_safe}]'
         )
         mt_result = _mikrotik_exec(wg_ip, [cmd])
     elif wg_ip:
@@ -1108,7 +1126,8 @@ def dar_compromiso_pago(
         wg_ip = _get_wg_ip(db, cliente.zona_id)
         if wg_ip and cliente.ip_estatica:
             ip_safe = _validate_ip(cliente.ip_estatica)
-            cmd = f'/ip firewall address-list remove [find where list=CORTE-MOROSO address={ip_safe}]'
+            lista = _lista_corte(db, cliente.zona_id)
+            cmd = f'/ip firewall address-list remove [find where list=\"{lista}\" address={ip_safe}]'
             mt_result = _mikrotik_exec(wg_ip, [cmd])
         elif wg_ip:
             mt_result = {"ok": True}

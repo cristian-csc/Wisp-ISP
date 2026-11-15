@@ -106,6 +106,7 @@ const ZonaDetail = () => {
   const [editZonaIpRouter, setEditZonaIpRouter] = useState('');
   const [editZonaIpWireguard, setEditZonaIpWireguard] = useState('');
   const [editZonaPool, setEditZonaPool] = useState('');
+  const [editZonaListaCorte, setEditZonaListaCorte] = useState('');
   const [editZonaError, setEditZonaError] = useState<string | null>(null);
 
   const { user } = useCurrentUser();
@@ -177,6 +178,7 @@ const ZonaDetail = () => {
     setEditZonaIpRouter(zona.ip_router ?? '');
     setEditZonaIpWireguard(zona.ip_wireguard ?? '');
     setEditZonaPool(zona.pool_pppoe ?? '');
+    setEditZonaListaCorte(zona.lista_corte ?? '');
     setEditZonaError(null);
     setEditandoZona(true);
   }
@@ -200,6 +202,7 @@ const ZonaDetail = () => {
         ip_router: editZonaIpRouter.trim() || undefined,
         ip_wireguard: editZonaIpWireguard.trim() || undefined,
         pool_pppoe: editZonaPool.trim() || undefined,
+        lista_corte: editZonaListaCorte.trim() || undefined,
       });
       setEditandoZona(false);
       reload();
@@ -924,6 +927,22 @@ const ZonaDetail = () => {
                   placeholder="pool-pppoe"
                   value={editZonaPool}
                   onChange={(e) => setEditZonaPool(e.target.value)}
+                />
+              </FieldIcon>
+            </FormField>
+
+            <FormField
+              label="Lista de corte"
+              htmlFor="editZonaListaCorte"
+              wide
+              hint="Nombre exacto de la lista del firewall donde el router mete a los cortados. Si lo dejas vacío se usa CORTE MOROSO, que es la que usan los routers de la empresa. Compruébalo con /ip firewall address-list print."
+            >
+              <FieldIcon icon="tabler:ban">
+                <Input
+                  id="editZonaListaCorte"
+                  placeholder="CORTE MOROSO"
+                  value={editZonaListaCorte}
+                  onChange={(e) => setEditZonaListaCorte(e.target.value)}
                 />
               </FieldIcon>
             </FormField>

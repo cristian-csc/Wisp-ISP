@@ -128,6 +128,9 @@ class ZonaBase(BaseModel):
     # Nombre del pool de direcciones del MikroTik del que salen las IP de los
     # clientes. Sin esto el sistema no puede crear perfiles que den servicio.
     pool_pppoe: Optional[str] = None
+    # Lista del firewall donde el router mete a los cortados. Vacío = el valor
+    # por defecto del sistema ("CORTE MOROSO").
+    lista_corte: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     descripcion: Optional[str] = None
@@ -167,6 +170,7 @@ class ZonaDatosUpdate(BaseModel):
     router_mikrotik: Optional[str] = None
     ip_router: Optional[str] = None
     pool_pppoe: Optional[str] = None
+    lista_corte: Optional[str] = None
     # El túnel se configura cuando el router ya está en sitio, así que se
     # puede completar después de haber creado la zona.
     ip_wireguard: Optional[str] = None

@@ -167,6 +167,12 @@ class Zona(Base):
     # clientes PPPoE. Hace falta para crear perfiles que de verdad den
     # servicio: sin remote-address el cliente se autentica y se queda sin IP.
     pool_pppoe = Column(String(100))
+    # Nombre de la lista de direcciones del firewall donde el router mete a
+    # los cortados. No es igual en todos: el de SUCASCO la llama
+    # "CORTE MOROSO" (con espacio) y las reglas de redirección miran ese
+    # nombre exacto. Si no coincide, el corte no corta nada: la IP entra en
+    # una lista que ninguna regla consulta.
+    lista_corte = Column(String(100))
     lat = Column(Float)
     lng = Column(Float)
     descripcion = Column(Text)
