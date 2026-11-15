@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
+import re
 
 from ..database import get_db
 from .. import models, schemas
@@ -12,98 +13,27 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _sync_plan_mikrotik(plan: models.Plan, db: Session, action: str):
+def _perfiles_del_router(zona) -> tuple[dict, str]:
+    """Lee los perfiles PPPoE de un MikroTik: {nombre: rate-limit}.
+
+    Devuelve ({}, motivo) si no se pudo hablar con el router. Un perfil sin
+    rate-limit (como el "default" de fábrica) aparece con cadena vacía.
     """
-    Sincroniza el perfil PPPoE en todos los MikroTiks activos.
-    action: 'add' | 'set' | 'remove'
-    """
-    if plan.tipo_conexion == models.TipoConexion.satelital:
-        # Un plan satelital no tiene perfil PPPoE — el servicio no pasa por
-        # ningún MikroTik propio.
-        return []
+    r = _mikrotik_exec(zona.ip_wireguard, ["/ppp profile print detail"])
+    if not r.get("ok"):
+        return {}, r.get("error", "No se pudo conectar con el router")
 
-    zonas = db.query(models.Zona).filter(
-        models.Zona.activo == True,
-        models.Zona.ip_wireguard != None,
-    ).all()
-
-    # RouterOS espera rate-limit como "subida/bajada", no al revés: los dos
-    # valores son desde el punto de vista del ROUTER (rx = lo que recibe del
-    # cliente = su subida; tx = lo que le envía = su bajada). Hasta el
-    # 2026-11-14 se escribía al revés, así que un plan de 100 de bajada y 20
-    # de subida le daba al cliente 100 de subida y 20 de bajada. Nunca llegó a
-    # notarse porque los perfiles de los routers en producción estaban puestos
-    # a mano y el sistema no los había tocado.
-    rate = f"{plan.subida_mbps}M/{plan.bajada_mbps}M"
-    codigo = _ros_str(plan.codigo)
-    results = []
-    for zona in zonas:
-        if action == "add":
-            # Un perfil solo con nombre y velocidad NO da servicio: el cliente
-            # se autentica y se queda sin IP, sin DNS y sin puerta de enlace.
-            # Si a la zona le falta alguno de esos datos, es preferible no
-            # crear nada y decirlo, antes que dejar un perfil a medias que
-            # parece configurado.
-            faltan = []
-            if not zona.ip_lan:
-                faltan.append("la IP LAN")
-            if not zona.pool_pppoe:
-                faltan.append("el pool PPPoE")
-            if faltan:
-                motivo = (
-                    f"No se creó el perfil: falta {' y '.join(faltan)} en la zona. "
-                    "Complétalo en la ficha de la zona y vuelve a guardar el plan."
-                )
-                results.append({"zona": zona.nombre, "ok": False, "error": motivo})
-                logger.warning("Perfil %s no creado en %s: %s", codigo, zona.nombre, motivo)
-                continue
-            cmd = (
-                f'/ppp profile add name="{codigo}" '
-                f'local-address={_ros_str(zona.ip_lan)} '
-                f'remote-address={_ros_str(zona.pool_pppoe)} '
-                f'dns-server={_ros_str(zona.ip_lan)} '
-                f'rate-limit="{rate}" '
-                f'only-one=yes change-tcp-mss=yes'
-            )
-        elif action == "set":
-            # Al editar solo se toca la velocidad: la red de la zona
-            # (direcciones, pool, DNS) es cosa del router, no del plan.
-            cmd = f'/ppp profile set [find name="{codigo}"] rate-limit="{rate}"'
-        elif action == "remove":
-            cmd = f'/ppp profile remove [find name="{codigo}"]'
-        else:
+    salida = (r["results"][0].get("out") or "") if r.get("results") else ""
+    perfiles = {}
+    # La salida trae un perfil por bloque; name= y rate-limit= pueden venir
+    # con o sin comillas segun la version de RouterOS.
+    for bloque in re.split(r"\n(?=\s*\d+\s)", salida):
+        m_nombre = re.search(r'name="?([^"\s]+)"?', bloque)
+        if not m_nombre:
             continue
-
-        r = _mikrotik_exec(zona.ip_wireguard, [cmd])
-
-        # El SSH puede funcionar y el comando fallar igual (perfil duplicado,
-        # pool inexistente…). _mikrotik_exec devuelve ok=True en ese caso, así
-        # que hay que mirar lo que contestó RouterOS.
-        salida_error = ""
-        if r.get("ok") and r.get("results"):
-            salida_error = (r["results"][0].get("err") or "").strip()
-
-        if action == "add" and "already have" in salida_error.lower():
-            # El perfil ya existía en ese router (típico cuando el MikroTik se
-            # configuró a mano antes de entrar al sistema). No se toca su
-            # configuración de red; solo se alinea la velocidad con el plan.
-            r = _mikrotik_exec(
-                zona.ip_wireguard,
-                [f'/ppp profile set [find name="{codigo}"] rate-limit="{rate}"'],
-            )
-            results.append({"zona": zona.nombre, "ya_existia": True, **r})
-            continue
-
-        if salida_error:
-            r = {**r, "ok": False, "error": salida_error}
-
-        results.append({"zona": zona.nombre, **r})
-        if not r["ok"]:
-            logger.warning(
-                "Sync plan %s en %s falló: %s",
-                codigo, zona.nombre, r.get("error") or salida_error,
-            )
-    return results
+        m_rate = re.search(r'rate-limit="?([^"\s]+)"?', bloque)
+        perfiles[m_nombre.group(1)] = m_rate.group(1) if m_rate else ""
+    return perfiles, ""
 
 
 @router.get("", response_model=List[schemas.PlanOut])
@@ -130,7 +60,6 @@ def create_plan(
     db.add(plan)
     db.commit()
     db.refresh(plan)
-    _sync_plan_mikrotik(plan, db, "add")
     return plan
 
 
@@ -148,7 +77,6 @@ def update_plan(
         setattr(plan, k, v)
     db.commit()
     db.refresh(plan)
-    _sync_plan_mikrotik(plan, db, "set")
     return plan
 
 
@@ -164,7 +92,103 @@ def delete_plan(
     clientes = db.query(models.Cliente).filter(models.Cliente.plan_id == plan_id).count()
     if clientes > 0:
         raise HTTPException(status_code=400, detail=f"No se puede eliminar: {clientes} cliente(s) usan este plan")
-    _sync_plan_mikrotik(plan, db, "remove")
     db.delete(plan)
     db.commit()
     return {"ok": True}
+
+
+@router.get("/verificacion")
+def verificar_planes(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    """Compara los planes del panel con los perfiles reales de cada router.
+
+    No escribe nada: solo mira y reporta. Se consulta UNA vez por zona y se
+    comparan todos los planes contra esa lectura, en vez de una conexión por
+    plan y zona — con 15 routers y 4 planes, eso serían 60 conexiones SSH
+    para la misma información.
+
+    Es una operación lenta (habla con todos los routers), así que va detrás de
+    un botón y no se ejecuta al guardar un plan.
+    """
+    zonas = db.query(models.Zona).filter(
+        models.Zona.activo == True,
+        models.Zona.ip_wireguard != None,
+    ).all()
+    planes = db.query(models.Plan).filter(
+        models.Plan.tipo_conexion != models.TipoConexion.satelital
+    ).order_by(models.Plan.codigo).all()
+
+    filas = []
+    for zona in zonas:
+        perfiles, error = _perfiles_del_router(zona)
+        if error:
+            filas.append({
+                "zona": zona.nombre,
+                "sin_contacto": True,
+                "detalle": error,
+                "planes": [],
+            })
+            continue
+
+        estado_planes = []
+        for plan in planes:
+            esperado = f"{plan.subida_mbps}M/{plan.bajada_mbps}M"
+            en_router = perfiles.get(plan.codigo)
+            if en_router is None:
+                estado = "falta"
+                detalle = "El router no tiene ese perfil"
+            elif en_router != esperado:
+                estado = "difiere"
+                detalle = f"Router: {en_router} · Panel: {esperado}"
+            else:
+                estado = "ok"
+                detalle = en_router
+            estado_planes.append({
+                "codigo": plan.codigo,
+                "nombre": plan.nombre,
+                "estado": estado,
+                "detalle": detalle,
+            })
+
+        filas.append({
+            "zona": zona.nombre,
+            "sin_contacto": False,
+            "detalle": f"{len(perfiles)} perfil(es) en el router",
+            "perfiles_del_router": sorted(perfiles.keys()),
+            "planes": estado_planes,
+        })
+
+    return {"zonas": filas, "total_planes": len(planes)}
+
+
+@router.get("/perfiles-de-zona/{zona_id}")
+def perfiles_de_zona(
+    zona_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    """Los perfiles PPPoE que tiene ese router, tal cual.
+
+    Sirve para elegir el código de un plan de una lista real en vez de
+    escribirlo a mano y arriesgarse a una errata que solo se descubre cuando
+    un cliente no puede conectarse.
+    """
+    zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
+    if not zona:
+        raise HTTPException(status_code=404, detail="Zona no encontrada")
+    if not zona.ip_wireguard:
+        raise HTTPException(
+            status_code=400,
+            detail="La zona todavía no tiene túnel WireGuard configurado.",
+        )
+    perfiles, error = _perfiles_del_router(zona)
+    if error:
+        raise HTTPException(status_code=502, detail=error)
+    return {
+        "zona": zona.nombre,
+        "perfiles": [
+            {"nombre": n, "rate_limit": r} for n, r in sorted(perfiles.items())
+        ],
+    }

@@ -50,3 +50,29 @@ export async function updatePlan(id: number, input: PlanInput): Promise<Plan> {
 export async function deletePlan(id: number): Promise<void> {
   await api.delete(`/planes/${id}`);
 }
+
+/** Estado de un plan en un router concreto. */
+export type EstadoPlanEnZona = {
+  codigo: string;
+  nombre: string;
+  estado: 'ok' | 'falta' | 'difiere';
+  detalle: string;
+};
+
+export type VerificacionZona = {
+  zona: string;
+  sin_contacto: boolean;
+  detalle: string;
+  perfiles_del_router?: string[];
+  planes: EstadoPlanEnZona[];
+};
+
+/** Compara los planes del panel con los perfiles reales de cada router.
+ *  Habla con todos los MikroTik, así que tarda: va detrás de un botón. */
+export async function verificarPlanes(): Promise<{
+  zonas: VerificacionZona[];
+  total_planes: number;
+}> {
+  const { data } = await api.get('/planes/verificacion');
+  return data;
+}

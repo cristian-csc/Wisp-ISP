@@ -31,7 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from 'src/components/ui/select';
-import { listPlanes, createPlan, updatePlan, deletePlan, type Plan, type TipoConexion } from 'src/lib/planes';
+import {
+  listPlanes, createPlan, updatePlan, deletePlan, verificarPlanes,
+  type Plan, type TipoConexion, type VerificacionZona,
+} from 'src/lib/planes';
 
 const TIPO_LABEL: Record<TipoConexion, string> = {
   fibra_optica: 'Fibra óptica',
@@ -143,12 +146,89 @@ const Planes = () => {
     }
   }
 
+  const [verificacion, setVerificacion] = useState<VerificacionZona[] | null>(null);
+  const [comprobando, setComprobando] = useState(false);
+
+  /** Pregunta a cada router qué perfiles tiene de verdad.
+   *  No cambia nada: el sistema ya no escribe perfiles — la configuración de
+   *  red es del router y esto solo avisa si el panel y el router no cuadran. */
+  async function comprobarEnRouters() {
+    if (comprobando) return;
+    setComprobando(true);
+    try {
+      const r = await verificarPlanes();
+      setVerificacion(r.zonas);
+      const problemas = r.zonas.filter(
+        (z) => z.sin_contacto || z.planes.some((p) => p.estado !== 'ok'),
+      ).length;
+      if (problemas === 0) {
+        toast.success('Todos los routers coinciden con el panel');
+      } else {
+        toast.warning(`${problemas} zona(s) con diferencias`, {
+          description: 'Revisa el detalle debajo del título.',
+        });
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo consultar a los routers');
+    } finally {
+      setComprobando(false);
+    }
+  }
+
   return (
     <CardBox>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Planes</h2>
-        <Button onClick={abrirNuevo}>Nuevo plan</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={comprobarEnRouters} disabled={comprobando}>
+            {comprobando ? 'Consultando los routers…' : 'Comprobar en los routers'}
+          </Button>
+          <Button onClick={abrirNuevo}>Nuevo plan</Button>
+        </div>
       </div>
+
+      {verificacion && (
+        <div className="mb-5 flex flex-col gap-2">
+          {verificacion.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Ninguna zona tiene todavía túnel WireGuard configurado, así que no
+              hay routers a los que preguntar.
+            </p>
+          )}
+          {verificacion.map((z) => (
+            <div key={z.zona} className="rounded-xl border border-ld p-3">
+              <div className="mb-1.5 flex items-center gap-2">
+                <Icon
+                  icon={z.sin_contacto ? 'tabler:plug-connected-x' : 'tabler:router'}
+                  height={17}
+                  className={z.sin_contacto ? 'text-error' : 'text-primary'}
+                />
+                <span className="text-sm font-semibold">{z.zona}</span>
+                <span className="text-xs text-muted-foreground">{z.detalle}</span>
+              </div>
+              {!z.sin_contacto && (
+                <div className="flex flex-wrap gap-1.5">
+                  {z.planes.map((p) => (
+                    <span
+                      key={p.codigo}
+                      title={p.detalle}
+                      className={`rounded-md px-2 py-0.5 text-xs ${
+                        p.estado === 'ok'
+                          ? 'bg-lightsuccess text-success'
+                          : p.estado === 'difiere'
+                            ? 'bg-lightwarning text-warning'
+                            : 'bg-lighterror text-error'
+                      }`}
+                    >
+                      {p.codigo} · {p.estado === 'ok' ? 'correcto' : p.estado === 'difiere' ? p.detalle : 'no existe'}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <Table>
         <TableHeader>
