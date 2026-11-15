@@ -33,8 +33,10 @@ import {
 } from 'src/components/ui/select';
 import {
   listPlanes, createPlan, updatePlan, deletePlan, verificarPlanes,
-  type Plan, type TipoConexion, type VerificacionZona,
+  perfilesDeZona, velocidadesDeRateLimit,
+  type Plan, type TipoConexion, type VerificacionZona, type PerfilDeRouter,
 } from 'src/lib/planes';
+import { listZonas, type Zona } from 'src/lib/zonas';
 
 const TIPO_LABEL: Record<TipoConexion, string> = {
   fibra_optica: 'Fibra óptica',
@@ -69,6 +71,14 @@ const Planes = () => {
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [borrando, setBorrando] = useState<Plan | null>(null);
+  // Para traer el codigo del plan de los perfiles reales de un router, en vez
+  // de escribirlo de memoria: el codigo ES el nombre del perfil, y una errata
+  // ahi no da ningun error hasta que un cliente no puede conectarse.
+  const [zonas, setZonas] = useState<Zona[]>([]);
+  const [zonaPerfiles, setZonaPerfiles] = useState('');
+  const [perfiles, setPerfiles] = useState<PerfilDeRouter[]>([]);
+  const [cargandoPerfiles, setCargandoPerfiles] = useState(false);
+  const [errorPerfiles, setErrorPerfiles] = useState<string | null>(null);
 
   async function reload() {
     setPlanes(await listPlanes());
@@ -76,17 +86,70 @@ const Planes = () => {
 
   useEffect(() => {
     reload();
+    // Solo las zonas con tunel: sin el no hay forma de preguntarle al router.
+    listZonas()
+      .then((z) => setZonas(z.filter((x) => x.activo && x.ip_wireguard)))
+      .catch(() => setZonas([]));
   }, []);
+
+  function limpiarPerfiles() {
+    setZonaPerfiles('');
+    setPerfiles([]);
+    setErrorPerfiles(null);
+  }
+
+  async function cargarPerfiles(zonaId: string) {
+    setZonaPerfiles(zonaId);
+    setPerfiles([]);
+    setErrorPerfiles(null);
+    if (!zonaId) return;
+    setCargandoPerfiles(true);
+    try {
+      const r = await perfilesDeZona(Number(zonaId));
+      setPerfiles(r.perfiles);
+      if (r.perfiles.length === 0) {
+        setErrorPerfiles('Ese router no tiene ningun perfil PPPoE configurado.');
+      }
+    } catch (err: any) {
+      setErrorPerfiles(err?.response?.data?.detail ?? 'No se pudo leer el router.');
+    } finally {
+      setCargandoPerfiles(false);
+    }
+  }
+
+  /** Al elegir un perfil, el codigo pasa a ser su nombre exacto y las
+   *  velocidades las de su rate-limit, para que panel y router no puedan
+   *  quedar diciendo cosas distintas. */
+  function usarPerfil(nombre: string) {
+    const perfil = perfiles.find((p) => p.nombre === nombre);
+    if (!perfil) return;
+    const vel = velocidadesDeRateLimit(perfil.rate_limit);
+    setForm((f) => ({
+      ...f,
+      codigo: perfil.nombre,
+      bajada: vel ? String(vel.bajada) : f.bajada,
+      subida: vel ? String(vel.subida) : f.subida,
+    }));
+    if (!vel) {
+      toast.info(
+        perfil.rate_limit
+          ? `El perfil limita a "${perfil.rate_limit}", que no es un simple subida/bajada: revise las velocidades a mano.`
+          : 'Ese perfil no limita velocidad en el router: las velocidades quedan como las escriba.',
+      );
+    }
+  }
 
   function abrirNuevo() {
     setEditando(null);
     setForm(vacio);
+    limpiarPerfiles();
     setError(null);
     setOpen(true);
   }
 
   function abrirEditar(p: Plan) {
     setEditando(p);
+    limpiarPerfiles();
     setForm({
       codigo: p.codigo,
       nombre: p.nombre,
@@ -318,7 +381,12 @@ const Planes = () => {
 
           <FormGrid>
             <FormSection title="Identificación del plan" icon="tabler:tag">
-              <FormField label="Código" htmlFor="codigoPlan" required>
+              <FormField
+                label="Código"
+                htmlFor="codigoPlan"
+                required
+                hint="Es el nombre exacto del perfil PPPoE en el MikroTik. Si no coincide, el cliente no conecta."
+              >
                 <FieldIcon icon="tabler:hash">
                   <Input
                     id="codigoPlan"
@@ -328,6 +396,64 @@ const Planes = () => {
                   />
                 </FieldIcon>
               </FormField>
+
+              {zonas.length > 0 && (
+                <div className="rounded-xl border border-dashed border-border p-3">
+                  <FormField
+                    label="Traerlo de un router"
+                    icon="tabler:cloud-download"
+                    htmlFor="zonaPerfiles"
+                    hint="Opcional. Evita erratas y copia también las velocidades."
+                  >
+                    <Select value={zonaPerfiles} onValueChange={cargarPerfiles}>
+                      <SelectTrigger id="zonaPerfiles" className="w-full">
+                        <SelectValue placeholder="Elegir zona…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {zonas.map((z) => (
+                          <SelectItem key={z.id} value={String(z.id)}>
+                            {z.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+
+                  {cargandoPerfiles && (
+                    <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                      <Icon icon="tabler:loader-2" width={17} className="animate-spin" />
+                      Leyendo los perfiles del router…
+                    </div>
+                  )}
+
+                  {errorPerfiles && (
+                    <p className="mt-3 text-sm text-error-text">{errorPerfiles}</p>
+                  )}
+
+                  {perfiles.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {perfiles.map((p) => (
+                        <button
+                          key={p.nombre}
+                          type="button"
+                          onClick={() => usarPerfil(p.nombre)}
+                          className={
+                            'rounded-lg border px-2.5 py-1 text-xs transition-colors ' +
+                            (form.codigo === p.nombre
+                              ? 'border-primary bg-lightprimary text-primary-text'
+                              : 'border-border hover:bg-muted')
+                          }
+                        >
+                          <span className="font-medium">{p.nombre}</span>
+                          {p.rate_limit && (
+                            <span className="ml-1.5 text-muted-foreground">{p.rate_limit}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <FormField label="Nombre" htmlFor="nombrePlan" required>
                 <FieldIcon icon="tabler:stack-2">
                   <Input

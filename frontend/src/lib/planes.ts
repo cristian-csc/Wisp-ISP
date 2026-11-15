@@ -76,3 +76,32 @@ export async function verificarPlanes(): Promise<{
   const { data } = await api.get('/planes/verificacion');
   return data;
 }
+
+/** Un perfil PPPoE tal y como esta en el router. */
+export type PerfilDeRouter = {
+  nombre: string;
+  /** "subidaM/bajadaM", o cadena vacia si el perfil no limita velocidad. */
+  rate_limit: string;
+};
+
+/** Los perfiles PPPoE que tiene el router de esa zona, tal cual.
+ *  Sirve para elegir el codigo de un plan de una lista real en vez de
+ *  escribirlo de memoria: una errata ahi deja al cliente sin conectar. */
+export async function perfilesDeZona(zonaId: number): Promise<{
+  zona: string;
+  perfiles: PerfilDeRouter[];
+}> {
+  const { data } = await api.get(`/planes/perfiles-de-zona/${zonaId}`);
+  return data;
+}
+
+/** Saca las dos velocidades de un rate-limit de RouterOS ("10M/50M").
+ *  Devuelve null si no se entiende, que es lo que hay que asumir cuando el
+ *  perfil usa rafagas u otras unidades. */
+export function velocidadesDeRateLimit(
+  rate: string,
+): { subida: number; bajada: number } | null {
+  const m = /^([0-9]+)M\/([0-9]+)M$/.exec((rate || '').trim());
+  if (!m) return null;
+  return { subida: Number(m[1]), bajada: Number(m[2]) };
+}
