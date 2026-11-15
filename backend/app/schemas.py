@@ -290,6 +290,27 @@ class ClienteUpdate(BaseModel):
         return v
 
 
+class ClienteAprobarRequest(BaseModel):
+    """La IP fija que se le asigna al cliente al aprobar la instalacion.
+
+    Es opcional: si no viene, el cliente queda sin IP fija y el router le da
+    una del pool. Con IP fija el corte por lista del firewall es fiable;
+    sin ella, no.
+    """
+    ip_estatica: Optional[str] = None
+
+    @field_validator('ip_estatica')
+    @classmethod
+    def validate_ip_estatica(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip()
+            if not v:
+                return None
+            if not _IPV4_RE.match(v):
+                raise ValueError('Debe ser una direccion IPv4 valida')
+        return v
+
+
 class ClienteRechazarRequest(BaseModel):
     motivo: str
 

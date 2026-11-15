@@ -5,6 +5,7 @@ from typing import Optional, List
 from datetime import date, datetime, timedelta
 import calendar
 import logging
+import ipaddress
 import re
 
 import paramiko
@@ -130,6 +131,103 @@ def _lista_corte(db: Session, zona_id) -> str:
     return _ros_str(nombre or "CORTE MOROSO")
 
 
+_RE_IPV4 = re.compile("(?<![0-9.])([0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3})(?![0-9.])")
+
+
+def _ips_del_pool(zona) -> tuple[list, set, str]:
+    """Qué IP caben en el pool PPPoE de la zona y cuáles ya están ocupadas.
+
+    Devuelve (todas_las_del_pool, ocupadas, error). El router es la única
+    fuente de verdad: el pool se lee de él, no se deduce de la IP de la LAN,
+    porque no tiene por qué empezar en .2 ni llegar hasta .254.
+
+    Ocupada quiere decir cualquiera de estas dos cosas:
+      - está fijada en un secreto PPPoE (así da de alta la empresa: una IP
+        fija por cliente, que es lo que permite cortar por IP);
+      - el router la tiene entregada ahora mismo (`/ip pool used`), que es el
+        caso de un cliente sin IP fija que está conectado. Si no la miráramos,
+        podríamos asignar a un cliente nuevo una IP que otro está usando.
+    """
+    if not zona or not zona.ip_wireguard:
+        return [], set(), "La zona no tiene túnel WireGuard configurado."
+    pool = (zona.pool_pppoe or "").strip()
+    if not pool:
+        return [], set(), "La zona no tiene configurado el nombre del pool PPPoE."
+    pool_safe = _ros_str(pool)
+
+    r = _mikrotik_exec(zona.ip_wireguard, [
+        f':put [/ip pool get [find name="{pool_safe}"] ranges]',
+        ':foreach s in=[/ppp secret find] do={:put [/ppp secret get $s remote-address]}',
+        f'/ip pool used print where pool="{pool_safe}"',
+    ])
+    if not r.get("ok"):
+        return [], set(), r.get("error", "No se pudo conectar con el router")
+    res = r.get("results") or []
+    if len(res) < 3:
+        return [], set(), "El router no respondió a todas las consultas."
+
+    # Si la consulta de secretos falla y no devuelve nada, no se puede saber
+    # qué IP están tomadas. Mejor no contestar que ofrecer una ocupada: eso
+    # dejaría a dos clientes sin servicio.
+    if (res[1].get("err") or "").strip() and not (res[1].get("out") or "").strip():
+        return [], set(), "El router no pudo listar los secretos PPPoE; no se puede saber qué IP están libres."
+
+    return _interpretar_pool(
+        pool,
+        (res[0].get("out") or ""),
+        bool(res[0].get("err")),
+        (res[1].get("out") or ""),
+        (res[2].get("out") or ""),
+    )
+
+
+def _interpretar_pool(pool, salida_rangos, error_rangos, salida_secretos, salida_usadas):
+    """Convierte la salida cruda del router en (todas, ocupadas, error).
+
+    Separado de la conexión para poder probarlo con salidas reales guardadas.
+    """
+    salida_rangos = salida_rangos.strip()
+    if not salida_rangos or error_rangos:
+        return [], set(), f'El router no tiene ningún pool llamado "{pool}".'
+
+    # ranges puede traer varios tramos separados por coma, y un tramo puede
+    # ser un rango (a-b) o una sola IP.
+    todas = []
+    for tramo in salida_rangos.split(","):
+        ips = _RE_IPV4.findall(tramo)
+        if len(ips) >= 2:
+            try:
+                ini = ipaddress.IPv4Address(ips[0])
+                fin = ipaddress.IPv4Address(ips[1])
+            except ValueError:
+                continue
+            if int(fin) - int(ini) > 4096:
+                return [], set(), "El pool es demasiado grande para listarlo."
+            todas.extend(str(ipaddress.IPv4Address(n)) for n in range(int(ini), int(fin) + 1))
+        elif len(ips) == 1:
+            try:
+                ipaddress.IPv4Address(ips[0])
+            except ValueError:
+                continue
+            todas.append(ips[0])
+    if not todas:
+        return [], set(), f'No se entendió el rango del pool "{pool}" ({salida_rangos}).'
+
+    ocupadas = set()
+    for linea in salida_secretos.splitlines():
+        m = _RE_IPV4.search(linea)
+        if m:
+            ocupadas.add(m.group(1))
+    # Las entregadas ahora mismo. Si esta consulta falla seguimos adelante:
+    # las fijas, que son la mayoría, ya las tenemos.
+    for linea in salida_usadas.splitlines():
+        m = _RE_IPV4.search(linea)
+        if m:
+            ocupadas.add(m.group(1))
+
+    return todas, ocupadas, ""
+
+
 def _check_zona_access(db: Session, current_user: models.Usuario, zona_id: int):
     """Un técnico solo puede ver/operar clientes de sus zonas asignadas."""
     if current_user.rol == models.RolUsuario.tecnico:
@@ -160,14 +258,19 @@ def _crear_secreto_pppoe(db: Session, cliente: "models.Cliente") -> dict:
 
     plan = db.query(models.Plan).filter(models.Plan.id == cliente.plan_id).first()
     perfil = _ros_str(plan.codigo if plan else "default")
-    ip_remote = cliente.ip_estatica if cliente.ip_estatica else "0.0.0.0"
     pwd = _ros_str(cliente.password_pppoe)
     comment = _ros_str(cliente.nombre)
+    # Sin IP fija no se manda remote-address: el perfil del router la saca del
+    # pool. Antes se mandaba 0.0.0.0, que no es "ninguna", es una direccion.
+    if cliente.ip_estatica:
+        remote = f'remote-address={_validate_ip(cliente.ip_estatica)} '
+    else:
+        remote = ''
     cmd = (
         f'/ppp secret add name="{user}" '
         f'password="{pwd}" '
         f'profile="{perfil}" '
-        f'remote-address={ip_remote} '
+        f'{remote}'
         f'service=pppoe '
         f'comment="{comment}"'
     )
@@ -333,11 +436,63 @@ def create_cliente(
     return {"cliente": out}
 
 
+@router.get("/{cliente_id}/ips-disponibles")
+def ips_disponibles(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    """Las IP del pool que estan libres en el router de la zona del cliente.
+
+    Se consulta al aprobar, para elegir la IP de una lista en vez de
+    escribirla a mano. Importa acertar: el corte de servicio mete esa IP en
+    una lista del firewall, asi que una IP equivocada corta a otro cliente, y
+    una IP repetida deja a los dos sin servicio.
+    """
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    if cliente.tipo_conexion == models.TipoConexion.satelital:
+        raise HTTPException(status_code=400, detail="Un cliente satelital no usa la red propia.")
+
+    zona = db.query(models.Zona).filter(models.Zona.id == cliente.zona_id).first()
+    todas, ocupadas, error = _ips_del_pool(zona)
+    if error:
+        raise HTTPException(status_code=502, detail=error)
+
+    # Tambien las que este sistema ya tiene apuntadas en la misma zona: puede
+    # haber un cliente dado de alta en el panel cuyo secreto aun no se creo en
+    # el router, y esa IP no debe ofrecerse dos veces.
+    reservadas = {
+        ip for (ip,) in db.query(models.Cliente.ip_estatica).filter(
+            models.Cliente.zona_id == cliente.zona_id,
+            models.Cliente.ip_estatica != None,
+            models.Cliente.id != cliente.id,
+        ).all() if ip
+    }
+    ocupadas = ocupadas | reservadas
+
+    libres = [ip for ip in todas if ip not in ocupadas]
+    return {
+        "zona": zona.nombre,
+        "pool": zona.pool_pppoe,
+        "total_pool": len(todas),
+        "ocupadas": len(todas) - len(libres),
+        "total_libres": len(libres),
+        "ip_actual": cliente.ip_estatica,
+        "sugerida": libres[0] if libres else None,
+        # La lista completa puede ser larguisima en un pool grande y no aporta
+        # nada: con las primeras hay de sobra para elegir.
+        "disponibles": libres[:200],
+    }
+
+
 # ── Aprobar / rechazar instalación ────────────────────────────────────────────
 
 @router.post("/{cliente_id}/aprobar")
 def aprobar_cliente(
     cliente_id: int,
+    data: Optional[schemas.ClienteAprobarRequest] = None,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
         require_roles(models.RolUsuario.admin)
@@ -349,6 +504,44 @@ def aprobar_cliente(
     if cliente.estado != models.EstadoCliente.pendiente_aprobacion:
         raise HTTPException(status_code=400, detail="El cliente no está pendiente de aprobación")
 
+    ip_elegida = (data.ip_estatica if data else None)
+    if ip_elegida and cliente.tipo_conexion != models.TipoConexion.satelital:
+        ip_elegida = _validate_ip(ip_elegida)
+
+        # Que no se la estemos quitando a otro cliente de la misma zona.
+        otro = db.query(models.Cliente).filter(
+            models.Cliente.zona_id == cliente.zona_id,
+            models.Cliente.ip_estatica == ip_elegida,
+            models.Cliente.id != cliente.id,
+        ).first()
+        if otro:
+            raise HTTPException(
+                status_code=400,
+                detail=f"La IP {ip_elegida} ya está asignada a {otro.nombre}.",
+            )
+
+        # Y que siga libre en el router: entre que se abrió la pantalla y se
+        # pulsó aprobar, otro pudo haberla tomado.
+        zona = db.query(models.Zona).filter(models.Zona.id == cliente.zona_id).first()
+        todas, ocupadas, error = _ips_del_pool(zona)
+        if not error:
+            if ip_elegida not in todas:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"La IP {ip_elegida} no pertenece al pool {zona.pool_pppoe} del router.",
+                )
+            # Su propia IP no cuenta como ocupada: puede venir de un
+            # cliente migrado que ya tenia secreto, o de una reaprobacion.
+            if ip_elegida != cliente.ip_estatica and ip_elegida in ocupadas:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"La IP {ip_elegida} acaba de ocuparse en el router. Elija otra.",
+                )
+        # Si el router no contesta no se bloquea la aprobación: hoy tampoco se
+        # bloquea, y la creación del secreto ya avisa de que no hubo contacto.
+
+        cliente.ip_estatica = ip_elegida
+
     cliente.estado = models.EstadoCliente.aprobado
     cliente.aprobado_por_id = current_user.id
     cliente.fecha_aprobacion = datetime.utcnow()
@@ -356,7 +549,10 @@ def aprobar_cliente(
     historial = models.Historial(
         cliente_id=cliente.id,
         tipo=models.TipoHistorial.nota,
-        descripcion=f"Instalación aprobada por {current_user.nombre}.",
+        descripcion=(
+            f"Instalación aprobada por {current_user.nombre}."
+            + (f" IP asignada: {cliente.ip_estatica}." if cliente.ip_estatica else "")
+        ),
         usuario_id=current_user.id,
     )
     db.add(historial)

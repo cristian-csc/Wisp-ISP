@@ -34,10 +34,10 @@ import {
   SelectValue,
 } from 'src/components/ui/select';
 import ClienteCreateDialog from './ClienteCreateDialog';
+import AprobarClienteDialog from './AprobarClienteDialog';
 import {
   listClientes,
   listZonas,
-  aprobarCliente,
   rechazarCliente,
   cortarCliente,
   reactivarCliente,
@@ -88,6 +88,7 @@ const ClienteListing = ({ filter, currentUser, tipo }: Props) => {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [aprobando, setAprobando] = useState<ClienteListItem | null>(null);
   const [rechazando, setRechazando] = useState<ClienteListItem | null>(null);
   const [motivo, setMotivo] = useState('');
   const [pausando, setPausando] = useState<ClienteListItem | null>(null);
@@ -129,14 +130,11 @@ const ClienteListing = ({ filter, currentUser, tipo }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, zonaFiltro, tipoFiltro, tipo]);
 
-  async function handleAprobar(c: ClienteListItem) {
-    try {
-      await aprobarCliente(c.id);
-      reload();
-      toast.success(`Instalación de ${c.nombre} aprobada`);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'No se pudo aprobar la instalación');
-    }
+  // Aprobar abre la ventana de la IP: antes aprobaba directamente y el
+  // cliente se quedaba sin IP fija, lo que hace que el corte por morosidad no
+  // acierte. Los avisos los da ya la propia ventana.
+  function handleAprobar(c: ClienteListItem) {
+    setAprobando(c);
   }
 
   async function handleRechazarConfirm() {
@@ -413,6 +411,12 @@ const ClienteListing = ({ filter, currentUser, tipo }: Props) => {
           </div>
         </div>
       )}
+
+      <AprobarClienteDialog
+        cliente={aprobando}
+        onClose={() => setAprobando(null)}
+        onAprobado={reload}
+      />
 
       {/* Motivo de rechazo */}
       <FormDialog

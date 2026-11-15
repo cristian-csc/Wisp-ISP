@@ -32,11 +32,11 @@ import {
   FormGrid,
   FormSection,
 } from 'src/components/shared/form';
+import AprobarClienteDialog from 'src/components/apps/clientes/AprobarClienteDialog';
 import { Textarea } from 'src/components/ui/textarea';
 import { api, getMe, type Usuario } from 'src/lib/api';
 import {
   getCliente,
-  aprobarCliente,
   rechazarCliente,
   cortarCliente,
   reactivarCliente,
@@ -156,6 +156,7 @@ const ClienteDetail = () => {
   const [pestana, setPestana] = useState<'resumen' | 'pagos' | 'equipos' | 'documentos' | 'historial'>('resumen');
   const [historial, setHistorial] = useState<HistorialItem[]>([]);
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
+  const [aprobarOpen, setAprobarOpen] = useState(false);
   const [rechazarOpen, setRechazarOpen] = useState(false);
   const [pausarOpen, setPausarOpen] = useState(false);
   const [mesesPausa, setMesesPausa] = useState('1');
@@ -264,9 +265,10 @@ const ClienteDetail = () => {
 
   const puedeAprobar = currentUser?.rol === 'admin';
 
-  async function handleAprobar() {
-    await aprobarCliente(cliente!.id);
-    reload();
+  // La IP fija se elige al aprobar, en su propia ventana: es lo que hace
+  // que el corte por morosidad acierte.
+  function handleAprobar() {
+    setAprobarOpen(true);
   }
 
   async function handleRechazar() {
@@ -1140,6 +1142,12 @@ const ClienteDetail = () => {
           )}
         </div>
       </div>
+
+      <AprobarClienteDialog
+        cliente={aprobarOpen ? cliente : null}
+        onClose={() => setAprobarOpen(false)}
+        onAprobado={reload}
+      />
 
       <FormDialog
         open={rechazarOpen}

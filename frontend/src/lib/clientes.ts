@@ -181,8 +181,34 @@ export async function activarSatelital(id: number, data: {
   return out;
 }
 
-export async function aprobarCliente(id: number) {
-  const { data } = await api.post(`/clientes/${id}/aprobar`);
+export type IpsDisponibles = {
+  zona: string;
+  pool: string | null;
+  total_pool: number;
+  ocupadas: number;
+  total_libres: number;
+  /** La que ya tiene apuntada el panel, si la tiene. */
+  ip_actual: string | null;
+  /** La primera libre: la que se propone por defecto. */
+  sugerida: string | null;
+  /** Recortada a 200 por el servidor; con eso hay de sobra para elegir. */
+  disponibles: string[];
+};
+
+/** Las IP del pool PPPoE que estan libres en el router de la zona.
+ *  Habla con el router, asi que tarda unos segundos. */
+export async function ipsDisponibles(id: number): Promise<IpsDisponibles> {
+  const { data } = await api.get(`/clientes/${id}/ips-disponibles`);
+  return data;
+}
+
+/** Aprueba la instalacion. La IP fija es opcional: sin ella el router le da
+ *  una del pool, pero entonces el corte por IP no es fiable. */
+export async function aprobarCliente(id: number, ipEstatica?: string | null) {
+  const { data } = await api.post(
+    `/clientes/${id}/aprobar`,
+    ipEstatica ? { ip_estatica: ipEstatica } : {},
+  );
   return data as { ok: boolean; estado: string; mikrotik_ok: boolean; mikrotik_ya_existia: boolean; mikrotik_msg: string };
 }
 
