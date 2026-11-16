@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
+import StatCard from 'src/components/shared/StatCard';
 import RingProgress, { RING_TONE, type RingTone } from 'src/components/apps/cajasnap/RingProgress';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
@@ -26,6 +27,7 @@ import {
   createZona,
   deleteZona,
   estadoRedZonas,
+  estadoRedReciente,
   listZonas,
   wireguardStatus,
   type EstadoRed,
@@ -135,7 +137,12 @@ const Zonas = () => {
   }, []);
 
   useEffect(() => {
-    if (veRed) comprobarRed();
+    if (!veRed) return;
+    // Si lo pintado es de hace menos de dos minutos no se vuelve a preguntar:
+    // el handshake no cambia en ese rato y los ping a quince routers tardan.
+    // Para forzarlo está el botón "Comprobar routers".
+    if (estadoRedReciente()) return;
+    comprobarRed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [veRed]);
 
@@ -193,6 +200,12 @@ const Zonas = () => {
     z.nombre.toLowerCase().includes(search.trim().toLowerCase()),
   );
 
+  // Mientras no haya llegado ni un estado se muestra una raya y no un 0:
+  // "0 en linea" es una afirmacion, y todavia no se sabe nada.
+  const sinComprobar = Object.keys(estados).length === 0;
+  // Si no hay nada y tampoco se esta preguntando, es que la consulta fallo:
+  // decir "comprobando..." para siempre seria mentir.
+  const notaSinDatos = comprobando ? 'comprobando…' : 'sin comprobar';
   const enLinea = zonas.filter((z) => estados[z.id]?.estado === 'conectado').length;
   const sinTunel = zonas.filter((z) => estados[z.id]?.estado === 'sin_tunel').length;
   const caidas = zonas.filter(
@@ -204,42 +217,11 @@ const Zonas = () => {
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
           <h1 className="text-2xl">Zonas</h1>
-          {veRed ? (
-            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
-              <span>
-                {zonas.length} {zonas.length === 1 ? 'zona' : 'zonas'}
-              </span>
-              {comprobando ? (
-                <span className="flex items-center gap-1.5">
-                  <Icon icon="tabler:loader-2" height={14} className="animate-spin" />
-                  comprobando los routers…
-                </span>
-              ) : (
-                <>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-success" />
-                    {enLinea} en línea
-                  </span>
-                  {caidas > 0 && (
-                    <span className="flex items-center gap-1.5 text-error">
-                      <span className="h-2 w-2 rounded-full bg-error" />
-                      {caidas} sin responder
-                    </span>
-                  )}
-                  {sinTunel > 0 && (
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-muted-foreground" />
-                      {sinTunel} sin túnel
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground mt-1">
-              Selecciona una zona para ver su cobertura
-            </p>
-          )}
+          <p className="mt-1 text-sm text-muted-foreground">
+            {veRed
+              ? `${zonas.length} ${zonas.length === 1 ? 'zona' : 'zonas'} de cobertura`
+              : 'Selecciona una zona para ver su cobertura'}
+          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -275,6 +257,43 @@ const Zonas = () => {
           )}
         </div>
       </div>
+
+      {/* El resumen iba en una fila de texto gris donde "14 zonas 1 en línea
+          1 sin responder 12 sin túnel" se leía de corrido y no se distinguía
+          nada. En cuadros, cada número con su color, se ve de un golpe — y es
+          lo mismo que ya hace la ficha de la zona, así que no hay dos
+          lenguajes distintos en el mismo módulo. */}
+      {veRed && zonas.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard
+            icono="tabler:map-pin"
+            etiqueta="Zonas"
+            valor={zonas.length}
+            tono="primary"
+          />
+          <StatCard
+            icono="tabler:plug-connected"
+            etiqueta="En línea"
+            valor={sinComprobar ? '—' : enLinea}
+            nota={sinComprobar ? notaSinDatos : 'el router contesta'}
+            tono="success"
+          />
+          <StatCard
+            icono="tabler:plug-connected-x"
+            etiqueta="Sin responder"
+            valor={sinComprobar ? '—' : caidas}
+            nota={sinComprobar ? notaSinDatos : 'hay que revisarlas'}
+            tono={caidas > 0 && !sinComprobar ? 'error' : 'info'}
+          />
+          <StatCard
+            icono="tabler:shield-off"
+            etiqueta="Sin túnel"
+            valor={sinComprobar ? '—' : sinTunel}
+            nota={sinComprobar ? notaSinDatos : 'falta configurarlas'}
+            tono="warning"
+          />
+        </div>
+      )}
 
       {zonasFiltradas.length === 0 && (
         <CardBox>

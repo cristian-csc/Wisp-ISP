@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Icon } from '@iconify/react';
 import { Label } from 'src/components/ui/label';
 import { cn } from 'src/lib/utils';
+import FormCallout from './FormCallout';
 
 export interface FormFieldProps {
   label: string;
@@ -13,6 +14,16 @@ export interface FormFieldProps {
   htmlFor?: string;
   /** Texto de ayuda bajo el campo */
   hint?: ReactNode;
+  /**
+   * Advertencia que NO puede pasar desapercibida: va en un recuadro amarillo
+   * con su triángulo, no en letra pequeña gris.
+   *
+   * Se reserva para lo que, mal puesto, no da ningún error a la vista y se
+   * descubre tarde — un pool que deja al cliente sin IP, una lista de corte
+   * que no corta. Si todo lleva aviso, ninguno se lee: para lo demás está
+   * `hint`.
+   */
+  aviso?: ReactNode;
   /** Mensaje de validación; cuando llega, reemplaza a la ayuda */
   error?: string | null;
   /** Ocupa las dos columnas */
@@ -31,6 +42,7 @@ const FormField = ({
   required,
   htmlFor,
   hint,
+  aviso,
   error,
   wide,
   children,
@@ -47,6 +59,11 @@ const FormField = ({
       )}
     </Label>
     {children}
+    {aviso && (
+      <FormCallout tone="warning" className="mt-2 px-3 py-2 text-xs leading-snug">
+        {aviso}
+      </FormCallout>
+    )}
     {error ? (
       <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-error-text">
         <Icon icon="tabler:alert-circle" width={14} className="mt-px shrink-0" />

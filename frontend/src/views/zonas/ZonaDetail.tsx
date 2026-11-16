@@ -38,6 +38,7 @@ import type { Usuario } from 'src/lib/api';
 import {
   getZona,
   wireguardStatus,
+  wireguardReciente,
   listTecnicosZona,
   asignarTecnicoZona,
   quitarTecnicoZona,
@@ -207,9 +208,11 @@ const ZonaDetail = () => {
     setMufas(await listMufas(Number(id)));
     setCajas(await listCajasNap(Number(id)));
     if (veRed) {
-      wireguardStatus(Number(id))
-        .then(setWg)
-        .catch(() => setWg(null));
+      // Lo leído hace poco se pinta y punto: evita el parpadeo al entrar y
+      // salir de la zona, y no repite el ping ni la consulta a la VPS.
+      const guardado = wireguardReciente(Number(id));
+      if (guardado) setWg(guardado);
+      else wireguardStatus(Number(id)).then(setWg).catch(() => setWg(null));
     }
   }
 
@@ -1290,7 +1293,13 @@ const ZonaDetail = () => {
               label="IP de WireGuard"
               htmlFor="editZonaIpWireguard"
               wide
-              hint="La del túnel con el servidor central. Déjala vacía mientras la zona no esté conectada."
+              aviso={
+                <>
+                  <b>Déjala vacía mientras la zona no esté conectada.</b> Es la IP
+                  del túnel con el servidor central, y en cuanto la pongas el
+                  sistema dará por hecho que puede llegar al router por ahí.
+                </>
+              }
             >
               <FieldIcon icon="tabler:shield-lock">
                 <Input
@@ -1305,7 +1314,14 @@ const ZonaDetail = () => {
               label="Pool PPPoE"
               htmlFor="editZonaPool"
               wide
-              hint="Nombre del pool del MikroTik del que salen las IP de los clientes (por ejemplo: pool-pppoe). Sin esto el sistema no puede crear los perfiles de los planes."
+              aviso={
+                <>
+                  Es el pool del MikroTik del que salen las IP de los clientes.
+                  <b> Si falta o no coincide, el cliente entra y se queda sin
+                  IP:</b> el plan se crea, el usuario se autentica, y no navega.
+                </>
+              }
+              hint='Eligelo con "Leer del router" y no lo escribas de memoria.'
             >
               <FieldIcon icon="tabler:list-numbers">
                 <Input
@@ -1327,7 +1343,16 @@ const ZonaDetail = () => {
               label="Lista de corte"
               htmlFor="editZonaListaCorte"
               wide
-              hint="Nombre exacto de la lista del firewall donde el router mete a los cortados. Si lo dejas vacío se usa CORTE MOROSO, que es la que usan los routers de la empresa. Compruébalo con /ip firewall address-list print."
+              aviso={
+                <>
+                  Tiene que ser el nombre <b>exacto</b> de la lista del firewall
+                  del router — con sus espacios y sus mayúsculas.
+                  <b> Si no coincide, el corte no corta:</b> la IP entra en una
+                  lista que ninguna regla consulta y el cliente sigue navegando
+                  sin pagar, sin que salte ningún error.
+                </>
+              }
+              hint="Vacío se usa CORTE MOROSO, la de los routers de la empresa."
             >
               <FieldIcon icon="tabler:ban">
                 <Input

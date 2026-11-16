@@ -92,6 +92,40 @@ export type WireguardStatus = {
 
 /** `forzar` se salta la memoria corta del servidor (2 min) y vuelve a
  *  preguntarle a la VPS. Solo para cuando alguien lo pide a propósito. */
+/**
+ * Lo último que se leyó del estado de la red, para que al volver a Zonas
+ * desde otro módulo la pantalla se pinte **al instante** con lo que ya se
+ * sabía, en vez de quedarse en "comprobando" unos segundos.
+ *
+ * Son 2 minutos, los mismos que guarda el servidor: el handshake de WireGuard
+ * se renueva a ese ritmo, así que un dato más fresco no existe. Y de paso se
+ * ahorran los ping a cada router, que son los que de verdad tardan y esos el
+ * servidor no los guarda.
+ *
+ * Vive en el módulo a propósito: sobrevive a cambiar de pantalla (que es el
+ * caso que molesta) y se olvida al recargar la página, que es cuando uno
+ * quiere ver el estado de cero.
+ */
+const RECIENTE_MS = 120_000;
+
+let estadoRedUltimo: { ts: number; filas: EstadoRedZona[] } | null = null;
+const wgUltimo = new Map<number, { ts: number; dato: WireguardStatus }>();
+
+/** El estado de todas las zonas si se leyó hace poco; null si toca preguntar. */
+export function estadoRedReciente(): EstadoRedZona[] | null {
+  if (!estadoRedUltimo) return null;
+  if (Date.now() - estadoRedUltimo.ts > RECIENTE_MS) return null;
+  return estadoRedUltimo.filas;
+}
+
+/** Lo mismo para una zona sola. */
+export function wireguardReciente(zonaId: number): WireguardStatus | null {
+  const g = wgUltimo.get(zonaId);
+  if (!g) return null;
+  if (Date.now() - g.ts > RECIENTE_MS) return null;
+  return g.dato;
+}
+
 export async function wireguardStatus(
   zonaId: number,
   forzar = false,
@@ -99,6 +133,7 @@ export async function wireguardStatus(
   const { data } = await api.get(`/zonas/${zonaId}/wireguard-status`, {
     params: forzar ? { forzar: true } : undefined,
   });
+  wgUltimo.set(zonaId, { ts: Date.now(), dato: data });
   return data;
 }
 
@@ -140,6 +175,7 @@ export type EstadoRedZona = {
  *  cada router y lee el handshake en la VPS, así que tarda unos segundos. */
 export async function estadoRedZonas(): Promise<EstadoRedZona[]> {
   const { data } = await api.get('/zonas/estado-red');
+  estadoRedUltimo = { ts: Date.now(), filas: data };
   return data;
 }
 
