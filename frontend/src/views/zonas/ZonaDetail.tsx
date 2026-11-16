@@ -30,6 +30,7 @@ import {
 import BorneDots from 'src/components/apps/cajasnap/BorneDots';
 import { toneForPct } from 'src/components/apps/cajasnap/RingProgress';
 import MapaZona from 'src/components/apps/zonas/MapaZona';
+import CampoCoordenadas from 'src/components/shared/mapa/CampoCoordenadas';
 import { listUsuarios } from 'src/lib/usuarios';
 import { useCurrentUser } from 'src/lib/useCurrentUser';
 import { puedeAccion } from 'src/lib/permisos';
@@ -224,6 +225,40 @@ const ZonaDetail = () => {
     } else if (modoColocar === 'caja') {
       setNuevaCajaCoords({ lat, lng });
       setModoColocar(null);
+    }
+  }
+
+  /** Corregir el sitio de algo que ya estaba puesto, arrastrandolo en el mapa.
+   *  Antes habia que borrarlo y volver a crearlo, y con una caja NAP eso se
+   *  lleva por delante sus bornes y lo que estuviera anotado en ellos. */
+  async function handleMoverServidor(lat: number, lng: number) {
+    if (!id) return;
+    try {
+      await updateZonaDatos(Number(id), { lat, lng });
+      reload();
+      toast.success('Servidor movido');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo mover el servidor');
+    }
+  }
+
+  async function handleMoverMufa(mufa: Mufa, lat: number, lng: number) {
+    try {
+      await updateMufa(mufa.id, { lat, lng });
+      reload();
+      toast.success(`Mufa ${mufa.codigo} movida`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo mover la mufa');
+    }
+  }
+
+  async function handleMoverCaja(caja: CajaNap, lat: number, lng: number) {
+    try {
+      await updateCajaNap(caja.id, { lat, lng });
+      reload();
+      toast.success(`Caja ${caja.codigo} movida`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo mover la caja');
     }
   }
 
@@ -473,6 +508,9 @@ const ZonaDetail = () => {
           dibujandoTrazadoMufa={dibujandoTrazadoMufa}
           puntosTrazado={puntosTrazado}
           onAgregarPuntoTrazado={handleAgregarPuntoTrazado}
+          onMoverServidor={handleMoverServidor}
+          onMoverMufa={handleMoverMufa}
+          onMoverCaja={handleMoverCaja}
         />
 
         </SectionCard>
@@ -658,6 +696,7 @@ const ZonaDetail = () => {
         }
       >
         <FormGrid>
+          <CampoCoordenadas valor={nuevaMufaCoords} onChange={setNuevaMufaCoords} />
           <FormField label="Código" icon="tabler:hash" htmlFor="mufaCodigo" required wide>
             <FieldIcon icon="tabler:hash">
               <Input
@@ -823,6 +862,7 @@ const ZonaDetail = () => {
         }
       >
         <FormGrid>
+          <CampoCoordenadas valor={nuevaCajaCoords} onChange={setNuevaCajaCoords} />
           <FormField label="Código" icon="tabler:hash" htmlFor="cajaCodigo" required>
             <FieldIcon icon="tabler:hash">
               <Input
