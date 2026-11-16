@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
-import StatCard from 'src/components/shared/StatCard';
-import RingProgress, { RING_TONE, type RingTone } from 'src/components/apps/cajasnap/RingProgress';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import {
@@ -41,21 +39,25 @@ import { puedeAccion } from 'src/lib/permisos';
  *  código, para que el punto de color, el texto y el icono no se contradigan. */
 const ESTADO_RED: Record<
   EstadoRed,
-  { texto: string; icono: string; punto: string; chipBg: string; chipText: string }
+  { texto: string; detalle?: string; icono: string; punto: string; chipBg: string; chipText: string }
 > = {
   conectado: {
-    texto: 'Router en línea',
+    texto: 'En línea',
     icono: 'tabler:router',
     punto: 'bg-success',
     chipBg: 'bg-lightsuccess',
     chipText: 'text-success',
   },
+  // Sigue siendo un "sin respuesta" para quien mira la lista, pero el matiz
+  // importa a quien va a arreglarlo: el túnel está bien, el que no contesta es
+  // el router. Por eso comparte etiqueta y color, y lo distingue el detalle.
   tunel_sin_router: {
-    texto: 'Túnel arriba, router sin responder',
+    texto: 'Sin respuesta',
+    detalle: 'el túnel está arriba',
     icono: 'tabler:router-off',
-    punto: 'bg-warning',
-    chipBg: 'bg-lightwarning',
-    chipText: 'text-warning',
+    punto: 'bg-error',
+    chipBg: 'bg-lighterror',
+    chipText: 'text-error',
   },
   sin_respuesta: {
     texto: 'Sin respuesta',
@@ -64,8 +66,10 @@ const ESTADO_RED: Record<
     chipBg: 'bg-lighterror',
     chipText: 'text-error',
   },
+  // muted-foreground es #475569 en claro y #93a4be en oscuro: gris azulado en
+  // los dos temas, que es justo lo que se pedía, sin inventar un color nuevo.
   sin_tunel: {
-    texto: 'Sin túnel configurado',
+    texto: 'Sin túnel',
     icono: 'tabler:shield-off',
     punto: 'bg-muted-foreground',
     chipBg: 'bg-muted',
@@ -87,11 +91,48 @@ function desdeHandshake(ts: number): string | null {
   return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
 }
 
-/** El anillo mide qué parte de los clientes de la zona está activa. Acá mucho
- *  es bueno, al contrario que en las cajas NAP, donde el anillo lleno avisa de
- *  que ya no quedan bornes libres. */
-function toneForActivos(pct: number): RingTone {
-  return pct >= 80 ? 'success' : pct >= 50 ? 'warning' : 'error';
+/** Una celda de la franja de resumen: etiqueta arriba, número grande debajo.
+ *
+ *  El punto de color va junto al número y no detrás de la etiqueta, para que
+ *  al recorrer la franja de un vistazo lo que se lea sean los números. */
+function ResumenDato({
+  etiqueta,
+  valor,
+  indice,
+  punto,
+  color,
+  nota,
+}: {
+  etiqueta: string;
+  valor: number | string;
+  /** Posicion en la franja. Decide los separadores: `divide-x` no sirve sobre
+   *  una rejilla, le pone borde izquierdo tambien al primero de la segunda
+   *  fila, y queda una linea colgando. */
+  indice: number;
+  punto?: string;
+  color?: string;
+  nota?: string;
+}) {
+  const separadores = [
+    'border-ld',
+    indice % 2 === 1 ? 'border-l' : '',      // en dos columnas (telefono)
+    indice >= 2 ? 'border-t sm:border-t-0' : '',
+    indice > 0 ? 'sm:border-l' : '',         // en cuatro columnas
+  ].join(' ');
+  return (
+    <div className={`min-w-0 px-4 py-3 ${separadores}`}>
+      <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {etiqueta}
+      </p>
+      <div className="mt-1 flex items-center gap-2">
+        {punto && <span className={`h-2 w-2 shrink-0 rounded-full ${punto}`} />}
+        <span className={`text-xl font-semibold leading-none ${color ?? 'text-foreground'}`}>
+          {valor}
+        </span>
+      </div>
+      {nota && <p className="mt-1 truncate text-[11px] text-muted-foreground">{nota}</p>}
+    </div>
+  );
 }
 
 const Zonas = () => {
@@ -265,41 +306,39 @@ const Zonas = () => {
         </div>
       </div>
 
-      {/* El resumen iba en una fila de texto gris donde "14 zonas 1 en línea
-          1 sin responder 12 sin túnel" se leía de corrido y no se distinguía
-          nada. En cuadros, cada número con su color, se ve de un golpe — y es
-          lo mismo que ya hace la ficha de la zona, así que no hay dos
-          lenguajes distintos en el mismo módulo. */}
+      {/* Los cuatro indicadores en una sola franja, separados por una línea
+          fina en vez de por aire: ocupan un tercio del alto que ocupaban en
+          cuatro tarjetas y se leen igual de rápido. En móvil se parten en dos
+          columnas, que es donde cabe un número sin estrujarse. */}
       {veRed && zonas.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard
-            icono="tabler:map-pin"
-            etiqueta="Zonas"
-            valor={zonas.length}
-            tono="primary"
-          />
-          <StatCard
-            icono="tabler:plug-connected"
-            etiqueta="En línea"
-            valor={sinComprobar ? '—' : enLinea}
-            nota={sinComprobar ? notaSinDatos : 'el router contesta'}
-            tono="success"
-          />
-          <StatCard
-            icono="tabler:plug-connected-x"
-            etiqueta="Sin responder"
-            valor={sinComprobar ? '—' : caidas}
-            nota={sinComprobar ? notaSinDatos : 'hay que revisarlas'}
-            tono={caidas > 0 && !sinComprobar ? 'error' : 'info'}
-          />
-          <StatCard
-            icono="tabler:shield-off"
-            etiqueta="Sin túnel"
-            valor={sinComprobar ? '—' : sinTunel}
-            nota={sinComprobar ? notaSinDatos : 'falta configurarlas'}
-            tono="warning"
-          />
-        </div>
+        <CardBox className="p-0 overflow-hidden">
+          <div className="grid grid-cols-2 sm:grid-cols-4">
+            <ResumenDato etiqueta="Total de zonas" valor={zonas.length} indice={0} />
+            <ResumenDato
+              etiqueta="En línea"
+              indice={1}
+              valor={sinComprobar ? '—' : enLinea}
+              punto="bg-success"
+              color="text-success"
+              nota={sinComprobar ? notaSinDatos : undefined}
+            />
+            <ResumenDato
+              etiqueta="Sin respuesta"
+              indice={2}
+              valor={sinComprobar ? '—' : caidas}
+              punto="bg-error"
+              color={caidas > 0 && !sinComprobar ? 'text-error' : undefined}
+              nota={sinComprobar ? notaSinDatos : undefined}
+            />
+            <ResumenDato
+              etiqueta="Sin túnel"
+              indice={3}
+              valor={sinComprobar ? '—' : sinTunel}
+              punto="bg-muted-foreground"
+              nota={sinComprobar ? notaSinDatos : undefined}
+            />
+          </div>
+        </CardBox>
       )}
 
       {zonasFiltradas.length === 0 && (
@@ -312,14 +351,11 @@ const Zonas = () => {
         </CardBox>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {/* Tres columnas cuando hay sitio, dos en tableta, una en el teléfono. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {zonasFiltradas.map((z) => {
           const red = estados[z.id];
           const estilo = red ? ESTADO_RED[red.estado] : null;
-          const pct = z.total_clientes > 0
-            ? Math.round((z.clientes_activos / z.total_clientes) * 100)
-            : 0;
-          const tone = toneForActivos(pct);
           const handshake = red ? desdeHandshake(red.last_handshake_ts) : null;
 
           return (
@@ -378,79 +414,65 @@ const Zonas = () => {
                 </div>
               </div>
 
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-col gap-1">
-                  {veRed && (
-                    <>
-                      {estilo ? (
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className={`rounded-full p-1 flex items-center justify-center shrink-0 ${estilo.chipBg}`}
-                          >
-                            <Icon icon={estilo.icono} height={14} className={estilo.chipText} />
-                          </span>
-                          <span className={`text-sm font-medium truncate ${estilo.chipText}`}>
-                            {estilo.texto}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Icon
-                            icon="tabler:loader-2"
-                            height={14}
-                            className={comprobando ? 'animate-spin' : undefined}
-                          />
-                          {comprobando ? 'Comprobando…' : 'Estado sin comprobar'}
-                        </div>
+              {/* El estado, con su icono y su etiqueta de texto. */}
+              {veRed && (
+                <div className="mt-2">
+                  {estilo ? (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <Icon icon={estilo.icono} height={15} className={`shrink-0 ${estilo.chipText}`} />
+                      <span className={`truncate text-sm font-medium ${estilo.chipText}`}>
+                        {estilo.texto}
+                      </span>
+                      {estilo.detalle && (
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          ({estilo.detalle})
+                        </span>
                       )}
-                      {handshake && (
-                        <p className="truncate text-[11px] leading-tight text-muted-foreground">
-                          Último handshake {handshake}
-                        </p>
-                      )}
-                      {z.router_mikrotik && (
-                        <p className="truncate text-[11px] leading-tight text-muted-foreground">
-                          {z.router_mikrotik}
-                          {z.ip_wireguard ? ` · ${z.ip_wireguard}` : ''}
-                        </p>
-                      )}
-                    </>
-                  )}
-                  {!veRed && (
-                    <p className="text-sm text-muted-foreground">
-                      {z.total_clientes} {z.total_clientes === 1 ? 'cliente' : 'clientes'}
-                    </p>
-                  )}
-                </div>
-
-                <div
-                  className="flex shrink-0 flex-col items-center gap-1"
-                  title={
-                    z.total_clientes > 0
-                      ? `${z.clientes_activos} de ${z.total_clientes} clientes de esta zona están activos`
-                      : 'Todavía no hay clientes en esta zona'
-                  }
-                >
-                  {z.total_clientes > 0 ? (
-                    <RingProgress pct={pct} tone={tone} size="xs" />
+                    </div>
                   ) : (
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-ld">
-                      <Icon icon="tabler:user-off" height={16} className="text-muted-foreground" />
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Icon
+                        icon="tabler:loader-2"
+                        height={15}
+                        className={comprobando ? 'animate-spin' : undefined}
+                      />
+                      {comprobando ? 'Comprobando…' : 'Estado sin comprobar'}
                     </div>
                   )}
+                  {/* Los datos técnicos siguen siendo solo para quien ve la
+                      red; en una línea y no en dos, que es donde se iba el
+                      alto de la tarjeta. */}
+                  <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground">
+                    {[
+                      z.router_mikrotik,
+                      z.ip_wireguard,
+                      // "sin pool" se dice en voz alta: sin el, los planes de
+                      // esa zona no pueden crear perfiles en el router.
+                      z.pool_pppoe ? `pool ${z.pool_pppoe}` : 'sin pool',
+                      handshake,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
                 </div>
-              </div>
+              )}
 
-              <div className="mt-2.5 flex justify-between border-t border-ld pt-2 text-[11px]">
-                <span className={`font-medium ${RING_TONE[tone].chipText}`}>
-                  {z.clientes_activos} activos
-                </span>
-                <span className="text-muted-foreground">{z.total_clientes} en total</span>
-                {veRed && (
-                  <span className="text-muted-foreground truncate max-w-[45%]">
-                    {z.pool_pppoe ? `pool ${z.pool_pppoe}` : 'sin pool'}
+              {/* Activos y total, en una fila y en color neutro: un cero aquí
+                  no es una alarma, es una zona que todavía no tiene clientes. */}
+              <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-ld pt-2">
+                <div className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
+                  <span className="whitespace-nowrap">
+                    Activos <span className="font-semibold text-foreground">{z.clientes_activos}</span>
                   </span>
-                )}
+                  <span className="h-3 w-px bg-border" aria-hidden="true" />
+                  <span className="whitespace-nowrap">
+                    Total <span className="font-semibold text-foreground">{z.total_clientes}</span>
+                  </span>
+                </div>
+                <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-primary">
+                  Ver detalle
+                  <Icon icon="tabler:arrow-right" height={14} />
+                </span>
               </div>
             </CardBox>
           );
