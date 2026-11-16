@@ -42,6 +42,8 @@ import {
   asignarTecnicoZona,
   quitarTecnicoZona,
   updateZonaDatos,
+  datosDelRouter,
+  type DatosDelRouter,
   type Zona,
   type WireguardStatus,
   type Tecnico,
@@ -72,6 +74,54 @@ function inicialesNombre(nombre: string): string {
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() ?? '')
     .join('');
+}
+
+
+/** Lo que el router contestó para ese campo, como botones.
+ *
+ *  Es la diferencia entre escribir "CORTE MOROSOS" y elegir "CORTE MOROSO":
+ *  lo primero no da ningún error, el cortado entra en una lista que ninguna
+ *  regla del firewall consulta, y sigue navegando sin pagar hasta que alguien
+ *  mire el dinero. Mientras no se haya leído el router no se pinta nada.
+ */
+function OpcionesDelRouter({
+  opciones,
+  valor,
+  onElegir,
+  vacio,
+}: {
+  opciones?: string[];
+  valor: string;
+  onElegir: (v: string) => void;
+  vacio: string;
+}) {
+  if (!opciones) return null;
+  if (opciones.length === 0) {
+    return <p className="mt-1.5 text-[11px] text-warning-text">{vacio}</p>;
+  }
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+      <span className="text-[11px] text-muted-foreground">En el router:</span>
+      {opciones.map((o) => {
+        const elegido = valor === o || valor === o.split(' ')[0];
+        return (
+          <button
+            key={o}
+            type="button"
+            onClick={() => onElegir(o)}
+            aria-pressed={elegido}
+            className={`transition-ui rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+              elegido
+                ? 'border-primary bg-lightprimary text-primary-text'
+                : 'border-ld text-muted-foreground hover:border-primary/50 hover:text-primary-text'
+            }`}
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 const ZonaDetail = () => {
@@ -136,6 +186,9 @@ const ZonaDetail = () => {
   const [editZonaPool, setEditZonaPool] = useState('');
   const [editZonaListaCorte, setEditZonaListaCorte] = useState('');
   const [editZonaError, setEditZonaError] = useState<string | null>(null);
+  /** Lo que contestó el router la última vez que se le preguntó. */
+  const [datosRouter, setDatosRouter] = useState<DatosDelRouter | null>(null);
+  const [leyendoRouter, setLeyendoRouter] = useState(false);
 
   const { user } = useCurrentUser();
   /** Atención al cliente entra a consultar cobertura: ve el mapa, las mufas y
@@ -237,6 +290,55 @@ const ZonaDetail = () => {
       toast.success('Zona actualizada');
     } catch (err: any) {
       setEditZonaError(err?.response?.data?.detail ?? 'No se pudo editar la zona');
+    }
+  }
+
+  /** Le pregunta al MikroTik lo que hoy se escribe a mano.
+   *
+   *  Rellena solo lo que esté vacío o lo que el router diga sin ambigüedad: si
+   *  hay varios pools o varias listas, se dejan como botones para elegir. Un
+   *  pool o una lista de corte mal puestos no dan error —el cliente se queda
+   *  sin IP, o sigue navegando sin pagar— y por eso nada se adivina. */
+  async function handleLeerDelRouter() {
+    if (!id) return;
+    setLeyendoRouter(true);
+    setEditZonaError(null);
+    try {
+      const d = await datosDelRouter(Number(id));
+      setDatosRouter(d);
+
+      const puestos: string[] = [];
+      if (d.router_mikrotik) {
+        setEditZonaRouterMikrotik(d.router_mikrotik);
+        puestos.push('modelo y nombre');
+      }
+      if (d.pool_sugerido) {
+        setEditZonaPool(d.pool_sugerido);
+        puestos.push(`pool ${d.pool_sugerido}`);
+      }
+      if (d.lista_sugerida) {
+        setEditZonaListaCorte(d.lista_sugerida);
+        puestos.push(`lista ${d.lista_sugerida}`);
+      }
+      // La IP LAN solo si no hay duda: la del túnel no cuenta, y con varias
+      // interfaces no hay forma de saber cuál es la de los clientes.
+      const candidatas = d.direcciones.filter(
+        (x) => x.address !== `${zona?.ip_wireguard ?? ''}/32` && !x.address.startsWith('127.'),
+      );
+      if (!editZonaIpLan.trim() && candidatas.length === 1) {
+        setEditZonaIpLan(candidatas[0].address);
+        puestos.push('IP LAN');
+      }
+
+      if (puestos.length > 0) {
+        toast.success(`Leído del router: ${puestos.join(', ')}.`);
+      } else {
+        toast.info('El router contestó, pero no había nada claro que rellenar. Elige abajo.');
+      }
+    } catch (err: any) {
+      setEditZonaError(err?.response?.data?.detail ?? 'No se pudo leer el router');
+    } finally {
+      setLeyendoRouter(false);
     }
   }
 
@@ -1150,6 +1252,40 @@ const ZonaDetail = () => {
             icon="tabler:router"
             hint="Se completa cuando el router ya está instalado"
           >
+            {/* Con el túnel levantado no hace falta escribir nada de esto a
+                mano: el router lo sabe y lo dice. */}
+            <div className="md:col-span-2 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleLeerDelRouter}
+                disabled={leyendoRouter || !zona?.ip_wireguard}
+                title={
+                  zona?.ip_wireguard
+                    ? 'Preguntarle al MikroTik su modelo, pools y listas'
+                    : 'Hace falta el túnel: es el camino hasta el router'
+                }
+                className="gap-1.5"
+              >
+                <Icon
+                  icon={leyendoRouter ? 'tabler:loader-2' : 'tabler:download'}
+                  height={16}
+                  className={leyendoRouter ? 'animate-spin' : undefined}
+                />
+                {leyendoRouter ? 'Preguntando al router…' : 'Leer del router'}
+              </Button>
+              {datosRouter?.version && (
+                <span className="text-xs text-muted-foreground">
+                  RouterOS {datosRouter.version}
+                </span>
+              )}
+              {!zona?.ip_wireguard && (
+                <span className="text-xs text-muted-foreground">
+                  Primero el túnel: es por donde el sistema llega al router.
+                </span>
+              )}
+            </div>
             <FormField
               label="IP de WireGuard"
               htmlFor="editZonaIpWireguard"
@@ -1179,6 +1315,12 @@ const ZonaDetail = () => {
                   onChange={(e) => setEditZonaPool(e.target.value)}
                 />
               </FieldIcon>
+              <OpcionesDelRouter
+                opciones={datosRouter?.pools}
+                valor={editZonaPool}
+                onElegir={setEditZonaPool}
+                vacio="Este router no tiene ningún pool de direcciones."
+              />
             </FormField>
 
             <FormField
@@ -1195,6 +1337,12 @@ const ZonaDetail = () => {
                   onChange={(e) => setEditZonaListaCorte(e.target.value)}
                 />
               </FieldIcon>
+              <OpcionesDelRouter
+                opciones={datosRouter?.listas}
+                valor={editZonaListaCorte}
+                onElegir={setEditZonaListaCorte}
+                vacio="Este router no tiene ninguna lista en el firewall."
+              />
             </FormField>
 
             <FormField label="IP LAN" htmlFor="editZonaIpLan">
@@ -1205,6 +1353,14 @@ const ZonaDetail = () => {
                   onChange={(e) => setEditZonaIpLan(e.target.value)}
                 />
               </FieldIcon>
+              <OpcionesDelRouter
+                opciones={datosRouter?.direcciones.map((d) =>
+                  d.interface ? `${d.address} (${d.interface})` : d.address,
+                )}
+                valor={editZonaIpLan}
+                onElegir={(v) => setEditZonaIpLan(v.split(' ')[0])}
+                vacio="El router no devolvió direcciones."
+              />
             </FormField>
             <FormField label="IP del router" htmlFor="editZonaIpRouter">
               <FieldIcon icon="tabler:router">

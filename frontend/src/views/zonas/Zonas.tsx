@@ -143,7 +143,10 @@ const Zonas = () => {
    *  que falla es el enlace o el router. */
   async function comprobarUna(zona: Zona) {
     try {
-      const d = await wireguardStatus(zona.id);
+      // forzar: el servidor guarda el estado del tunel 2 minutos para no
+      // castigar la VPS, pero si alguien pulsa "Comprobar el enlace" es
+      // justamente porque quiere el dato de ahora.
+      const d = await wireguardStatus(zona.id, true);
       toast[d.online ? 'success' : 'warning'](
         `${zona.nombre}: ${d.online ? 'el router contesta' : 'el router no contesta'}` +
           ` · WireGuard ${d.wg_peer_online ? 'con handshake' : 'sin handshake'}` +

@@ -7,6 +7,9 @@ import re
 import socket
 import logging
 import base64
+import threading
+import time
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
@@ -45,17 +48,81 @@ def check_ssh_port(host: str, port: int = 22, timeout: int = 3) -> bool:
 
 # ── WireGuard helpers ─────────────────────────────────────────────────────────
 
-def wg_show_dump() -> list[dict]:
+# Un peer se considera vivo si saludo hace menos de esto. WireGuard renueva
+# el handshake cada ~2 minutos mientras hay trafico, asi que 3 minutos deja
+# margen para un saludo perdido sin dar por vivo un tunel caido.
+_HANDSHAKE_VIVO_SEGUNDOS = 180
+
+# ── Memoria corta del estado de WireGuard ────────────────────────────────────
+#
+# `wg show` se pedia en cada apertura de Zonas y de cada ficha de zona, y cada
+# vez era una conexion SSH nueva a la VPS. Con una zona daba igual; con quince
+# routers, y con la VPS lenta, es un peaje que no compra nada: WireGuard
+# renueva el handshake cada ~2 minutos, asi que un dato mas fresco que eso no
+# existe. Guardarlo dos minutos no pierde informacion, solo deja de preguntar
+# en vano.
+#
+# Lo que SI cuesta por router son los ping, pero esos salen del servidor de la
+# oficina, no de la VPS, y van en paralelo.
+_WG_CACHE_SEGUNDOS = 120
+# Si la VPS no contesta, el fallo se recuerda poco: lo justo para que una
+# pantalla con varias zonas no espere el timeout una vez por zona, sin tardar
+# dos minutos en notar que ya volvio.
+_WG_CACHE_FALLO_SEGUNDOS = 20
+_wg_cache: dict = {"ts": 0.0, "peers": [], "ok": False}
+_wg_cache_lock = threading.Lock()
+
+
+def _peers_con_estado(peers: list[dict]) -> list[dict]:
+    """Marca online/offline con la hora de ahora.
+
+    El `online` no se guarda en la memoria, se calcula al devolver: si se
+    guardara, un peer leido hace dos minutos seguiria diciendo "en linea"
+    comparando contra la hora de entonces, y podria dar por vivo un tunel
+    caido hace cinco.
+    """
+    # time.time() y no datetime.utcnow().timestamp(): el segundo devuelve la
+    # hora UTC como si fuera local, asi que en un contenedor con TZ puesta a
+    # America/Lima daria cinco horas de diferencia y TODOS los tuneles
+    # pareceriam caidos, sin que nada fallara a la vista. Hoy el contenedor
+    # va en UTC y el calculo sale bien, pero no quiero que dependa de eso.
+    ahora = time.time()
+    return [
+        dict(p, online=p["last_handshake"] > 0
+             and (ahora - p["last_handshake"]) < _HANDSHAKE_VIVO_SEGUNDOS)
+        for p in peers
+    ]
+
+
+def _invalidar_wg_cache() -> None:
+    """Despues de dar de alta o de baja un peer, lo guardado ya no vale."""
+    with _wg_cache_lock:
+        _wg_cache.update(ts=0.0, peers=[], ok=False)
+
+
+def wg_show_dump(forzar: bool = False) -> list[dict]:
     """
     Parsea `wg show wg0 dump` — se ejecuta por SSH en la VPS, porque el
     backend ya no vive en la misma máquina que el túnel WireGuard (esa es
     la VPS; el backend corre en el servidor local de la empresa).
     Retorna lista de peers con: pubkey, endpoint, allowed_ips,
     last_handshake (epoch), rx_bytes, tx_bytes.
+
+    La respuesta se guarda unos minutos (ver arriba). `forzar=True` se salta
+    lo guardado: es para cuando alguien pulsa "Comprobar el enlace" a
+    proposito y quiere el dato del momento.
     """
+    with _wg_cache_lock:
+        if not forzar and _wg_cache["ts"]:
+            tope = _WG_CACHE_SEGUNDOS if _wg_cache["ok"] else _WG_CACHE_FALLO_SEGUNDOS
+            if (time.time() - _wg_cache["ts"]) < tope:
+                return _peers_con_estado(_wg_cache["peers"])
+
     result = _ssh_vps("wg show wg0 dump")
     if not result["ok"]:
         logger.warning("wg show dump falló: %s", result["output"])
+        with _wg_cache_lock:
+            _wg_cache.update(ts=time.time(), peers=[], ok=False)
         return []
 
     peers = []
@@ -72,16 +139,16 @@ def wg_show_dump() -> list[dict]:
             "last_handshake": int(last_hs),
             "rx_bytes": int(rx),
             "tx_bytes": int(tx),
-            "online": int(last_hs) > 0 and (
-                (datetime.utcnow().timestamp() - int(last_hs)) < 180
-            ),
         })
-    return peers
+
+    with _wg_cache_lock:
+        _wg_cache.update(ts=time.time(), peers=peers, ok=True)
+    return _peers_con_estado(peers)
 
 
-def wg_peer_status(pubkey: str) -> Optional[dict]:
+def wg_peer_status(pubkey: str, forzar: bool = False) -> Optional[dict]:
     """Retorna el estado del peer con esa clave pública, o None si no existe."""
-    for p in wg_show_dump():
+    for p in wg_show_dump(forzar=forzar):
         if p["pubkey"] == pubkey:
             return p
     return None
@@ -122,6 +189,7 @@ def wg_add_peer(pubkey: str, allowed_ips: str, comment: str = "") -> dict:
     aplicado = _ssh_vps(f"wg set wg0 peer {pubkey} allowed-ips {ips_clean}")
     if not aplicado["ok"]:
         return {"ok": False, "error": f"wg set falló: {aplicado['output']}"}
+    _invalidar_wg_cache()
     return {"ok": True}
 
 
@@ -151,6 +219,7 @@ def wg_remove_peer(pubkey: str) -> dict:
     quitado = _ssh_vps(f"wg set wg0 peer {pubkey} remove")
     if not quitado["ok"]:
         return {"ok": False, "error": f"wg set remove falló: {quitado['output']}"}
+    _invalidar_wg_cache()
     return {"ok": True}
 
 
@@ -443,6 +512,7 @@ def delete_zona(
 @router.get("/{zona_id}/wireguard-status")
 def wireguard_status(
     zona_id: int,
+    forzar: bool = False,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
 ):
@@ -461,7 +531,7 @@ def wireguard_status(
     ssh_ok = check_ssh_port(ip) if ping_ok else False
 
     # Estado WireGuard real desde wg show
-    wg_peer = wg_peer_status(zona.wg_public_key) if zona.wg_public_key else None
+    wg_peer = wg_peer_status(zona.wg_public_key, forzar=forzar) if zona.wg_public_key else None
 
     last_handshake_ts = wg_peer["last_handshake"] if wg_peer else 0
     last_handshake_fmt = (
@@ -715,3 +785,145 @@ def quitar_tecnico_zona(
     db.delete(asignacion)
     db.commit()
     return {"ok": True}
+
+
+# ── Leer la configuracion del MikroTik ya conectado ──────────────────────────
+
+
+def _mk_secciones(salida: str) -> dict:
+    """Parte la salida en las secciones marcadas con ###NOMBRE."""
+    secciones: dict = {}
+    actual = None
+    for linea in salida.splitlines():
+        limpia = linea.strip()
+        if limpia.startswith("###"):
+            actual = limpia[3:].strip()
+            secciones[actual] = []
+        elif actual and limpia:
+            secciones[actual].append(limpia)
+    return secciones
+
+
+def _mk_valor(terse: str, clave: str) -> Optional[str]:
+    """Saca `clave=valor` de una linea de `print terse`.
+
+    RouterOS no entrecomilla los valores, asi que esto solo vale para valores
+    sin espacios (direcciones, nombres de interfaz). Para los que si pueden
+    llevarlos —el nombre de una lista del firewall es "CORTE MOROSO"— se pide
+    el valor solo, uno por linea, con :foreach.
+    """
+    m = re.search(rf"\b{re.escape(clave)}=(\S+)", terse)
+    return m.group(1) if m else None
+
+
+@router.get("/{zona_id}/datos-del-router")
+def datos_del_router(
+    zona_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    """Lo que el MikroTik puede decir de si mismo, para no escribirlo a mano.
+
+    Los dos datos que mas importan son el pool PPPoE y la lista de corte,
+    porque son los que, mal escritos, no dan error: el cliente se autentica y
+    se queda sin IP, o entra en una lista del firewall que ninguna regla
+    consulta y sigue navegando sin pagar. Leidos del router no se pueden
+    escribir mal.
+
+    No adivina nada que no este claro: devuelve lo que hay y deja que se
+    elija. El unico caso en que propone es cuando hay una sola opcion, o
+    cuando los perfiles PPPoE del propio router ya apuntan a un pool.
+    """
+    zona = db.query(models.Zona).filter(models.Zona.id == zona_id).first()
+    if not zona:
+        raise HTTPException(status_code=404, detail="Zona no encontrada")
+    if not zona.ip_wireguard:
+        raise HTTPException(
+            status_code=400,
+            detail="Esta zona todavia no tiene tunel: sin el no hay camino hasta el router.",
+        )
+
+    # Todo en una sola conexion SSH: abrirla es lo que cuesta, no los
+    # comandos. Las secciones se separan con marcas para parsearlas aparte.
+    cmd = (
+        ':put "###IDENTIDAD"; :put [/system identity get name];'
+        ' :put "###MODELO"; :put [/system resource get board-name];'
+        ' :put "###VERSION"; :put [/system resource get version];'
+        ' :put "###POOLS"; :foreach i in=[/ip pool find] do={:put [/ip pool get $i name]};'
+        ' :put "###LISTAS"; :foreach i in=[/ip firewall address-list find]'
+        ' do={:put [/ip firewall address-list get $i list]};'
+        ' :put "###DIRECCIONES"; /ip address print terse;'
+        ' :put "###PERFILES"; /ppp profile print terse'
+    )
+    r = _ssh_exec(zona.ip_wireguard, cmd, timeout=25)
+    if not r["ok"]:
+        raise HTTPException(
+            status_code=502,
+            detail=f"No se pudo leer el router: {r['output']}",
+        )
+
+    sec = _mk_secciones(r["output"])
+    if "IDENTIDAD" not in sec:
+        # Si no llego ni la primera marca, lo que contesto no es un RouterOS
+        # que entienda estos comandos: mejor decirlo que inventar campos.
+        raise HTTPException(
+            status_code=502,
+            detail="El router contesto algo que no se pudo entender. Revisa el usuario de SSH.",
+        )
+
+    def primero(nombre: str) -> Optional[str]:
+        vals = sec.get(nombre) or []
+        return vals[0] if vals else None
+
+    # Las listas del firewall se repiten (una entrada por IP); interesan los
+    # nombres distintos.
+    listas = sorted({l for l in sec.get("LISTAS", []) if l})
+    pools = sorted({p for p in sec.get("POOLS", []) if p})
+
+    direcciones = []
+    for linea in sec.get("DIRECCIONES", []):
+        dir_ip = _mk_valor(linea, "address")
+        if not dir_ip:
+            continue
+        direcciones.append({"address": dir_ip, "interface": _mk_valor(linea, "interface")})
+
+    # El pool que de verdad usan los perfiles PPPoE del router: es mejor pista
+    # que el nombre de un pool suelto, porque es el que esta dando servicio.
+    usados = Counter()
+    perfiles = []
+    for linea in sec.get("PERFILES", []):
+        nombre = _mk_valor(linea, "name")
+        remoto = _mk_valor(linea, "remote-address")
+        if nombre:
+            perfiles.append({"nombre": nombre, "pool": remoto})
+        if remoto and remoto in pools:
+            usados[remoto] += 1
+
+    pool_sugerido = None
+    if usados:
+        pool_sugerido = usados.most_common(1)[0][0]
+    elif len(pools) == 1:
+        pool_sugerido = pools[0]
+
+    # Para el corte, la lista que lleve "corte" en el nombre; si hay una sola
+    # lista en el router, esa.
+    candidatas = [l for l in listas if "corte" in l.lower()]
+    lista_sugerida = candidatas[0] if len(candidatas) == 1 else (
+        listas[0] if len(listas) == 1 else None
+    )
+
+    modelo = primero("MODELO")
+    identidad = primero("IDENTIDAD")
+    return {
+        "identidad": identidad,
+        "modelo": modelo,
+        "version": primero("VERSION"),
+        # Como se guarda en el campo "Modelo / nombre del router" de la zona.
+        "router_mikrotik": " \u2014 ".join([x for x in (modelo, identidad) if x]) or None,
+        "pools": pools,
+        "pool_sugerido": pool_sugerido,
+        "listas": listas,
+        "lista_sugerida": lista_sugerida,
+        "direcciones": direcciones,
+        "perfiles": perfiles,
+    }

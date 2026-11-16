@@ -90,8 +90,15 @@ export type WireguardStatus = {
   vps_endpoint: string;
 };
 
-export async function wireguardStatus(zonaId: number): Promise<WireguardStatus> {
-  const { data } = await api.get(`/zonas/${zonaId}/wireguard-status`);
+/** `forzar` se salta la memoria corta del servidor (2 min) y vuelve a
+ *  preguntarle a la VPS. Solo para cuando alguien lo pide a propósito. */
+export async function wireguardStatus(
+  zonaId: number,
+  forzar = false,
+): Promise<WireguardStatus> {
+  const { data } = await api.get(`/zonas/${zonaId}/wireguard-status`, {
+    params: forzar ? { forzar: true } : undefined,
+  });
   return data;
 }
 
@@ -133,5 +140,30 @@ export type EstadoRedZona = {
  *  cada router y lee el handshake en la VPS, así que tarda unos segundos. */
 export async function estadoRedZonas(): Promise<EstadoRedZona[]> {
   const { data } = await api.get('/zonas/estado-red');
+  return data;
+}
+
+
+/** Lo que el MikroTik de la zona cuenta de sí mismo. Todo puede venir vacío:
+ *  depende de lo que ese router tenga configurado. */
+export type DatosDelRouter = {
+  identidad: string | null;
+  modelo: string | null;
+  version: string | null;
+  /** Modelo y nombre juntos, como se guardan en la zona. */
+  router_mikrotik: string | null;
+  pools: string[];
+  /** El pool al que ya apuntan sus perfiles PPPoE, si hay uno claro. */
+  pool_sugerido: string | null;
+  listas: string[];
+  lista_sugerida: string | null;
+  direcciones: { address: string; interface: string | null }[];
+  perfiles: { nombre: string; pool: string | null }[];
+};
+
+/** Pregunta al router de la zona su modelo, nombre, pools, listas del
+ *  firewall y direcciones. Necesita el túnel levantado: es por donde va. */
+export async function datosDelRouter(zonaId: number): Promise<DatosDelRouter> {
+  const { data } = await api.get(`/zonas/${zonaId}/datos-del-router`);
   return data;
 }
