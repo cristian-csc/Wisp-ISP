@@ -283,7 +283,7 @@ const Zonas = () => {
         </CardBox>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {zonasFiltradas.map((z) => {
           const red = estados[z.id];
           const estilo = red ? ESTADO_RED[red.estado] : null;
@@ -296,16 +296,13 @@ const Zonas = () => {
           return (
             <CardBox
               key={z.id}
-              className="p-5 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+              className="p-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
               onClick={() => navigate(`/zonas/${z.id}`)}
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                    <Icon icon="tabler:map-pin" height={13} />
-                    Zona
-                  </div>
-                  <h3 className="text-lg font-semibold truncate">{z.nombre}</h3>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Icon icon="tabler:map-pin" height={16} className="shrink-0 text-muted-foreground" />
+                  <h3 className="truncate text-base font-semibold">{z.nombre}</h3>
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
@@ -397,16 +394,28 @@ const Zonas = () => {
                   )}
                 </div>
 
-                {z.total_clientes > 0 ? (
-                  <RingProgress pct={pct} tone={tone} />
-                ) : (
-                  <div className="h-20 w-20 shrink-0 rounded-full border-2 border-dashed border-ld flex items-center justify-center">
-                    <Icon icon="tabler:user-off" height={22} className="text-muted-foreground" />
-                  </div>
-                )}
+                <div
+                  className="flex shrink-0 flex-col items-center gap-1"
+                  title={
+                    z.total_clientes > 0
+                      ? `${z.clientes_activos} de ${z.total_clientes} clientes de esta zona están activos`
+                      : 'Todavía no hay clientes en esta zona'
+                  }
+                >
+                  {z.total_clientes > 0 ? (
+                    <RingProgress pct={pct} tone={tone} size="sm" />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-ld">
+                      <Icon icon="tabler:user-off" height={18} className="text-muted-foreground" />
+                    </div>
+                  )}
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    activos
+                  </span>
+                </div>
               </div>
 
-              <div className="flex justify-between mt-4 pt-4 border-t border-ld text-xs">
+              <div className="flex justify-between mt-3 pt-3 border-t border-ld text-xs">
                 <span className={`font-medium ${RING_TONE[tone].chipText}`}>
                   {z.clientes_activos} activos
                 </span>

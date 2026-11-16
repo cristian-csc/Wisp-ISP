@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import {
   AjustarTamanoMapa,
@@ -50,8 +50,11 @@ const cajaIcon = L.divIcon({
 // ahí, muestra un tile con "Map data not yet available for this region".
 // Con maxNativeZoom, Leaflet sigue dejando acercar (maxZoom) pero escala el
 // último nivel de tile real en vez de pedir uno que no existe.
-const MAX_NATIVE_ZOOM_SATELITE = 18;
-const MAX_ZOOM_MAPA = 21;
+// Hasta donde Esri tiene imagen de verdad. Si en alguna zona el cartel
+// de "Map data not yet available" aparece antes de llegar aca, hay que
+// bajar este numero: es el unico sitio donde se decide.
+const MAX_ZOOM_SATELITE = 18;
+const MAX_ZOOM_CALLE = 21;
 
 type CapaMapa = 'calle' | 'satelite';
 
@@ -77,58 +80,52 @@ function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void
 }
 
 /**
- * La cruz fija del centro y el botón que confirma.
+ * Al entrar en el modo de colocar, el punto nace en el centro del mapa.
  *
- * Colocar así sale más exacto que tocar el mapa: se acerca cuanto haga falta
- * y se mueve el mapa por debajo de la cruz, que no se mueve nunca. Acertarle
- * con el dedo —o con el ratón— a una casa de diez píxeles es lo que hace que
- * el punto acabe en la casa de al lado. Además la coordenada sale del centro
- * del mapa, no del evento del click, así que no depende de a qué píxel del
- * contenedor se tocó.
+ * Antes habia que acertarle con el toque y lo unico que se podia hacer si
+ * caia mal era borrar y repetir. Ahora nace en el medio del recuadro y se
+ * arrastra hasta su sitio con el boton de mover, que es mas facil de afinar
+ * que un toque: se ve el punto moverse mientras se busca.
+ *
+ * El servidor no pasa por aca a proposito: ya esta puesto casi siempre, y
+ * colocarlo solo por pulsar el boton lo movaria de sitio sin querer.
  */
-function PonerEnElCentro({
-  etiqueta,
-  onConfirmar,
+function ColocarEnElCentro({
+  modo,
+  onColocar,
 }: {
-  etiqueta: string;
-  onConfirmar: (lat: number, lng: number) => void;
+  modo: 'servidor' | 'mufa' | 'caja' | null;
+  onColocar: (lat: number, lng: number) => void;
 }) {
   const map = useMap();
-  const [centro, setCentro] = useState(() => map.getCenter());
+  useEffect(() => {
+    if (modo !== 'mufa' && modo !== 'caja') return;
+    const c = map.getCenter();
+    onColocar(c.lat, c.lng);
+    // onColocar cambia el modo a null en cuanto corre, asi que esto pasa una
+    // sola vez por cada vez que se enciende el modo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modo]);
+  return null;
+}
 
-  useMapEvents({
-    move: () => setCentro(map.getCenter()),
-    zoomend: () => setCentro(map.getCenter()),
-  });
-
-  return (
-    <>
-      <div className="pointer-events-none absolute left-1/2 top-1/2 z-[999] -translate-x-1/2 -translate-y-1/2">
-        <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden>
-          <g stroke="#5d87ff" strokeWidth="2" strokeLinecap="round">
-            <line x1="24" y1="2" x2="24" y2="14" />
-            <line x1="24" y1="34" x2="24" y2="46" />
-            <line x1="2" y1="24" x2="14" y2="24" />
-            <line x1="34" y1="24" x2="46" y2="24" />
-            <circle cx="24" cy="24" r="10" fill="none" />
-          </g>
-          {/* El punto exacto que se va a guardar. */}
-          <circle cx="24" cy="24" r="2.5" fill="#5d87ff" />
-          <circle cx="24" cy="24" r="10" fill="none" stroke="white" strokeWidth="1" opacity="0.9" />
-        </svg>
-      </div>
-
-      <div className="absolute bottom-3 left-1/2 z-[1000] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-ld bg-card/95 px-3 py-2 shadow-md backdrop-blur-sm">
-        <span className="hidden font-mono text-[11px] text-muted-foreground sm:inline">
-          {centro.lat.toFixed(6)}, {centro.lng.toFixed(6)}
-        </span>
-        <Button size="sm" onClick={() => onConfirmar(centro.lat, centro.lng)}>
-          <Icon icon="tabler:map-pin-check" height={16} />
-          {etiqueta}
-        </Button>
-      </div>
-    </>
-  );
+/**
+ * Tope de zoom segun la capa.
+ *
+ * El satelite gratuito de Esri no tiene imagen a maximo detalle en todas
+ * partes: pasado su nivel, los tiles que devuelve son un cartel de "Map data
+ * not yet available". Queda feo y no sirve para nada, asi que el mapa no deja
+ * llegar ahi cuando se esta en satelite, y en calle sigue acercando como
+ * siempre. El tope se aplica al mapa entero (no solo a la capa) porque el
+ * limite de MapContainer se fija al montar y no cambia solo.
+ */
+function LimiteDeZoom({ max }: { max: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setMaxZoom(max);
+    if (map.getZoom() > max) map.setZoom(max);
+  }, [map, max]);
+  return null;
 }
 
 export default function MapaZona({
@@ -187,6 +184,7 @@ export default function MapaZona({
     puedeGestionar && (onMoverServidor || onMoverMufa || onMoverCaja) && !dibujandoTrazadoMufa,
   );
   const arrastrando = puedeMover && modoMover && !modoColocar;
+  const topeZoom = capa === 'satelite' ? MAX_ZOOM_SATELITE : MAX_ZOOM_CALLE;
 
   const centro: [number, number] =
     serverLat != null && serverLng != null
@@ -211,13 +209,6 @@ export default function MapaZona({
     onColocarPin(lat, lng);
   }
 
-  const queSeColoca =
-    modoColocar === 'servidor'
-      ? 'el servidor'
-      : modoColocar === 'mufa'
-      ? 'la mufa'
-      : 'la caja NAP';
-
   return (
     // isolate: los panes internos de Leaflet usan z-index hasta 700 — sin esto
     // se montan por encima de los Dialog (z-50) que abren "Nueva mufa"/"Nueva
@@ -228,11 +219,10 @@ export default function MapaZona({
           <Icon icon="tabler:route" height={16} />
           Toca el servidor, las mufas o cajas NAP en orden para unirlas — o toca un punto libre del mapa para un tramo intermedio ({puntosTrazado.length} punto{puntosTrazado.length !== 1 ? 's' : ''})
         </div>
-      ) : modoColocar ? (
+      ) : modoColocar === 'servidor' ? (
         <div className="bg-lightprimary text-primary text-sm font-medium px-3 py-2 flex items-center gap-2">
           <Icon icon="tabler:map-pin" height={16} />
-          Mueve el mapa hasta que la cruz quede sobre {queSeColoca} y pulsa “Poner aquí” — o toca
-          directamente el punto
+          Toca el mapa para marcar dónde está el servidor
         </div>
       ) : arrastrando ? (
         <div className="bg-lightwarning text-warning text-sm font-medium px-3 py-2 flex items-center gap-2">
@@ -304,22 +294,21 @@ export default function MapaZona({
       <MapContainer
         center={centro}
         zoom={15}
-        maxZoom={MAX_ZOOM_MAPA}
+        maxZoom={MAX_ZOOM_CALLE}
         zoomControl={false}
         style={{ height: '100%', width: '100%' }}
       >
         <TileLayer
           attribution={CAPAS[capa].attribution}
           url={CAPAS[capa].url}
-          maxNativeZoom={capa === 'satelite' ? MAX_NATIVE_ZOOM_SATELITE : 19}
-          maxZoom={MAX_ZOOM_MAPA}
+          maxNativeZoom={capa === 'satelite' ? MAX_ZOOM_SATELITE : 19}
+          maxZoom={topeZoom}
         />
         <ClickHandler onClick={handleMapClick} />
         <AjustarTamanoMapa />
         <ControlesZoom volverA={{ centro, zoom: 15 }} />
-        {modoColocar && (
-          <PonerEnElCentro etiqueta="Poner aquí" onConfirmar={onColocarPin} />
-        )}
+        <LimiteDeZoom max={topeZoom} />
+        <ColocarEnElCentro modo={modoColocar} onColocar={onColocarPin} />
 
         {serverLat != null && serverLng != null && (
           <Marker
