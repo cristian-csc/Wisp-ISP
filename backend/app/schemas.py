@@ -445,6 +445,30 @@ class TrazadoPunto(BaseModel):
     lat: float
     lng: float
 
+class CorridaCreate(BaseModel):
+    nombre: str
+    color: Optional[str] = None
+    # Metros de cable. Si no vienen, se calculan del trazado.
+    metros: Optional[float] = None
+    trazado: List[TrazadoPunto]
+
+class CorridaUpdate(BaseModel):
+    nombre: Optional[str] = None
+    color: Optional[str] = None
+    metros: Optional[float] = None
+    trazado: Optional[List[TrazadoPunto]] = None
+
+class CorridaOut(BaseModel):
+    id: int
+    mufa_id: int
+    nombre: str
+    color: str
+    metros: Optional[float] = None
+    trazado: Optional[List[TrazadoPunto]] = None
+    class Config:
+        from_attributes = True
+
+
 class MufaCreate(BaseModel):
     codigo: str
     zona_id: int
@@ -469,6 +493,7 @@ class MufaOut(BaseModel):
     activo: bool
     creado_en: datetime
     total_cajas: Optional[int] = 0
+    corridas: List[CorridaOut] = []
     class Config:
         from_attributes = True
 

@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
+from math import asin, cos, radians, sin, sqrt
+
 from ..database import get_db
 from .. import models, schemas
 from .auth import get_current_user, require_roles, zonas_asignadas
@@ -25,6 +27,7 @@ def _mufa_to_out(mufa: models.Mufa, db: Session) -> dict:
         "lng": mufa.lng,
         "descripcion": mufa.descripcion,
         "trazado": mufa.trazado,
+        "corridas": [_corrida_to_out(c) for c in mufa.corridas],
         "activo": mufa.activo,
         "creado_en": mufa.creado_en,
         "total_cajas": total_cajas,
@@ -120,5 +123,126 @@ def delete_mufa(
     if cajas > 0:
         raise HTTPException(status_code=400, detail=f"No se puede eliminar: tiene {cajas} caja(s) NAP asignadas")
     db.delete(mufa)
+    db.commit()
+    return {"ok": True}
+
+
+# ── Corridas ──────────────────────────────────────────────────────────────────
+
+
+def _metros_de_trazado(puntos) -> Optional[float]:
+    """Largo del trazado en metros, sumando tramo a tramo.
+
+    Es la distancia en linea recta entre los puntos dibujados, no la del cable
+    real: sirve como punto de partida para que nadie tenga que medir a ojo, y
+    se puede corregir a mano.
+    """
+    if not puntos or len(puntos) < 2:
+        return None
+    total = 0.0
+    R = 6371000.0  # radio de la Tierra en metros
+    for a, b in zip(puntos, puntos[1:]):
+        lat1 = radians(a["lat"] if isinstance(a, dict) else a.lat)
+        lng1 = radians(a["lng"] if isinstance(a, dict) else a.lng)
+        lat2 = radians(b["lat"] if isinstance(b, dict) else b.lat)
+        lng2 = radians(b["lng"] if isinstance(b, dict) else b.lng)
+        h = sin((lat2 - lat1) / 2) ** 2 + cos(lat1) * cos(lat2) * sin((lng2 - lng1) / 2) ** 2
+        total += 2 * R * asin(min(1.0, sqrt(h)))
+    return round(total, 1)
+
+
+def _corrida_to_out(c: models.Corrida) -> dict:
+    return {
+        "id": c.id,
+        "mufa_id": c.mufa_id,
+        "nombre": c.nombre,
+        "color": c.color,
+        "metros": c.metros,
+        "trazado": c.trazado,
+    }
+
+
+def _mufa_o_404(mufa_id: int, db: Session) -> models.Mufa:
+    mufa = db.query(models.Mufa).filter(models.Mufa.id == mufa_id).first()
+    if not mufa:
+        raise HTTPException(status_code=404, detail="Mufa no encontrada")
+    return mufa
+
+
+@router.post("/{mufa_id}/corridas", response_model=schemas.CorridaOut, status_code=201)
+def crear_corrida(
+    mufa_id: int,
+    data: schemas.CorridaCreate,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    _mufa_o_404(mufa_id, db)
+    if len(data.trazado) < 2:
+        raise HTTPException(status_code=400, detail="Una corrida necesita al menos dos puntos")
+    puntos = [p.model_dump() for p in data.trazado]
+    corrida = models.Corrida(
+        mufa_id=mufa_id,
+        nombre=data.nombre.strip() or "Corrida",
+        color=(data.color or "#8754ec").strip(),
+        metros=data.metros if data.metros is not None else _metros_de_trazado(puntos),
+        trazado=puntos,
+    )
+    db.add(corrida)
+    db.commit()
+    db.refresh(corrida)
+    return _corrida_to_out(corrida)
+
+
+@router.put("/{mufa_id}/corridas/{corrida_id}", response_model=schemas.CorridaOut)
+def actualizar_corrida(
+    mufa_id: int,
+    corrida_id: int,
+    data: schemas.CorridaUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    corrida = db.query(models.Corrida).filter(
+        models.Corrida.id == corrida_id,
+        models.Corrida.mufa_id == mufa_id,
+    ).first()
+    if not corrida:
+        raise HTTPException(status_code=404, detail="Corrida no encontrada")
+
+    valores = data.model_dump(exclude_unset=True)
+    if "trazado" in valores and valores["trazado"] is not None:
+        puntos = [dict(p) for p in valores["trazado"]]
+        if len(puntos) < 2:
+            raise HTTPException(status_code=400, detail="Una corrida necesita al menos dos puntos")
+        corrida.trazado = puntos
+        # Si se redibuja y no se dijo el metraje, se recalcula: dejar el viejo
+        # seria peor que no tener ninguno, porque parece medido.
+        if "metros" not in valores:
+            corrida.metros = _metros_de_trazado(puntos)
+    if "nombre" in valores and valores["nombre"]:
+        corrida.nombre = valores["nombre"].strip()
+    if "color" in valores and valores["color"]:
+        corrida.color = valores["color"].strip()
+    if "metros" in valores:
+        corrida.metros = valores["metros"]
+
+    db.commit()
+    db.refresh(corrida)
+    return _corrida_to_out(corrida)
+
+
+@router.delete("/{mufa_id}/corridas/{corrida_id}")
+def borrar_corrida(
+    mufa_id: int,
+    corrida_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    corrida = db.query(models.Corrida).filter(
+        models.Corrida.id == corrida_id,
+        models.Corrida.mufa_id == mufa_id,
+    ).first()
+    if not corrida:
+        raise HTTPException(status_code=404, detail="Corrida no encontrada")
+    db.delete(corrida)
     db.commit()
     return {"ok": True}

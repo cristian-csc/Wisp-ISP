@@ -46,7 +46,20 @@ import {
   type WireguardStatus,
   type Tecnico,
 } from 'src/lib/zonas';
-import { listMufas, createMufa, updateMufa, deleteMufa, type Mufa, type TrazadoPunto } from 'src/lib/mufas';
+import {
+  listMufas,
+  createMufa,
+  updateMufa,
+  deleteMufa,
+  crearCorrida,
+  actualizarCorrida,
+  borrarCorrida,
+  COLORES_CORRIDA,
+  type Corrida,
+  type Mufa,
+  type TrazadoPunto,
+} from 'src/lib/mufas';
+import { metrosDeTrazado, metrosEnTexto } from 'src/lib/coordenadas';
 import { listCajasDeMufa } from 'src/lib/mufas';
 import { listCajasNap, createCajaNap, updateCajaNap, deleteCajaNap, type CajaNap } from 'src/lib/cajasnap';
 
@@ -77,7 +90,7 @@ const ZonaDetail = () => {
   const [mufaCodigo, setMufaCodigo] = useState('');
   const [mufaDescripcion, setMufaDescripcion] = useState('');
   const [mufaError, setMufaError] = useState<string | null>(null);
-  const [borrandoTrazadoDe, setBorrandoTrazadoDe] = useState<Mufa | null>(null);
+  const [borrandoCorrida, setBorrandoCorrida] = useState<{ mufa: Mufa; corrida: Corrida } | null>(null);
   const [borrandoMufa, setBorrandoMufa] = useState<Mufa | null>(null);
   const [borrandoCaja, setBorrandoCaja] = useState<CajaNap | null>(null);
 
@@ -88,6 +101,13 @@ const ZonaDetail = () => {
 
   const [dibujandoTrazadoMufa, setDibujandoTrazadoMufa] = useState<Mufa | null>(null);
   const [puntosTrazado, setPuntosTrazado] = useState<TrazadoPunto[]>([]);
+  /** Si no es null, lo que se dibuja reemplaza a esa corrida en vez de crear una. */
+  const [corridaEditando, setCorridaEditando] = useState<Corrida | null>(null);
+  const [guardandoCorrida, setGuardandoCorrida] = useState(false);
+  const [corridaNombre, setCorridaNombre] = useState('');
+  const [corridaColor, setCorridaColor] = useState<string>(COLORES_CORRIDA[0].valor);
+  const [corridaMetros, setCorridaMetros] = useState('');
+  const [corridaError, setCorridaError] = useState<string | null>(null);
 
   const [mufaVer, setMufaVer] = useState<Mufa | null>(null);
   const [cajasDeMufa, setCajasDeMufa] = useState<CajaNap[]>([]);
@@ -299,11 +319,84 @@ const ZonaDetail = () => {
     setModoColocar('caja');
   }
 
-  function handleDibujarTrazado() {
+  /** Empieza a dibujar. Sin corrida, es una nueva; con una, se redibuja esa. */
+  function handleDibujarCorrida(corrida?: Corrida) {
     if (!mufaVer) return;
+    setCorridaEditando(corrida ?? null);
     setDibujandoTrazadoMufa(mufaVer);
-    setPuntosTrazado(mufaVer.trazado ?? []);
+    setPuntosTrazado(corrida?.trazado ?? []);
     setMufaVer(null);
+  }
+
+  /** La mufa recién leída del servidor, no la copia que se guardó al abrir el
+   *  diálogo: las corridas de esa copia pueden estar viejas. */
+  function mufaAlDia(id: number): Mufa | undefined {
+    return mufas.find((m) => m.id === id);
+  }
+
+  /** Al terminar de dibujar no se guarda directo: primero se le pone nombre,
+   *  color y metraje, que es lo que distingue una corrida de un garabato. */
+  function handleTerminarDibujo() {
+    if (!dibujandoTrazadoMufa) return;
+    const mufa = mufaAlDia(dibujandoTrazadoMufa.id);
+    const yaHay = mufa?.corridas?.length ?? 0;
+    const usados = new Set((mufa?.corridas ?? []).map((c) => c.color));
+    const libre = COLORES_CORRIDA.find((c) => !usados.has(c.valor));
+
+    setCorridaNombre(corridaEditando?.nombre ?? `Corrida ${yaHay + 1}`);
+    setCorridaColor(corridaEditando?.color ?? libre?.valor ?? COLORES_CORRIDA[0].valor);
+    const medidos = metrosDeTrazado(puntosTrazado);
+    setCorridaMetros(medidos != null ? String(Math.round(medidos)) : '');
+    setCorridaError(null);
+    setGuardandoCorrida(true);
+  }
+
+  async function handleConfirmarCorrida() {
+    if (!dibujandoTrazadoMufa) return;
+    if (!corridaNombre.trim()) {
+      setCorridaError('Ponle un nombre, como "Corrida 1".');
+      return;
+    }
+    const metros = corridaMetros.trim() === '' ? undefined : Number(corridaMetros);
+    if (metros !== undefined && (!Number.isFinite(metros) || metros < 0)) {
+      setCorridaError('Los metros tienen que ser un número.');
+      return;
+    }
+    try {
+      const datos = {
+        nombre: corridaNombre.trim(),
+        color: corridaColor,
+        metros,
+        trazado: puntosTrazado,
+      };
+      if (corridaEditando) {
+        await actualizarCorrida(dibujandoTrazadoMufa.id, corridaEditando.id, datos);
+      } else {
+        await crearCorrida(dibujandoTrazadoMufa.id, datos);
+      }
+      setGuardandoCorrida(false);
+      setDibujandoTrazadoMufa(null);
+      setCorridaEditando(null);
+      setPuntosTrazado([]);
+      reload();
+      toast.success(corridaEditando ? 'Corrida actualizada' : 'Corrida guardada');
+    } catch (err: any) {
+      setCorridaError(err?.response?.data?.detail ?? 'No se pudo guardar la corrida');
+    }
+  }
+
+  async function handleEliminarCorrida() {
+    if (!borrandoCorrida) return;
+    try {
+      await borrarCorrida(borrandoCorrida.mufa.id, borrandoCorrida.corrida.id);
+      setBorrandoCorrida(null);
+      setMufaVer(null);
+      reload();
+      toast.success('Corrida eliminada');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo eliminar la corrida');
+      setBorrandoCorrida(null);
+    }
   }
 
   function handleAgregarPuntoTrazado(lat: number, lng: number) {
@@ -314,34 +407,11 @@ const ZonaDetail = () => {
     setPuntosTrazado((prev) => prev.slice(0, -1));
   }
 
-  async function handleGuardarTrazado() {
-    if (!dibujandoTrazadoMufa) return;
-    try {
-      await updateMufa(dibujandoTrazadoMufa.id, { trazado: puntosTrazado });
-      setDibujandoTrazadoMufa(null);
-      setPuntosTrazado([]);
-      reload();
-      toast.success('Trazado guardado');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'No se pudo guardar el trazado');
-    }
-  }
 
   function handleCancelarTrazado() {
     setDibujandoTrazadoMufa(null);
+    setCorridaEditando(null);
     setPuntosTrazado([]);
-  }
-
-  async function handleEliminarTrazado() {
-    if (!borrandoTrazadoDe) return;
-    try {
-      await updateMufa(borrandoTrazadoDe.id, { trazado: null });
-      setMufaVer(null);
-      reload();
-      toast.success('Trazado eliminado');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'No se pudo eliminar el trazado');
-    }
   }
 
   async function handleEliminarMufa() {
@@ -475,7 +545,10 @@ const ZonaDetail = () => {
           extra={
             dibujandoTrazadoMufa && (
               <div className="flex gap-2 items-center">
-                <span className="text-xs text-muted-foreground">Dibujando trazado — {dibujandoTrazadoMufa.codigo}</span>
+                <span className="text-xs text-muted-foreground">
+                  {corridaEditando ? `Redibujando ${corridaEditando.nombre}` : 'Dibujando corrida'} — mufa{' '}
+                  {dibujandoTrazadoMufa.codigo}
+                </span>
                 <Button variant="outline" size="sm" onClick={handleDeshacerPuntoTrazado} disabled={puntosTrazado.length === 0}>
                   <Icon icon="tabler:arrow-back-up" height={16} className="mr-1" />
                   Deshacer
@@ -483,9 +556,9 @@ const ZonaDetail = () => {
                 <Button variant="outline" size="sm" onClick={handleCancelarTrazado}>
                   Cancelar
                 </Button>
-                <Button size="sm" onClick={handleGuardarTrazado} disabled={puntosTrazado.length < 2}>
+                <Button size="sm" onClick={handleTerminarDibujo} disabled={puntosTrazado.length < 2}>
                   <Icon icon="tabler:check" height={16} className="mr-1" />
-                  Guardar trazado
+                  Terminar
                 </Button>
               </div>
             )
@@ -736,7 +809,7 @@ const ZonaDetail = () => {
         open={!!mufaVer}
         onOpenChange={(o) => !o && setMufaVer(null)}
         title={`${mufaVer?.codigo ?? ''} — Cajas NAP`}
-        subtitle="Trazado y cajas colgadas de esta mufa"
+        subtitle="Corridas y cajas colgadas de esta mufa"
         icon="tabler:git-fork"
         tone="primary"
         size="lg"
@@ -754,20 +827,69 @@ const ZonaDetail = () => {
         }
       >
 
-        {/* Acciones de la mufa (trazado) — separadas de las cajas individuales */}
-        <div className="flex flex-wrap gap-2 items-center pb-3 border-b border-ld">
-          <Button variant="outline" size="sm" onClick={handleDibujarTrazado}>
-            <Icon icon="tabler:route" height={16} className="mr-1" />
-            {mufaVer?.trazado && mufaVer.trazado.length > 0 ? 'Editar trazado' : 'Dibujar trazado'}
-          </Button>
-          {mufaVer && mufaVer.trazado && mufaVer.trazado.length > 0 && (
-            <Button variant="destructive" size="sm" onClick={() => mufaVer && setBorrandoTrazadoDe(mufaVer)}>
-              <Icon icon="tabler:route-off" height={16} className="mr-1" />
-              Eliminar trazado
+        {/* Las corridas de esta mufa: cada una con su color, su metraje y la
+            posibilidad de redibujarla sin perder las demás. */}
+        <div className="flex flex-col gap-2 pb-3 border-b border-ld">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">Corridas</span>
+            <Button variant="outline" size="sm" onClick={() => handleDibujarCorrida()}>
+              <Icon icon="tabler:route" height={16} className="mr-1" />
+              Dibujar corrida
             </Button>
+          </div>
+
+          {(mufaVer?.corridas?.length ?? 0) === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Todavía no hay corridas. Dibuja una tocando las cajas en el orden en que las une el
+              cable.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {(mufaVer?.corridas ?? []).map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-2 rounded-lg border border-ld bg-surface-2 px-2.5 py-1.5"
+                >
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-full"
+                    style={{ background: c.color }}
+                    aria-hidden
+                  />
+                  <span className="truncate text-sm font-medium">{c.nombre}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {c.metros != null ? metrosEnTexto(c.metros) : 'sin metraje'}
+                    {c.trazado ? ` · ${c.trazado.length} puntos` : ''}
+                  </span>
+                  <div className="ml-auto flex shrink-0 gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Redibujar"
+                      onClick={() => handleDibujarCorrida(c)}
+                    >
+                      <Icon icon="tabler:pencil" height={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Eliminar corrida"
+                      onClick={() => mufaVer && setBorrandoCorrida({ mufa: mufaVer, corrida: c })}
+                    >
+                      <Icon icon="tabler:trash" height={16} className="text-error" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
+
           {cajasDeMufa.length === 0 ? (
-            <Button variant="destructive" size="sm" onClick={() => mufaVer && setBorrandoMufa(mufaVer)}>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-fit"
+              onClick={() => mufaVer && setBorrandoMufa(mufaVer)}
+            >
               <Icon icon="tabler:trash" height={16} className="mr-1" />
               Eliminar mufa
             </Button>
@@ -889,6 +1011,78 @@ const ZonaDetail = () => {
         </FormGrid>
       </FormDialog>
 
+      {/* Diálogo: ponerle nombre, color y metraje a la corrida dibujada */}
+      <FormDialog
+        open={guardandoCorrida}
+        onOpenChange={(o) => !o && setGuardandoCorrida(false)}
+        title={corridaEditando ? `Editar ${corridaEditando.nombre}` : 'Nueva corrida'}
+        subtitle={`${puntosTrazado.length} puntos dibujados — mufa ${dibujandoTrazadoMufa?.codigo ?? ''}`}
+        icon="tabler:route"
+        tone="primary"
+        size="md"
+        footer={
+          <FormActions
+            onCancel={() => setGuardandoCorrida(false)}
+            cancelLabel="Seguir dibujando"
+            submitLabel="Guardar corrida"
+            onSubmit={handleConfirmarCorrida}
+          />
+        }
+      >
+        <FormGrid>
+          <FormField label="Nombre" icon="tabler:tag" htmlFor="corridaNombre" required>
+            <FieldIcon icon="tabler:tag">
+              <Input
+                id="corridaNombre"
+                placeholder="Corrida 1"
+                value={corridaNombre}
+                onChange={(e) => setCorridaNombre(e.target.value)}
+              />
+            </FieldIcon>
+          </FormField>
+          <FormField
+            label="Metros de cable"
+            icon="tabler:ruler-measure"
+            htmlFor="corridaMetros"
+            hint="Sale medido del dibujo, en línea recta. Si sabes el real, corrígelo."
+          >
+            <FieldIcon icon="tabler:ruler-measure">
+              <Input
+                id="corridaMetros"
+                type="number"
+                min={0}
+                value={corridaMetros}
+                onChange={(e) => setCorridaMetros(e.target.value)}
+              />
+            </FieldIcon>
+          </FormField>
+          <FormField label="Color" icon="tabler:palette" wide>
+            <div className="flex flex-wrap gap-2">
+              {COLORES_CORRIDA.map((c) => (
+                <button
+                  key={c.valor}
+                  type="button"
+                  onClick={() => setCorridaColor(c.valor)}
+                  aria-label={c.nombre}
+                  aria-pressed={corridaColor === c.valor}
+                  title={c.nombre}
+                  className={`h-8 w-8 rounded-full border-2 transition-ui ${
+                    corridaColor === c.valor
+                      ? 'border-foreground scale-110'
+                      : 'border-transparent hover:scale-105'
+                  }`}
+                  style={{ background: c.valor }}
+                />
+              ))}
+            </div>
+          </FormField>
+          {corridaError && (
+            <div className="md:col-span-2">
+              <FormCallout tone="error">{corridaError}</FormCallout>
+            </div>
+          )}
+        </FormGrid>
+      </FormDialog>
       {/* Diálogo: editar datos básicos de la zona */}
       <FormDialog
         open={editandoZona}
@@ -1045,11 +1239,15 @@ const ZonaDetail = () => {
       </FormDialog>
 
       <ConfirmDialog
-        open={!!borrandoTrazadoDe}
-        onOpenChange={(v) => !v && setBorrandoTrazadoDe(null)}
-        title="Eliminar trazado"
-        description={borrandoTrazadoDe ? `¿Eliminar el trazado de ${borrandoTrazadoDe.codigo}?` : undefined}
-        onConfirm={handleEliminarTrazado}
+        open={!!borrandoCorrida}
+        onOpenChange={(v) => !v && setBorrandoCorrida(null)}
+        title="Eliminar corrida"
+        description={
+          borrandoCorrida
+            ? `¿Eliminar "${borrandoCorrida.corrida.nombre}" de la mufa ${borrandoCorrida.mufa.codigo}? Las demás corridas y las cajas no se tocan.`
+            : undefined
+        }
+        onConfirm={handleEliminarCorrida}
       />
       <ConfirmDialog
         open={!!borrandoMufa}

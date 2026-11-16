@@ -207,6 +207,38 @@ class Mufa(Base):
 
     zona = relationship("Zona", back_populates="mufas")
     cajas_nap = relationship("CajaNap", back_populates="mufa")
+    # Si se borra la mufa se van sus corridas: no significan nada sin ella.
+    corridas = relationship(
+        "Corrida",
+        back_populates="mufa",
+        order_by="Corrida.id",
+        cascade="all, delete-orphan",
+    )
+
+
+class Corrida(Base):
+    """Un tendido que sale de una mufa y va uniendo cajas NAP.
+
+    El ingeniero las numera (corrida 1, corrida 2), le pone a cada una su
+    metraje y le da un color para distinguirlas en el plano. Una mufa puede
+    tener varias, y cada una se grafica aparte: antes solo habia un trazado
+    por mufa, sin nombre ni metros, todos del mismo color.
+    """
+    __tablename__ = "corridas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    mufa_id = Column(Integer, ForeignKey("mufas.id"), nullable=False, index=True)
+    nombre = Column(String(60), nullable=False)
+    # Color en hexadecimal (#rrggbb), el mismo que se usa en el plano.
+    color = Column(String(9), nullable=False, default="#8754ec")
+    # Metros de cable. Se calcula del trazado si no se escribe, pero se puede
+    # corregir a mano: el cable no va en linea recta entre poste y poste.
+    metros = Column(Float)
+    # Lista de puntos [{"lat": ..., "lng": ...}, ...] para graficar.
+    trazado = Column(JSON)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+    mufa = relationship("Mufa", back_populates="corridas")
 
 
 class CajaNap(Base):

@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  Tooltip,
+  useMap,
+  useMapEvents,
+} from 'react-leaflet';
 import {
   AjustarTamanoMapa,
   BOTON,
@@ -14,6 +23,7 @@ import 'leaflet/dist/leaflet.css';
 import { Icon } from '@iconify/react';
 import { Button } from 'src/components/ui/button';
 import type { Mufa, TrazadoPunto } from 'src/lib/mufas';
+import { metrosEnTexto } from 'src/lib/coordenadas';
 import type { CajaNap } from 'src/lib/cajasnap';
 
 // Fix del ícono default de Leaflet: con bundlers como Vite las rutas
@@ -217,7 +227,9 @@ export default function MapaZona({
       {dibujandoTrazadoMufa ? (
         <div className="bg-lightinfo text-info text-sm font-medium px-3 py-2 flex items-center gap-2">
           <Icon icon="tabler:route" height={16} />
-          Toca el servidor, las mufas o cajas NAP en orden para unirlas — o toca un punto libre del mapa para un tramo intermedio ({puntosTrazado.length} punto{puntosTrazado.length !== 1 ? 's' : ''})
+          Toca las cajas NAP en el orden en que las une el cable — o un punto libre del mapa
+          para un tramo intermedio ({puntosTrazado.length} punto
+          {puntosTrazado.length !== 1 ? 's' : ''})
         </div>
       ) : modoColocar === 'servidor' ? (
         <div className="bg-lightprimary text-primary text-sm font-medium px-3 py-2 flex items-center gap-2">
@@ -385,15 +397,26 @@ export default function MapaZona({
             </Marker>
           ))}
 
-        {mufas
-          .filter((m) => m.trazado && m.trazado.length > 1)
-          .map((m) => (
-            <Polyline
-              key={`trazado-${m.id}`}
-              positions={m.trazado!.map((p) => [p.lat, p.lng] as [number, number])}
-              pathOptions={{ color: '#8754ec', weight: 3, dashArray: '6 6' }}
-            />
-          ))}
+        {/* Las corridas de cada mufa, cada una con el color que le pusieron.
+            Línea entera y no de puntos: así se parecen al plano del
+            ingeniero, que es con el que se compara en campo. */}
+        {mufas.flatMap((m) =>
+          (m.corridas ?? [])
+            .filter((c) => c.trazado && c.trazado.length > 1)
+            .map((c) => (
+              <Polyline
+                key={`corrida-${c.id}`}
+                positions={c.trazado!.map((p) => [p.lat, p.lng] as [number, number])}
+                pathOptions={{ color: c.color, weight: 4, opacity: 0.9 }}
+              >
+                <Tooltip sticky>
+                  <b>{c.nombre}</b>
+                  {c.metros != null && ` · ${metrosEnTexto(c.metros)}`}
+                  <div className="text-[11px] opacity-70">mufa {m.codigo}</div>
+                </Tooltip>
+              </Polyline>
+            )),
+        )}
 
         {dibujandoTrazadoMufa && puntosTrazado.length > 0 && (
           <Polyline

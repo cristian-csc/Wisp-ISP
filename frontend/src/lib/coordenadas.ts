@@ -74,3 +74,36 @@ export function parsearCoordenadas(texto: string): Coordenadas | null {
 export function formatearCoordenadas(c: Coordenadas | null): string {
   return c ? `${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}` : '';
 }
+
+/**
+ * Largo de un trazado en metros, sumando tramo a tramo (fórmula del
+ * semiverseno). Es la distancia en línea recta entre los puntos dibujados,
+ * no la del cable real, que da más vueltas: sirve para proponer el metraje
+ * en vez de dejar que se mida a ojo.
+ *
+ * El backend calcula lo mismo cuando no se le manda el número; acá se hace
+ * para poder proponerlo antes de guardar.
+ */
+export function metrosDeTrazado(puntos: Coordenadas[]): number | null {
+  if (!puntos || puntos.length < 2) return null;
+  const R = 6371000; // radio de la Tierra, en metros
+  const rad = (g: number) => (g * Math.PI) / 180;
+  let total = 0;
+  for (let i = 1; i < puntos.length; i++) {
+    const a = puntos[i - 1];
+    const b = puntos[i];
+    const dLat = rad(b.lat - a.lat);
+    const dLng = rad(b.lng - a.lng);
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    total += 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  return Math.round(total * 10) / 10;
+}
+
+/** Metros en algo legible: 480 m, 1.5 km. */
+export function metrosEnTexto(metros: number): string {
+  if (metros < 1000) return `${Math.round(metros)} m`;
+  return `${(metros / 1000).toFixed(metros < 10000 ? 1 : 0)} km`;
+}
