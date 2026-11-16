@@ -98,18 +98,18 @@ function desdeHandshake(ts: number): string | null {
 function ResumenDato({
   etiqueta,
   valor,
+  icono,
   indice,
-  punto,
   color,
   nota,
 }: {
   etiqueta: string;
   valor: number | string;
+  icono: string;
   /** Posicion en la franja. Decide los separadores: `divide-x` no sirve sobre
    *  una rejilla, le pone borde izquierdo tambien al primero de la segunda
    *  fila, y queda una linea colgando. */
   indice: number;
-  punto?: string;
   color?: string;
   nota?: string;
 }) {
@@ -120,17 +120,13 @@ function ResumenDato({
     indice > 0 ? 'sm:border-l' : '',         // en cuatro columnas
   ].join(' ');
   return (
-    <div className={`min-w-0 px-4 py-3 ${separadores}`}>
-      <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {etiqueta}
-      </p>
-      <div className="mt-1 flex items-center gap-2">
-        {punto && <span className={`h-2 w-2 shrink-0 rounded-full ${punto}`} />}
-        <span className={`text-xl font-semibold leading-none ${color ?? 'text-foreground'}`}>
-          {valor}
-        </span>
+    <div className={`flex min-w-0 items-center gap-3 px-5 py-4 ${separadores}`}>
+      <Icon icon={icono} height={26} className={`shrink-0 ${color ?? 'text-muted-foreground'}`} />
+      <div className="min-w-0">
+        <p className="truncate text-sm text-muted-foreground">{etiqueta}</p>
+        <p className={`text-2xl font-bold leading-tight ${color ?? 'text-foreground'}`}>{valor}</p>
+        {nota && <p className="truncate text-[11px] text-muted-foreground">{nota}</p>}
       </div>
-      {nota && <p className="mt-1 truncate text-[11px] text-muted-foreground">{nota}</p>}
     </div>
   );
 }
@@ -313,12 +309,17 @@ const Zonas = () => {
       {veRed && zonas.length > 0 && (
         <CardBox className="p-0 overflow-hidden">
           <div className="grid grid-cols-2 sm:grid-cols-4">
-            <ResumenDato etiqueta="Total de zonas" valor={zonas.length} indice={0} />
+            <ResumenDato
+              etiqueta="Total de zonas"
+              valor={zonas.length}
+              icono="tabler:stack-2"
+              indice={0}
+            />
             <ResumenDato
               etiqueta="En línea"
               indice={1}
               valor={sinComprobar ? '—' : enLinea}
-              punto="bg-success"
+              icono="tabler:wifi"
               color="text-success"
               nota={sinComprobar ? notaSinDatos : undefined}
             />
@@ -326,15 +327,19 @@ const Zonas = () => {
               etiqueta="Sin respuesta"
               indice={2}
               valor={sinComprobar ? '—' : caidas}
-              punto="bg-error"
-              color={caidas > 0 && !sinComprobar ? 'text-error' : undefined}
+              icono="tabler:alert-circle"
+              color="text-error"
               nota={sinComprobar ? notaSinDatos : undefined}
             />
+            {/* Ámbar y no gris: aquí no es el estado de una zona, es el trabajo
+                que queda por hacer. En la tarjeta de cada zona sí va en gris,
+                porque ahí es un hecho y no una tarea pendiente. */}
             <ResumenDato
               etiqueta="Sin túnel"
               indice={3}
               valor={sinComprobar ? '—' : sinTunel}
-              punto="bg-muted-foreground"
+              icono="tabler:unlink"
+              color="text-warning"
               nota={sinComprobar ? notaSinDatos : undefined}
             />
           </div>
@@ -351,8 +356,10 @@ const Zonas = () => {
         </CardBox>
       )}
 
+      <h2 className="-mb-2 text-xl font-bold">Zonas registradas</h2>
+
       {/* Tres columnas cuando hay sitio, dos en tableta, una en el teléfono. */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {zonasFiltradas.map((z) => {
           const red = estados[z.id];
           const estilo = red ? ESTADO_RED[red.estado] : null;
@@ -361,13 +368,13 @@ const Zonas = () => {
           return (
             <CardBox
               key={z.id}
-              className="p-3.5 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+              className="p-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
               onClick={() => navigate(`/zonas/${z.id}`)}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <Icon icon="tabler:map-pin" height={15} className="shrink-0 text-muted-foreground" />
-                  <h3 className="truncate text-[15px] font-semibold leading-tight">{z.nombre}</h3>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Icon icon="tabler:map-pin" height={19} className="shrink-0 text-primary" />
+                  <h3 className="truncate text-lg font-bold leading-tight">{z.nombre}</h3>
                 </div>
 
                 <div className="-mr-1 -mt-1 flex shrink-0 items-center">
@@ -414,66 +421,67 @@ const Zonas = () => {
                 </div>
               </div>
 
-              {/* El estado, con su icono y su etiqueta de texto. */}
+              {/* El estado, en una pastilla con su punto de color. */}
               {veRed && (
-                <div className="mt-2">
+                <div className="mt-2.5">
                   {estilo ? (
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <Icon icon={estilo.icono} height={15} className={`shrink-0 ${estilo.chipText}`} />
-                      <span className={`truncate text-sm font-medium ${estilo.chipText}`}>
-                        {estilo.texto}
-                      </span>
-                      {estilo.detalle && (
-                        <span className="truncate text-[11px] text-muted-foreground">
-                          ({estilo.detalle})
-                        </span>
-                      )}
-                    </div>
+                    <span
+                      className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-semibold ${estilo.chipBg} ${estilo.chipText}`}
+                      title={estilo.detalle ? `${estilo.texto} — ${estilo.detalle}` : estilo.texto}
+                    >
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${estilo.punto}`} />
+                      <span className="truncate">{estilo.texto}</span>
+                    </span>
                   ) : (
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[13px] font-semibold text-muted-foreground">
                       <Icon
                         icon="tabler:loader-2"
-                        height={15}
+                        height={13}
                         className={comprobando ? 'animate-spin' : undefined}
                       />
-                      {comprobando ? 'Comprobando…' : 'Estado sin comprobar'}
-                    </div>
+                      {comprobando ? 'Comprobando…' : 'Sin comprobar'}
+                    </span>
                   )}
-                  {/* Los datos técnicos siguen siendo solo para quien ve la
-                      red; en una línea y no en dos, que es donde se iba el
-                      alto de la tarjeta. */}
-                  <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground">
-                    {[
-                      z.router_mikrotik,
-                      z.ip_wireguard,
-                      // "sin pool" se dice en voz alta: sin el, los planes de
-                      // esa zona no pueden crear perfiles en el router.
-                      z.pool_pppoe ? `pool ${z.pool_pppoe}` : 'sin pool',
-                      handshake,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
                 </div>
               )}
 
-              {/* Activos y total, en una fila y en color neutro: un cero aquí
-                  no es una alarma, es una zona que todavía no tiene clientes. */}
-              <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-ld pt-2">
-                <div className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
-                  <span className="whitespace-nowrap">
-                    Activos <span className="font-semibold text-foreground">{z.clientes_activos}</span>
-                  </span>
-                  <span className="h-3 w-px bg-border" aria-hidden="true" />
-                  <span className="whitespace-nowrap">
-                    Total <span className="font-semibold text-foreground">{z.total_clientes}</span>
-                  </span>
+              {/* Activos y total: etiqueta arriba, número debajo, en color
+                  neutro. Un cero aquí no es una alarma, es una zona que
+                  todavía no tiene clientes. */}
+              <div className="mt-3 grid grid-cols-2">
+                <div className="flex min-w-0 items-center gap-2 pr-3">
+                  <Icon icon="tabler:users" height={19} className="shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-muted-foreground">Activos</p>
+                    <p className="text-xl font-bold leading-tight">{z.clientes_activos}</p>
+                  </div>
                 </div>
-                <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-primary">
-                  Ver detalle
-                  <Icon icon="tabler:arrow-right" height={14} />
-                </span>
+                <div className="flex min-w-0 items-center gap-2 border-l border-ld pl-3">
+                  <Icon icon="tabler:stack-2" height={19} className="shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-muted-foreground">Total</p>
+                    <p className="text-xl font-bold leading-tight">{z.total_clientes}</p>
+                  </div>
+                </div>
               </div>
+
+              {/* Donde iba "Ver detalle" van los datos técnicos del router, que
+                  si no se quedarían sin sitio. Solo para quien ve la red; la
+                  tarjeta entera sigue llevando a la ficha al pulsarla. */}
+              {veRed && (
+                <p className="mt-3 truncate border-t border-ld pt-2 text-[11px] leading-tight text-muted-foreground">
+                  {[
+                    z.router_mikrotik,
+                    z.ip_wireguard,
+                    // "sin pool" se dice en voz alta: sin él, los planes de
+                    // esa zona no pueden crear perfiles en el router.
+                    z.pool_pppoe ? `pool ${z.pool_pppoe}` : 'sin pool',
+                    handshake,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
             </CardBox>
           );
         })}
