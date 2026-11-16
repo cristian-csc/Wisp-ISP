@@ -283,7 +283,7 @@ const Zonas = () => {
         </CardBox>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {zonasFiltradas.map((z) => {
           const red = estados[z.id];
           const estilo = red ? ESTADO_RED[red.estado] : null;
@@ -296,24 +296,24 @@ const Zonas = () => {
           return (
             <CardBox
               key={z.id}
-              className="p-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+              className="p-3.5 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
               onClick={() => navigate(`/zonas/${z.id}`)}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Icon icon="tabler:map-pin" height={16} className="shrink-0 text-muted-foreground" />
-                  <h3 className="truncate text-base font-semibold">{z.nombre}</h3>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Icon icon="tabler:map-pin" height={15} className="shrink-0 text-muted-foreground" />
+                  <h3 className="truncate text-[15px] font-semibold leading-tight">{z.nombre}</h3>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="-mr-1 -mt-1 flex shrink-0 items-center">
                   {/* El menú vive dentro de una tarjeta que navega al hacer
                       clic: sin frenar el evento, abrir el menú se llevaría a
                       la ficha de la zona. */}
                   <div onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" title="Acciones">
-                          <Icon icon="tabler:dots-vertical" height={18} />
+                        <Button variant="ghost" size="icon" title="Acciones" className="size-8">
+                          <Icon icon="tabler:dots-vertical" height={17} />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
@@ -349,8 +349,8 @@ const Zonas = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 mt-3">
-                <div className="min-w-0 flex flex-col gap-2">
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-1">
                   {veRed && (
                     <>
                       {estilo ? (
@@ -375,12 +375,12 @@ const Zonas = () => {
                         </div>
                       )}
                       {handshake && (
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="truncate text-[11px] leading-tight text-muted-foreground">
                           Último handshake {handshake}
                         </p>
                       )}
                       {z.router_mikrotik && (
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="truncate text-[11px] leading-tight text-muted-foreground">
                           {z.router_mikrotik}
                           {z.ip_wireguard ? ` · ${z.ip_wireguard}` : ''}
                         </p>
@@ -403,19 +403,16 @@ const Zonas = () => {
                   }
                 >
                   {z.total_clientes > 0 ? (
-                    <RingProgress pct={pct} tone={tone} size="sm" />
+                    <RingProgress pct={pct} tone={tone} size="xs" />
                   ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-ld">
-                      <Icon icon="tabler:user-off" height={18} className="text-muted-foreground" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-ld">
+                      <Icon icon="tabler:user-off" height={16} className="text-muted-foreground" />
                     </div>
                   )}
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    activos
-                  </span>
                 </div>
               </div>
 
-              <div className="flex justify-between mt-3 pt-3 border-t border-ld text-xs">
+              <div className="mt-2.5 flex justify-between border-t border-ld pt-2 text-[11px]">
                 <span className={`font-medium ${RING_TONE[tone].chipText}`}>
                   {z.clientes_activos} activos
                 </span>

@@ -109,6 +109,13 @@ const ZonaDetail = () => {
   const [corridaMetros, setCorridaMetros] = useState('');
   const [corridaError, setCorridaError] = useState<string | null>(null);
 
+  /** Los metros escritos, dichos tambien en kilometros: el ingeniero habla
+   *  de corridas de 500 m y de 1.5 km, y asi no hay que dividir de cabeza. */
+  const corridaEnKm =
+    corridaMetros.trim() !== '' && Number.isFinite(Number(corridaMetros)) && Number(corridaMetros) >= 1000
+      ? metrosEnTexto(Number(corridaMetros))
+      : null;
+
   const [mufaVer, setMufaVer] = useState<Mufa | null>(null);
   const [cajasDeMufa, setCajasDeMufa] = useState<CajaNap[]>([]);
 
@@ -312,11 +319,18 @@ const ZonaDetail = () => {
     setCajasDeMufa(await listCajasDeMufa(mufa.id));
   }
 
-  function handleAgregarCajaEnMapa() {
-    if (!mufaVer) return;
-    setMufaContexto(mufaVer);
+  /** Colgar una caja NAP de esa mufa: nace en el centro del mapa y se abre
+   *  el formulario corto. Se llega aca desde el panel de mufas del mapa o
+   *  desde la ficha de la mufa, que hacen lo mismo. */
+  function handleAgregarCajaAMufa(mufa: Mufa) {
+    setMufaContexto(mufa);
     setMufaVer(null);
     setModoColocar('caja');
+  }
+
+  function handleAgregarCajaEnMapa() {
+    if (!mufaVer) return;
+    handleAgregarCajaAMufa(mufaVer);
   }
 
   /** Empieza a dibujar. Sin corrida, es una nueva; con una, se redibuja esa. */
@@ -353,10 +367,9 @@ const ZonaDetail = () => {
 
   async function handleConfirmarCorrida() {
     if (!dibujandoTrazadoMufa) return;
-    if (!corridaNombre.trim()) {
-      setCorridaError('Ponle un nombre, como "Corrida 1".');
-      return;
-    }
+    // El nombre ya no se escribe a mano (se numera solo al terminar de
+    // dibujar), asi que aca solo se cubre el caso de que llegara vacio.
+    const nombre = corridaNombre.trim() || `Corrida ${(mufaAlDia(dibujandoTrazadoMufa.id)?.corridas?.length ?? 0) + 1}`;
     const metros = corridaMetros.trim() === '' ? undefined : Number(corridaMetros);
     if (metros !== undefined && (!Number.isFinite(metros) || metros < 0)) {
       setCorridaError('Los metros tienen que ser un número.');
@@ -364,7 +377,7 @@ const ZonaDetail = () => {
     }
     try {
       const datos = {
-        nombre: corridaNombre.trim(),
+        nombre,
         color: corridaColor,
         metros,
         trazado: puntosTrazado,
@@ -584,6 +597,7 @@ const ZonaDetail = () => {
           onMoverServidor={handleMoverServidor}
           onMoverMufa={handleMoverMufa}
           onMoverCaja={handleMoverCaja}
+          onAgregarCajaAMufa={handleAgregarCajaAMufa}
         />
 
         </SectionCard>
@@ -968,13 +982,9 @@ const ZonaDetail = () => {
         open={!!nuevaCajaCoords}
         onOpenChange={(o) => !o && setNuevaCajaCoords(null)}
         title={`Nueva caja NAP — mufa ${mufaContexto?.codigo ?? ''}`}
-        subtitle={
-          nuevaCajaCoords
-            ? `Ubicación: ${nuevaCajaCoords.lat.toFixed(6)}, ${nuevaCajaCoords.lng.toFixed(6)}`
-            : undefined
-        }
+        subtitle="Queda puesta en el centro del mapa; después se arrastra a su sitio."
         icon="tabler:box"
-        size="md"
+        size="sm"
         footer={
           <FormActions
             onCancel={() => setNuevaCajaCoords(null)}
@@ -983,12 +993,15 @@ const ZonaDetail = () => {
           />
         }
       >
-        <FormGrid>
-          <CampoCoordenadas valor={nuevaCajaCoords} onChange={setNuevaCajaCoords} />
+        {/* Solo el nombre y los bornes: lo demás de la caja (sus bornes uno a
+            uno, quién está colgado de cada uno) se ve y se edita abajo, en
+            "Mufas de la zona". El mapa es para ubicarla, no para llenarla. */}
+        <FormGrid className="md:grid-cols-1">
           <FormField label="Código" icon="tabler:hash" htmlFor="cajaCodigo" required>
             <FieldIcon icon="tabler:hash">
               <Input
                 id="cajaCodigo"
+                placeholder="CAJA-01"
                 value={cajaCodigo}
                 onChange={(e) => setCajaCodigo(e.target.value)}
                 required
@@ -996,30 +1009,29 @@ const ZonaDetail = () => {
             </FieldIcon>
           </FormField>
           <FormField label="Capacidad de bornes" icon="tabler:plug" htmlFor="cajaCapacidad">
-            <Input
-              id="cajaCapacidad"
-              type="number"
-              value={cajaCapacidad}
-              onChange={(e) => setCajaCapacidad(e.target.value)}
-            />
+            <FieldIcon icon="tabler:plug">
+              <Input
+                id="cajaCapacidad"
+                type="number"
+                min={1}
+                value={cajaCapacidad}
+                onChange={(e) => setCajaCapacidad(e.target.value)}
+              />
+            </FieldIcon>
           </FormField>
-          {cajaError && (
-            <div className="md:col-span-2">
-              <FormCallout tone="error">{cajaError}</FormCallout>
-            </div>
-          )}
+          {cajaError && <FormCallout tone="error">{cajaError}</FormCallout>}
         </FormGrid>
       </FormDialog>
 
-      {/* Diálogo: ponerle nombre, color y metraje a la corrida dibujada */}
+      {/* Diálogo: el metraje y el color de la corrida recién dibujada */}
       <FormDialog
         open={guardandoCorrida}
         onOpenChange={(o) => !o && setGuardandoCorrida(false)}
-        title={corridaEditando ? `Editar ${corridaEditando.nombre}` : 'Nueva corrida'}
+        title={corridaEditando ? `Editar ${corridaEditando.nombre}` : corridaNombre || 'Nueva corrida'}
         subtitle={`${puntosTrazado.length} puntos dibujados — mufa ${dibujandoTrazadoMufa?.codigo ?? ''}`}
         icon="tabler:route"
         tone="primary"
-        size="md"
+        size="sm"
         footer={
           <FormActions
             onCancel={() => setGuardandoCorrida(false)}
@@ -1029,22 +1041,19 @@ const ZonaDetail = () => {
           />
         }
       >
-        <FormGrid>
-          <FormField label="Nombre" icon="tabler:tag" htmlFor="corridaNombre" required>
-            <FieldIcon icon="tabler:tag">
-              <Input
-                id="corridaNombre"
-                placeholder="Corrida 1"
-                value={corridaNombre}
-                onChange={(e) => setCorridaNombre(e.target.value)}
-              />
-            </FieldIcon>
-          </FormField>
+        {/* Dos cosas y nada más: cuánto mide y de qué color va en el plano.
+            El nombre se pone solo ("Corrida 1", "Corrida 2") al terminar de
+            dibujar, que es como las numera el ingeniero. */}
+        <FormGrid className="md:grid-cols-1">
           <FormField
             label="Metros de cable"
             icon="tabler:ruler-measure"
             htmlFor="corridaMetros"
-            hint="Sale medido del dibujo, en línea recta. Si sabes el real, corrígelo."
+            hint={
+              corridaEnKm
+                ? `${corridaEnKm} — medido del dibujo en línea recta; si sabes el real, corrígelo.`
+                : 'Sale medido del dibujo, en línea recta. Si sabes el real, corrígelo.'
+            }
           >
             <FieldIcon icon="tabler:ruler-measure">
               <Input
@@ -1056,7 +1065,7 @@ const ZonaDetail = () => {
               />
             </FieldIcon>
           </FormField>
-          <FormField label="Color" icon="tabler:palette" wide>
+          <FormField label="Color" icon="tabler:palette">
             <div className="flex flex-wrap gap-2">
               {COLORES_CORRIDA.map((c) => (
                 <button

@@ -11,6 +11,9 @@ export function toneForPct(pct: number): RingTone {
 }
 
 const SIZES = {
+  // xs es para las tarjetas de zona, donde el aro acompana al nombre y no
+  // debe robarle alto a la tarjeta.
+  xs: { box: 'h-11 w-11', text: 'text-[10px]', r: 18, stroke: 5 },
   sm: { box: 'h-14 w-14', text: 'text-xs', r: 24, stroke: 6 },
   lg: { box: 'h-20 w-20', text: 'text-sm', r: 32, stroke: 8 },
 } as const;

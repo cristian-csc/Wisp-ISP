@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -154,6 +154,7 @@ export default function MapaZona({
   onMoverServidor,
   onMoverMufa,
   onMoverCaja,
+  onAgregarCajaAMufa,
   alto = 560,
 }: {
   serverLat: number | null;
@@ -181,6 +182,10 @@ export default function MapaZona({
   onMoverServidor?: (lat: number, lng: number) => void;
   onMoverMufa?: (mufa: Mufa, lat: number, lng: number) => void;
   onMoverCaja?: (caja: CajaNap, lat: number, lng: number) => void;
+  /** Agregar una caja NAP colgada de esa mufa, desde el panel del mapa. Antes
+   *  había que tocar la chincheta de la mufa, abrir su ficha y buscar ahí el
+   *  botón; ahora cada mufa tiene el suyo a la vista. */
+  onAgregarCajaAMufa?: (mufa: Mufa) => void;
   /** Alto del mapa en píxeles — la pantalla decide cuánto espacio darle */
   alto?: number;
 }) {
@@ -189,12 +194,19 @@ export default function MapaZona({
    *  un gesto de paneo que empiece encima de una caja la movería de sitio sin
    *  querer. Se enciende a propósito y se apaga al terminar. */
   const [modoMover, setModoMover] = useState(false);
+  /** Para centrar el mapa en una mufa desde el panel, que vive fuera del
+   *  MapContainer y por eso no puede usar useMap(). */
+  const mapaRef = useRef<L.Map | null>(null);
 
   const puedeMover = Boolean(
     puedeGestionar && (onMoverServidor || onMoverMufa || onMoverCaja) && !dibujandoTrazadoMufa,
   );
   const arrastrando = puedeMover && modoMover && !modoColocar;
   const topeZoom = capa === 'satelite' ? MAX_ZOOM_SATELITE : MAX_ZOOM_CALLE;
+
+  /** Solo las que tienen sitio en el terreno: las demas no se pueden ni
+   *  dibujar ni centrar. */
+  const mufasUbicadas = mufas.filter((m) => m.lat != null && m.lng != null);
 
   const centro: [number, number] =
     serverLat != null && serverLng != null
@@ -304,6 +316,7 @@ export default function MapaZona({
       )}
 
       <MapContainer
+        ref={mapaRef}
         center={centro}
         zoom={15}
         maxZoom={MAX_ZOOM_CALLE}
@@ -352,8 +365,7 @@ export default function MapaZona({
           </Marker>
         )}
 
-        {mufas
-          .filter((m) => m.lat != null && m.lng != null)
+        {mufasUbicadas
           .map((m) => (
             <Marker
               riseOnHover
@@ -374,6 +386,16 @@ export default function MapaZona({
                   : undefined
               }
             >
+              {/* El nombre siempre a la vista: una chincheta con una "M" no
+                  dice cual de las mufas es, y en una zona hay varias. */}
+              <Tooltip
+                permanent
+                direction="top"
+                offset={[0, -12]}
+                className="!border-0 !bg-black/70 !px-1.5 !py-0.5 !text-[10px] !font-semibold !text-white !shadow-none before:!hidden"
+              >
+                {m.codigo}
+              </Tooltip>
               {!dibujandoTrazadoMufa && (
                 <Popup>
                   <div className="flex flex-col gap-1.5 min-w-[150px]">
@@ -474,6 +496,47 @@ export default function MapaZona({
       </MapContainer>
 
       <LeyendaMapa items={itemsLeyenda} />
+
+      {/* Las mufas de la zona, con su nombre y un + para colgarles una caja.
+          Es el unico sitio del mapa donde se agregan cajas: el resto del
+          mapa es para mirar, y la ficha completa de cada mufa esta abajo.
+          Va en bottom-7 y no bottom-3 porque abajo a la derecha Leaflet pinta
+          la atribucion de OpenStreetMap/Esri, que es obligatoria. */}
+      {onAgregarCajaAMufa && puedeGestionar && mufasUbicadas.length > 0 && !dibujandoTrazadoMufa && (
+        <div className="absolute bottom-7 right-3 z-[1000] w-52 max-w-[60%] overflow-hidden rounded-xl border border-ld bg-card/95 shadow-md backdrop-blur-sm">
+          <div className="flex items-center gap-1.5 border-b border-ld px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <Icon icon="tabler:git-merge" height={13} />
+            Mufas
+          </div>
+          <div className="max-h-36 overflow-y-auto">
+            {mufasUbicadas.map((m) => (
+              <div key={m.id} className="flex items-center gap-1.5 px-2.5 py-1">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: '#8754ec' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => mapaRef.current?.panTo([m.lat!, m.lng!])}
+                  title={`Centrar el mapa en ${m.codigo}`}
+                  className="transition-ui min-w-0 flex-1 truncate text-left text-xs font-medium hover:text-primary-text"
+                >
+                  {m.codigo}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAgregarCajaAMufa(m)}
+                  aria-label={`Agregar caja NAP a ${m.codigo}`}
+                  title={`Agregar caja NAP a ${m.codigo}`}
+                  className="transition-ui grid size-6 shrink-0 place-items-center rounded-md bg-lightsuccess text-success hover:bg-success hover:text-white"
+                >
+                  <Icon icon="tabler:plus" width={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </MapaShell>
   );
 }
