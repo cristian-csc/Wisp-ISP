@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
+import RingProgress, { type RingTone } from 'src/components/apps/cajasnap/RingProgress';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import {
@@ -76,6 +77,13 @@ const ESTADO_RED: Record<
     chipText: 'text-muted-foreground',
   },
 };
+
+/** El anillo mide qué parte de los clientes de la zona está activa. Acá mucho
+ *  es bueno, al contrario que en las cajas NAP, donde el anillo lleno avisa de
+ *  que ya no quedan bornes libres. */
+function toneForActivos(pct: number): RingTone {
+  return pct >= 80 ? 'success' : pct >= 50 ? 'warning' : 'error';
+}
 
 /** Hace cuánto fue el último handshake, en palabras. Un número de epoch no le
  *  dice nada a nadie; "hace 3 min" sí. */
@@ -364,6 +372,10 @@ const Zonas = () => {
           const red = estados[z.id];
           const estilo = red ? ESTADO_RED[red.estado] : null;
           const handshake = red ? desdeHandshake(red.last_handshake_ts) : null;
+          const pct =
+            z.total_clientes > 0
+              ? Math.round((z.clientes_activos / z.total_clientes) * 100)
+              : 0;
 
           return (
             <CardBox
@@ -448,20 +460,45 @@ const Zonas = () => {
               {/* Activos y total: etiqueta arriba, número debajo, en color
                   neutro. Un cero aquí no es una alarma, es una zona que
                   todavía no tiene clientes. */}
-              <div className="mt-2 grid grid-cols-2">
-                <div className="flex min-w-0 items-center gap-2 pr-3">
-                  <Icon icon="tabler:users" height={18} className="shrink-0 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <p className="truncate text-xs text-muted-foreground">Activos</p>
-                    <p className="text-lg font-bold leading-tight">{z.clientes_activos}</p>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="grid min-w-0 flex-1 grid-cols-2">
+                  <div className="flex min-w-0 items-center gap-2 pr-3">
+                    <Icon icon="tabler:users" height={18} className="shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs text-muted-foreground">Activos</p>
+                      <p className="text-lg font-bold leading-tight">{z.clientes_activos}</p>
+                    </div>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2 border-l border-ld pl-3">
+                    <Icon icon="tabler:stack-2" height={18} className="shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs text-muted-foreground">Total</p>
+                      <p className="text-lg font-bold leading-tight">{z.total_clientes}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex min-w-0 items-center gap-2 border-l border-ld pl-3">
-                  <Icon icon="tabler:stack-2" height={18} className="shrink-0 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <p className="truncate text-xs text-muted-foreground">Total</p>
-                    <p className="text-lg font-bold leading-tight">{z.total_clientes}</p>
-                  </div>
+
+                {/* El aro ocupa el hueco que quedaba a la derecha y dice de un
+                    vistazo que parte de la zona esta activa — el mismo que se
+                    usa en Cajas NAP, con la diferencia de que aqui lleno es
+                    bueno y alli lleno avisa de que no quedan bornes.
+                    Sin clientes todavia no se dibuja un 0%, que seria afirmar
+                    algo: se dibuja el circulo punteado. */}
+                <div
+                  className="shrink-0"
+                  title={
+                    z.total_clientes > 0
+                      ? `${z.clientes_activos} de ${z.total_clientes} clientes de esta zona están activos`
+                      : 'Todavía no hay clientes en esta zona'
+                  }
+                >
+                  {z.total_clientes > 0 ? (
+                    <RingProgress pct={pct} tone={toneForActivos(pct)} size="sm" />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-ld">
+                      <Icon icon="tabler:user-off" height={18} className="text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
               </div>
 
