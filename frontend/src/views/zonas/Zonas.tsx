@@ -97,7 +97,14 @@ function toneForActivos(pct: number): RingTone {
 const Zonas = () => {
   const navigate = useNavigate();
   const [zonas, setZonas] = useState<Zona[]>([]);
-  const [estados, setEstados] = useState<Record<number, EstadoRedZona>>({});
+  /** Arranca con lo ultimo leido, si es de hace menos de 2 minutos: al volver
+   *  a Zonas desde otro modulo la pantalla ya sale pintada en vez de decir
+   *  "Comprobando..." mientras no hay nada que comprobar. Sin esto, el efecto
+   *  de abajo se salta la consulta y las tarjetas se quedan vacias. */
+  const [estados, setEstados] = useState<Record<number, EstadoRedZona>>(() => {
+    const guardado = estadoRedReciente();
+    return guardado ? Object.fromEntries(guardado.map((f) => [f.zona_id, f])) : {};
+  });
   const [comprobando, setComprobando] = useState(false);
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const [search, setSearch] = useState('');

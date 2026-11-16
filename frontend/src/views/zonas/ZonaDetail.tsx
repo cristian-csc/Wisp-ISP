@@ -128,7 +128,11 @@ function OpcionesDelRouter({
 const ZonaDetail = () => {
   const { id } = useParams();
   const [zona, setZona] = useState<Zona | null>(null);
-  const [wg, setWg] = useState<WireguardStatus | null>(null);
+  /** Igual que en la lista: si se leyo hace poco, la ficha abre con el estado
+   *  puesto en vez de parpadear "no se pudo consultar" mientras llega. */
+  const [wg, setWg] = useState<WireguardStatus | null>(
+    () => (id ? wireguardReciente(Number(id)) : null),
+  );
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [todosTecnicos, setTodosTecnicos] = useState<Usuario[]>([]);
   const [seleccion, setSeleccion] = useState('');
