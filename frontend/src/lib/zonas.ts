@@ -111,3 +111,27 @@ export async function quitarTecnicoZona(zonaId: number, tecnicoId: number) {
   const { data } = await api.delete(`/zonas/${zonaId}/tecnicos/${tecnicoId}`);
   return data;
 }
+
+/** Cómo está el enlace con el router de una zona.
+ *  - conectado:         el router contesta
+ *  - tunel_sin_router:  hay handshake de WireGuard pero el router no responde
+ *  - sin_respuesta:     ni handshake ni ping
+ *  - sin_tunel:         la zona existe pero todavía no tiene túnel configurado */
+export type EstadoRed = 'conectado' | 'tunel_sin_router' | 'sin_respuesta' | 'sin_tunel';
+
+export type EstadoRedZona = {
+  zona_id: number;
+  estado: EstadoRed;
+  ping_ok: boolean;
+  ssh_ok: boolean;
+  wg_online: boolean;
+  /** Epoch en segundos. 0 = nunca hubo handshake. */
+  last_handshake_ts: number;
+};
+
+/** El estado del router de todas las zonas en una sola llamada. Hace ping a
+ *  cada router y lee el handshake en la VPS, así que tarda unos segundos. */
+export async function estadoRedZonas(): Promise<EstadoRedZona[]> {
+  const { data } = await api.get('/zonas/estado-red');
+  return data;
+}

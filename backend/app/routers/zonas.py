@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import subprocess
@@ -6,6 +7,7 @@ import re
 import socket
 import logging
 import base64
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 import paramiko
@@ -164,18 +166,45 @@ def _ve_la_red(usuario: Optional[models.Usuario]) -> bool:
     return bool(usuario) and usuario.rol in _ROLES_VEN_RED
 
 
-def _zona_to_dict(zona, db: Session, usuario: Optional[models.Usuario] = None) -> dict:
+def _conteos_por_zona(db: Session) -> dict:
+    """Cuántos clientes tiene cada zona, y cuántos están activos.
+
+    Todo en una consulta. Antes se contaba zona por zona, dos consultas por
+    cada una: con catorce zonas eran veintiocho viajes a la base solo para
+    pintar la lista.
+    """
+    filas = (
+        db.query(
+            models.Cliente.zona_id,
+            func.count(models.Cliente.id),
+            func.count(case((models.Cliente.estado == models.EstadoCliente.activo, 1))),
+        )
+        .group_by(models.Cliente.zona_id)
+        .all()
+    )
+    return {zona_id: (total, activos) for zona_id, total, activos in filas}
+
+
+def _zona_to_dict(
+    zona,
+    db: Session,
+    usuario: Optional[models.Usuario] = None,
+    conteos: Optional[dict] = None,
+) -> dict:
     """La zona tal como la ve `usuario`.
 
     Los campos de red solo se incluyen para los roles que los administran. No
     basta con esconderlos en la pantalla: si viajan en la respuesta, quedan al
     alcance de cualquiera que mire las peticiones del navegador.
     """
-    total = db.query(models.Cliente).filter(models.Cliente.zona_id == zona.id).count()
-    activos = db.query(models.Cliente).filter(
-        models.Cliente.zona_id == zona.id,
-        models.Cliente.estado == models.EstadoCliente.activo,
-    ).count()
+    if conteos is None:
+        total = db.query(models.Cliente).filter(models.Cliente.zona_id == zona.id).count()
+        activos = db.query(models.Cliente).filter(
+            models.Cliente.zona_id == zona.id,
+            models.Cliente.estado == models.EstadoCliente.activo,
+        ).count()
+    else:
+        total, activos = conteos.get(zona.id, (0, 0))
 
     datos = {
         "id": zona.id,
@@ -217,8 +246,14 @@ def list_zonas(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(get_current_user),
 ):
-    zonas = db.query(models.Zona).filter(models.Zona.activo == True).all()
-    return [_zona_to_dict(z, db, current_user) for z in zonas]
+    zonas = (
+        db.query(models.Zona)
+        .filter(models.Zona.activo == True)
+        .order_by(models.Zona.nombre)
+        .all()
+    )
+    conteos = _conteos_por_zona(db)
+    return [_zona_to_dict(z, db, current_user, conteos) for z in zonas]
 
 
 @router.post("", response_model=schemas.ZonaOut, status_code=201)
@@ -253,6 +288,80 @@ def resumen_publico(db: Session = Depends(get_db)):
         models.Cliente.estado == models.EstadoCliente.activo,
     ).count()
     return {"zonas_activas": zonas_activas, "clientes_activos": clientes_activos}
+
+
+# ── Estado de red de todas las zonas ──────────────────────────────────────────
+
+@router.get("/estado-red", response_model=List[dict])
+def estado_red_zonas(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    """Si el router de cada zona contesta, en una sola llamada.
+
+    La pantalla de zonas pinta una tarjeta por zona y cada tarjeta dice si su
+    MikroTik está en línea. Preguntarlo zona por zona serían tantas peticiones
+    como zonas, de varios segundos cada una: acá el handshake de WireGuard sale
+    de un solo `wg show` en la VPS y los ping van en paralelo, así que toda la
+    pantalla tarda lo que la zona más lenta.
+
+    Va declarada antes que /{zona_id} a propósito: FastAPI prueba las rutas en
+    el orden en que se declaran, y si no, "estado-red" entraría como si fuera
+    el id de una zona.
+    """
+    zonas = db.query(models.Zona).filter(models.Zona.activo == True).all()
+
+    # Un solo SSH a la VPS trae el handshake de todos los peers.
+    peers = {p["pubkey"]: p for p in wg_show_dump()}
+
+    # Se sacan los datos del ORM antes de repartir el trabajo: la sesión de la
+    # base no se puede tocar desde varios hilos, y acá ya no hace falta.
+    objetivos = [
+        {"zona_id": z.id, "ip": z.ip_wireguard, "pubkey": z.wg_public_key}
+        for z in zonas
+    ]
+
+    def comprobar(objetivo: dict) -> dict:
+        peer = peers.get(objetivo["pubkey"]) if objetivo["pubkey"] else None
+        wg_online = bool(peer and peer["online"])
+        handshake = peer["last_handshake"] if peer else 0
+
+        datos = {
+            "zona_id": objetivo["zona_id"],
+            "ping_ok": False,
+            "ssh_ok": False,
+            "wg_online": wg_online,
+            "last_handshake_ts": handshake,
+        }
+
+        if not objetivo["ip"]:
+            # La zona está registrada pero el router todavía no está en sitio.
+            datos["estado"] = "sin_tunel"
+            return datos
+
+        # Tiempos cortos: acá se comprueban todas las zonas de golpe y la
+        # pantalla está esperando. El detalle fino de una zona lo da
+        # /{zona_id}/wireguard-status, que sí puede permitirse esperar más.
+        datos["ping_ok"] = ping_host(objetivo["ip"], timeout=1)
+        datos["ssh_ok"] = check_ssh_port(objetivo["ip"], timeout=2) if datos["ping_ok"] else False
+
+        if datos["ping_ok"]:
+            datos["estado"] = "conectado"
+        elif wg_online:
+            # Handshake reciente pero el router no contesta al ping. Se
+            # distingue de "sin respuesta" seco porque el problema está en el
+            # router, no en el enlace, y se arregla de otra manera.
+            datos["estado"] = "tunel_sin_router"
+        else:
+            datos["estado"] = "sin_respuesta"
+        return datos
+
+    if not objetivos:
+        return []
+
+    # Los ping son espera, no cálculo: en paralelo tardan lo que el más lento.
+    with ThreadPoolExecutor(max_workers=min(10, len(objetivos))) as pool:
+        return list(pool.map(comprobar, objetivos))
 
 
 @router.get("/{zona_id}", response_model=dict)
