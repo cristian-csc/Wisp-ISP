@@ -368,13 +368,13 @@ const Zonas = () => {
           return (
             <CardBox
               key={z.id}
-              className="p-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+              className="p-3.5 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
               onClick={() => navigate(`/zonas/${z.id}`)}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <Icon icon="tabler:map-pin" height={19} className="shrink-0 text-primary" />
-                  <h3 className="truncate text-lg font-bold leading-tight">{z.nombre}</h3>
+                  <Icon icon="tabler:map-pin" height={18} className="shrink-0 text-primary" />
+                  <h3 className="truncate text-base font-bold leading-tight">{z.nombre}</h3>
                 </div>
 
                 <div className="-mr-1 -mt-1 flex shrink-0 items-center">
@@ -423,17 +423,17 @@ const Zonas = () => {
 
               {/* El estado, en una pastilla con su punto de color. */}
               {veRed && (
-                <div className="mt-2.5">
+                <div className="mt-2">
                   {estilo ? (
                     <span
-                      className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-semibold ${estilo.chipBg} ${estilo.chipText}`}
+                      className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-semibold ${estilo.chipBg} ${estilo.chipText}`}
                       title={estilo.detalle ? `${estilo.texto} — ${estilo.detalle}` : estilo.texto}
                     >
                       <span className={`h-2 w-2 shrink-0 rounded-full ${estilo.punto}`} />
                       <span className="truncate">{estilo.texto}</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[13px] font-semibold text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-[13px] font-semibold text-muted-foreground">
                       <Icon
                         icon="tabler:loader-2"
                         height={13}
@@ -448,19 +448,19 @@ const Zonas = () => {
               {/* Activos y total: etiqueta arriba, número debajo, en color
                   neutro. Un cero aquí no es una alarma, es una zona que
                   todavía no tiene clientes. */}
-              <div className="mt-3 grid grid-cols-2">
+              <div className="mt-2 grid grid-cols-2">
                 <div className="flex min-w-0 items-center gap-2 pr-3">
-                  <Icon icon="tabler:users" height={19} className="shrink-0 text-muted-foreground" />
+                  <Icon icon="tabler:users" height={18} className="shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
                     <p className="truncate text-xs text-muted-foreground">Activos</p>
-                    <p className="text-xl font-bold leading-tight">{z.clientes_activos}</p>
+                    <p className="text-lg font-bold leading-tight">{z.clientes_activos}</p>
                   </div>
                 </div>
                 <div className="flex min-w-0 items-center gap-2 border-l border-ld pl-3">
-                  <Icon icon="tabler:stack-2" height={19} className="shrink-0 text-muted-foreground" />
+                  <Icon icon="tabler:stack-2" height={18} className="shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
                     <p className="truncate text-xs text-muted-foreground">Total</p>
-                    <p className="text-xl font-bold leading-tight">{z.total_clientes}</p>
+                    <p className="text-lg font-bold leading-tight">{z.total_clientes}</p>
                   </div>
                 </div>
               </div>
@@ -469,7 +469,7 @@ const Zonas = () => {
                   si no se quedarían sin sitio. Solo para quien ve la red; la
                   tarjeta entera sigue llevando a la ficha al pulsarla. */}
               {veRed && (
-                <p className="mt-3 truncate border-t border-ld pt-2 text-[11px] leading-tight text-muted-foreground">
+                <p className="mt-2 truncate border-t border-ld pt-1.5 text-[11px] leading-tight text-muted-foreground">
                   {[
                     z.router_mikrotik,
                     z.ip_wireguard,
