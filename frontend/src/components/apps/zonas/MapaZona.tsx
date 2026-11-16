@@ -55,15 +55,19 @@ const cajaIcon = L.divIcon({
   iconAnchor: [10, 10],
 });
 
-// Esri no tiene imagen satelital en máxima resolución para todas las zonas
-// rurales — sin este tope, al acercar el zoom más allá de lo que Esri cubre
-// ahí, muestra un tile con "Map data not yet available for this region".
-// Con maxNativeZoom, Leaflet sigue dejando acercar (maxZoom) pero escala el
-// último nivel de tile real en vez de pedir uno que no existe.
-// Hasta donde Esri tiene imagen de verdad. Si en alguna zona el cartel
-// de "Map data not yet available" aparece antes de llegar aca, hay que
-// bajar este numero: es el unico sitio donde se decide.
-const MAX_ZOOM_SATELITE = 18;
+// Hasta donde Esri tiene foto de verdad en Puno.
+//
+// El numero esta medido, no estimado: pidiendo los tiles de Juliaca, de una
+// zona rural al noroeste, de Capachica y de Pucara, los de z15 a z17 pesan
+// entre 12 y 30 KB (foto) y los de z18 en adelante pesan 2.5 KB en los cuatro
+// sitios — ese es el cartel gris de "Map data not yet available", que Esri
+// sirve como un JPEG valido y por eso Leaflet lo pinta tal cual en vez de
+// fallar. Con el tope en 17 la rueda del raton simplemente deja de acercar
+// antes de llegar ahi.
+//
+// Es el unico sitio donde se decide. Si alguna zona nueva se pone gris antes,
+// se baja este numero a 16.
+const MAX_ZOOM_SATELITE = 17;
 const MAX_ZOOM_CALLE = 21;
 
 type CapaMapa = 'calle' | 'satelite';
@@ -155,6 +159,7 @@ export default function MapaZona({
   onMoverMufa,
   onMoverCaja,
   onAgregarCajaAMufa,
+  onDibujarCorridaMufa,
   alto = 560,
 }: {
   serverLat: number | null;
@@ -186,6 +191,8 @@ export default function MapaZona({
    *  había que tocar la chincheta de la mufa, abrir su ficha y buscar ahí el
    *  botón; ahora cada mufa tiene el suyo a la vista. */
   onAgregarCajaAMufa?: (mufa: Mufa) => void;
+  /** Empezar a dibujar una corrida de esa mufa sin pasar por su ficha. */
+  onDibujarCorridaMufa?: (mufa: Mufa) => void;
   /** Alto del mapa en píxeles — la pantalla decide cuánto espacio darle */
   alto?: number;
 }) {
@@ -386,16 +393,6 @@ export default function MapaZona({
                   : undefined
               }
             >
-              {/* El nombre siempre a la vista: una chincheta con una "M" no
-                  dice cual de las mufas es, y en una zona hay varias. */}
-              <Tooltip
-                permanent
-                direction="top"
-                offset={[0, -12]}
-                className="!border-0 !bg-black/70 !px-1.5 !py-0.5 !text-[10px] !font-semibold !text-white !shadow-none before:!hidden"
-              >
-                {m.codigo}
-              </Tooltip>
               {!dibujandoTrazadoMufa && (
                 <Popup>
                   <div className="flex flex-col gap-1.5 min-w-[150px]">
@@ -523,6 +520,17 @@ export default function MapaZona({
                 >
                   {m.codigo}
                 </button>
+                {onDibujarCorridaMufa && (
+                  <button
+                    type="button"
+                    onClick={() => onDibujarCorridaMufa(m)}
+                    aria-label={`Dibujar una corrida de ${m.codigo}`}
+                    title={`Dibujar una corrida de ${m.codigo}`}
+                    className="transition-ui grid size-6 shrink-0 place-items-center rounded-md bg-lightinfo text-info hover:bg-info hover:text-white"
+                  >
+                    <Icon icon="tabler:route" width={13} />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onAgregarCajaAMufa(m)}

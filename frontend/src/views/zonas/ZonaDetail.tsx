@@ -333,13 +333,19 @@ const ZonaDetail = () => {
     handleAgregarCajaAMufa(mufaVer);
   }
 
-  /** Empieza a dibujar. Sin corrida, es una nueva; con una, se redibuja esa. */
-  function handleDibujarCorrida(corrida?: Corrida) {
-    if (!mufaVer) return;
+  /** Empieza a dibujar una corrida de esa mufa. Sin corrida, es una nueva;
+   *  con una, se redibuja esa. */
+  function handleDibujarCorridaDeMufa(mufa: Mufa, corrida?: Corrida) {
     setCorridaEditando(corrida ?? null);
-    setDibujandoTrazadoMufa(mufaVer);
+    setDibujandoTrazadoMufa(mufa);
     setPuntosTrazado(corrida?.trazado ?? []);
     setMufaVer(null);
+  }
+
+  /** Lo mismo, desde la ficha de la mufa que esta abierta. */
+  function handleDibujarCorrida(corrida?: Corrida) {
+    if (!mufaVer) return;
+    handleDibujarCorridaDeMufa(mufaVer, corrida);
   }
 
   /** La mufa recién leída del servidor, no la copia que se guardó al abrir el
@@ -598,6 +604,7 @@ const ZonaDetail = () => {
           onMoverMufa={handleMoverMufa}
           onMoverCaja={handleMoverCaja}
           onAgregarCajaAMufa={handleAgregarCajaAMufa}
+          onDibujarCorridaMufa={(m) => handleDibujarCorridaDeMufa(m)}
         />
 
         </SectionCard>
