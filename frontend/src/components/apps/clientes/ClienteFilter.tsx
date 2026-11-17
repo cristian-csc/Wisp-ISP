@@ -11,6 +11,19 @@ interface Props {
   resumen: ResumenEstados | null;
 }
 
+/**
+ * Los cuatro estados que se miran a diario. Los otros cuatro —aprobados sin
+ * instalar, pausados, rechazados y anulados— no caben aquí sin convertir el
+ * encabezado en una parrilla ilegible; se eligen en «Otros estados», en la
+ * barra de abajo, y comparten este mismo filtro.
+ */
+export const ESTADOS_DESTACADOS: EstadoCliente[] = [
+  'activo',
+  'pendiente_aprobacion',
+  'suspendido',
+  'no_instalado',
+];
+
 const TONO_TARJETA: Record<string, { caja: string; texto: string }> = {
   success: { caja: 'bg-lightsuccess', texto: 'text-success' },
   warning: { caja: 'bg-lightwarning', texto: 'text-warning' },
@@ -20,24 +33,21 @@ const TONO_TARJETA: Record<string, { caja: string; texto: string }> = {
 };
 
 /**
- * Los estados del cliente, cada uno con su cuenta, y el único sitio donde se
- * filtra por estado.
+ * Cinco tarjetas iguales: «Todos» y los cuatro estados de diario.
  *
- * Están los ocho más «Todos», todos del mismo tamaño y en la misma cuadrícula:
- * antes cuatro iban en tarjetas grandes y los otros cuatro en una fila de
- * pastillas debajo, que parecía un apéndice y no parte del filtro.
+ * Para que queden parejas de verdad hacen falta tres cosas que no se ven pero
+ * se notan:
  *
- * El número va arriba y la etiqueta debajo, con sitio reservado para dos
- * líneas: así «Pendientes de aprobación» no empuja su tarjeta ni desalinea los
- * números de las vecinas.
- *
- * El borde está siempre puesto, transparente cuando la tarjeta no es la
- * elegida. Si solo apareciera al elegirla, la tarjeta crecería 2 px y la
- * cuadrícula entera daría un salto al pulsar.
+ *   - El número arriba y la etiqueta debajo, con sitio reservado para dos
+ *     líneas. Si no, «Pendientes de aprobación» empuja su tarjeta y desalinea
+ *     los números de las vecinas.
+ *   - El borde está siempre puesto, transparente cuando la tarjeta no es la
+ *     elegida. Si solo apareciera al elegirla, la tarjeta crecería 2 px y la
+ *     fila entera daría un salto al pulsar.
+ *   - Todas con el mismo alto mínimo, así una cuenta de 4 cifras no hace más
+ *     alta a su tarjeta que a las demás.
  */
 const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
-  const n = (e: EstadoCliente) => resumen?.por_estado[e] ?? 0;
-
   const tarjetas: {
     valor: EstadoCliente | 'todos';
     etiqueta: string;
@@ -45,12 +55,15 @@ const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
     cuenta: number;
   }[] = [
     { valor: 'todos', etiqueta: 'Todos', tono: 'primary', cuenta: resumen?.total ?? 0 },
-    ...ESTADOS_CLIENTE.map((e) => ({
-      valor: e.valor,
-      etiqueta: e.etiqueta,
-      tono: e.tono,
-      cuenta: n(e.valor),
-    })),
+    ...ESTADOS_DESTACADOS.map((valor) => {
+      const def = ESTADOS_CLIENTE.find((e) => e.valor === valor)!;
+      return {
+        valor: def.valor,
+        etiqueta: def.etiqueta,
+        tono: def.tono,
+        cuenta: resumen?.por_estado[def.valor] ?? 0,
+      };
+    }),
   ];
 
   return (
@@ -64,15 +77,15 @@ const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
             type="button"
             onClick={() => setFilter(t.valor)}
             aria-pressed={elegida}
-            className={`transition-ui flex flex-col items-center rounded-xl border-2 px-2 py-3 text-center ${
+            className={`transition-ui flex min-h-[94px] flex-col items-center rounded-xl border-2 px-3 py-4 text-center ${
               tono.caja
             } ${elegida ? 'border-primary shadow-sm' : 'border-transparent hover:shadow-md'}`}
           >
-            <span className={`text-2xl font-bold leading-none ${tono.texto}`}>
+            <span className={`text-3xl font-bold leading-none ${tono.texto}`}>
               {t.cuenta}
             </span>
             <span
-              className={`mt-1.5 flex min-h-[2.1rem] items-start justify-center text-[11px] font-semibold leading-tight ${tono.texto}`}
+              className={`mt-2 flex min-h-[2.1rem] items-start justify-center text-xs font-semibold leading-tight ${tono.texto}`}
             >
               {t.etiqueta}
             </span>

@@ -42,10 +42,13 @@ import {
   cortarCliente,
   reactivarCliente,
   pausarCliente,
+  ESTADOS_CLIENTE,
   type ClienteListItem,
   type EstadoCliente,
+  type ResumenEstados,
   type Zona,
 } from 'src/lib/clientes';
+import { ESTADOS_DESTACADOS } from './ClienteFilter';
 import type { Usuario } from 'src/lib/api';
 
 const ESTADO_LABEL: Record<EstadoCliente, string> = {
@@ -72,6 +75,9 @@ const ESTADO_BADGE: Record<EstadoCliente, string> = {
 
 interface Props {
   filter: EstadoCliente | 'todos';
+  setFilter: (f: EstadoCliente | 'todos') => void;
+  /** Cuentas por estado, para decirlas junto a cada opción */
+  resumen: ResumenEstados | null;
   currentUser: Usuario | null;
   /** Fija el tipo de conexión: la sección ya es de un solo tipo y el
    *  selector de tipo deja de tener sentido. */
@@ -80,7 +86,13 @@ interface Props {
 
 const puedeAprobar = (rol?: string) => rol === 'admin';
 
-const ClienteListing = ({ filter, currentUser, tipo }: Props) => {
+const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props) => {
+  /** Los estados que no tienen tarjeta arriba. No son un segundo filtro: es
+   *  el mismo, con las opciones que no caben en el encabezado. */
+  const otrosEstados = ESTADOS_CLIENTE.filter(
+    (e) => !ESTADOS_DESTACADOS.includes(e.valor),
+  );
+  const enOtros = otrosEstados.some((e) => e.valor === filter);
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<ClienteListItem[]>([]);
@@ -192,8 +204,27 @@ const ClienteListing = ({ filter, currentUser, tipo }: Props) => {
         </Button>
 
         <div className="flex gap-3 flex-wrap w-full sm:w-auto sm:ml-auto">
-          {/* El estado se filtra en las tarjetas de arriba, que son el único
-              control de estado. Acá quedan la zona y el buscador. */}
+          {/* Los cuatro estados que no tienen tarjeta arriba. Sin esto no
+              habría forma de ver los pausados ni los aprobados sin instalar. */}
+          <Select
+            value={enOtros ? (filter as string) : 'ninguno'}
+            onValueChange={(v) => setFilter(v === 'ninguno' ? 'todos' : (v as EstadoCliente))}
+          >
+            <SelectTrigger
+              className={`w-full sm:w-48 ${enOtros ? 'border-primary text-primary-text' : ''}`}
+            >
+              <SelectValue placeholder="Otros estados" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ninguno">Otros estados</SelectItem>
+              {otrosEstados.map((e) => (
+                <SelectItem key={e.valor} value={e.valor}>
+                  {e.etiqueta} ({resumen?.por_estado[e.valor] ?? 0})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* La sección ya es de un solo tipo: el selector sobra */}
           {!tipo && (
             <Select value={tipoFiltro} onValueChange={(v) => setTipoFiltro(v as typeof tipoFiltro)}>
