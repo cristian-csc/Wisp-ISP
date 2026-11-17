@@ -30,6 +30,8 @@ export default function TecnicoLayout() {
       <Stack.Screen name="inventario" options={{ title: 'Mi Inventario', headerLeft: () => null }} />
       <Stack.Screen name="nuevo-cliente" options={{ title: 'Nuevo Cliente', headerLeft: () => null }} />
       <Stack.Screen name="cuenta" options={{ title: 'Mi Cuenta', headerLeft: () => null }} />
+      {/* La misma pantalla sirve las dos listas; el título lo pone ella según
+          el modo, por eso aquí no se fija uno fijo. */}
       <Stack.Screen name="instalaciones" options={{ title: 'Mis instalaciones' }} />
     </Stack>
   );

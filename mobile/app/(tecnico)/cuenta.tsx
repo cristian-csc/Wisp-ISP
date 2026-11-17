@@ -10,10 +10,16 @@ import { COLORS } from '@/theme/colors';
 export default function TecnicoCuentaScreen() {
   const router = useRouter();
   const [total, setTotal] = useState<number | null>(null);
+  // Instalar y registrar son dos trabajos distintos: un técnico puede dar de
+  // alta a un cliente que instala otro, y al revés. Por eso van dos cuentas.
+  const [registrados, setRegistrados] = useState<number | null>(null);
 
   const load = useCallback(() => {
     getClientes({ solo_mis_instalaciones: true, per_page: 1 })
       .then((d) => setTotal(d.total))
+      .catch(() => {});
+    getClientes({ solo_mis_registros: true, per_page: 1 })
+      .then((d) => setRegistrados(d.total))
       .catch(() => {});
   }, []);
 
@@ -29,6 +35,21 @@ export default function TecnicoCuentaScreen() {
           <View style={{ flex: 1 }}>
             <Text style={s.statValue}>{total ?? '—'}</Text>
             <Text style={s.statLabel}>Instalaciones realizadas</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.mutedForeground} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={s.statCard}
+          onPress={() => router.push('/(tecnico)/instalaciones?modo=registros' as any)}
+          activeOpacity={0.8}
+        >
+          <View style={[s.statIcon, { backgroundColor: COLORS.lightinfo }]}>
+            <Ionicons name="person-add-outline" size={20} color={COLORS.info} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.statValue}>{registrados ?? '—'}</Text>
+            <Text style={s.statLabel}>Clientes que registraste</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={COLORS.mutedForeground} />
         </TouchableOpacity>

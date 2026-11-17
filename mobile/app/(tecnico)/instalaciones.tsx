@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { getClientes, ClienteListItem } from '@/services/api';
 import { COLORS } from '@/theme/colors';
 
@@ -35,33 +36,53 @@ function InstalacionCard({ item }: { item: ClienteListItem }) {
   );
 }
 
+/**
+ * Dos listas en una pantalla: lo que este técnico instaló, y lo que dio de
+ * alta. Son grupos distintos — se puede registrar a un cliente que instala
+ * otro, y al revés — pero se ven exactamente igual, así que lo único que
+ * cambia es la consulta y los textos.
+ */
 export default function MisInstalacionesScreen() {
+  const { modo } = useLocalSearchParams<{ modo?: string }>();
+  const esRegistros = modo === 'registros';
   const [clientes, setClientes] = useState<ClienteListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const data = await getClientes({ solo_mis_instalaciones: true, per_page: 100 });
+      const data = await getClientes(
+        esRegistros
+          ? { solo_mis_registros: true, per_page: 100 }
+          : { solo_mis_instalaciones: true, per_page: 100 },
+      );
       setClientes(data.items);
     } catch {}
     finally { setLoading(false); setRefreshing(false); }
-  }, []);
+  }, [esRegistros]);
 
   useEffect(() => { load(); }, [load]);
 
   if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
 
   const activos = clientes.filter(c => c.estado === 'activo').length;
+  // En "registros" la fecha de instalación no sirve de referencia: un cliente
+  // recién registrado todavía no tiene ninguna.
   const esteMes = clientes.filter(c => {
     if (!c.fecha_instalacion) return false;
     const hoy = new Date();
     const f = new Date(c.fecha_instalacion);
     return f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear();
   }).length;
+  const pendientes = clientes.filter(c => c.estado !== 'activo').length;
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      {/* El titulo lo pone la pantalla, no el layout: es la misma para las
+          dos listas y tiene que decir cual se esta viendo. */}
+      <Stack.Screen
+        options={{ title: esRegistros ? 'Clientes que registré' : 'Mis instalaciones' }}
+      />
       <FlatList
         data={clientes}
         keyExtractor={i => String(i.id)}
@@ -72,22 +93,30 @@ export default function MisInstalacionesScreen() {
           <View style={st.statsRow}>
             <View style={[st.statCard, { borderTopColor: COLORS.primary }]}>
               <Text style={[st.statValue, { color: COLORS.primary }]}>{clientes.length}</Text>
-              <Text style={st.statLabel}>Total instaladas</Text>
+              <Text style={st.statLabel}>{esRegistros ? 'Total registrados' : 'Total instaladas'}</Text>
             </View>
             <View style={[st.statCard, { borderTopColor: COLORS.success }]}>
               <Text style={[st.statValue, { color: COLORS.success }]}>{activos}</Text>
-              <Text style={st.statLabel}>Activas</Text>
+              <Text style={st.statLabel}>Activos</Text>
             </View>
             <View style={[st.statCard, { borderTopColor: COLORS.info }]}>
-              <Text style={[st.statValue, { color: COLORS.info }]}>{esteMes}</Text>
-              <Text style={st.statLabel}>Este mes</Text>
+              <Text style={[st.statValue, { color: COLORS.info }]}>
+                {esRegistros ? pendientes : esteMes}
+              </Text>
+              <Text style={st.statLabel}>{esRegistros ? 'Sin activar' : 'Este mes'}</Text>
             </View>
           </View>
         }
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 80 }}>
-            <Ionicons name="construct-outline" size={44} color={COLORS.placeholder} />
-            <Text style={{ color: COLORS.mutedForeground, marginTop: 12, fontSize: 15 }}>Aún no has instalado ningún cliente</Text>
+            <Ionicons
+              name={esRegistros ? 'person-add-outline' : 'construct-outline'}
+              size={44}
+              color={COLORS.placeholder}
+            />
+            <Text style={{ color: COLORS.mutedForeground, marginTop: 12, fontSize: 15 }}>
+              {esRegistros ? 'Aún no has registrado ningún cliente' : 'Aún no has instalado ningún cliente'}
+            </Text>
           </View>
         }
       />

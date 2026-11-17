@@ -228,13 +228,25 @@ def _interpretar_pool(pool, salida_rangos, error_rangos, salida_secretos, salida
     return todas, ocupadas, ""
 
 
-def _alcance_clientes(query, db: Session, current_user, solo_mis_instalaciones: bool = False):
+def _alcance_clientes(
+    query,
+    db: Session,
+    current_user,
+    solo_mis_instalaciones: bool = False,
+    solo_mis_registros: bool = False,
+):
     """Recorta una consulta de clientes a lo que ese rol tiene derecho a ver.
 
     Esta en un solo sitio a proposito: la lista y el contador por estado tienen
     que recortar igual, o los numeros de las tarjetas no cuadrarian con lo que
     sale debajo en la tabla.
     """
+    # Quien da de alta a un cliente queda en vendedor_id, sea vendedora o
+    # tecnico. Para una vendedora eso ya es todo su alcance; para un tecnico
+    # hay que pedirlo, porque lo normal es que vea su zona entera.
+    if solo_mis_registros:
+        return query.filter(models.Cliente.vendedor_id == current_user.id)
+
     if current_user.rol == models.RolUsuario.tecnico:
         if solo_mis_instalaciones:
             # "Mis instalaciones" — lo que este tecnico instalo de verdad, no
@@ -314,6 +326,7 @@ def list_clientes(
     estado: Optional[str] = None,
     tipo_conexion: Optional[str] = None,
     solo_mis_instalaciones: bool = False,
+    solo_mis_registros: bool = False,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(get_current_user),
 ):
@@ -330,7 +343,9 @@ def list_clientes(
         tipos = [t.strip() for t in tipo_conexion.split(",") if t.strip()]
         query = query.filter(models.Cliente.tipo_conexion.in_(tipos))
 
-    query = _alcance_clientes(query, db, current_user, solo_mis_instalaciones)
+    query = _alcance_clientes(
+        query, db, current_user, solo_mis_instalaciones, solo_mis_registros
+    )
 
     if search:
         query = query.filter(

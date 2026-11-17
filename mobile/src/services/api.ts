@@ -212,6 +212,9 @@ export async function getClientes(params?: {
   estado?: string;
   zona_id?: number;
   solo_mis_instalaciones?: boolean;
+  /** Los que dio de alta quien pregunta. Un técnico ve su zona entera, así
+   *  que para contar lo suyo hay que pedirlo. */
+  solo_mis_registros?: boolean;
 }): Promise<{ items: ClienteListItem[]; total: number; pages: number }> {
   const q = new URLSearchParams({
     page: String(params?.page ?? 1),
@@ -220,6 +223,7 @@ export async function getClientes(params?: {
     ...(params?.estado ? { estado: params.estado } : {}),
     ...(params?.zona_id ? { zona_id: String(params.zona_id) } : {}),
     ...(params?.solo_mis_instalaciones ? { solo_mis_instalaciones: 'true' } : {}),
+    ...(params?.solo_mis_registros ? { solo_mis_registros: 'true' } : {}),
   });
   return request(`/clientes?${q}`);
 }
