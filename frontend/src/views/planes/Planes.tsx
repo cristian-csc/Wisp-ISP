@@ -251,9 +251,9 @@ const Planes = () => {
       // cuentan los que tienen clientes sin perfil y los que difieren.
       const problemas = r.zonas.filter((z) => z.sin_contacto || z.problemas > 0).length;
       if (problemas === 0) {
-        toast.success('Todos los routers coinciden con el panel');
+        toast.success('Todo cuadra: los routers dicen lo mismo que el panel');
       } else {
-        toast.warning(`${problemas} zona(s) con diferencias`, {
+        toast.warning(`${problemas} zona(s) con algo que revisar`, {
           description: 'El detalle se abre en una ventana.',
         });
       }
@@ -269,8 +269,13 @@ const Planes = () => {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Planes</h2>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={comprobarEnRouters} disabled={comprobando}>
-            {comprobando ? 'Consultando los routers…' : 'Comprobar en los routers'}
+          <Button variant="outline" onClick={comprobarEnRouters} disabled={comprobando} className="gap-2">
+            <Icon
+              icon={comprobando ? 'tabler:loader-2' : 'tabler:stethoscope'}
+              height={17}
+              className={comprobando ? 'animate-spin' : undefined}
+            />
+            {comprobando ? 'Revisando…' : 'Diagnóstico'}
           </Button>
           <Button onClick={abrirNuevo}>Nuevo plan</Button>
         </div>
@@ -334,22 +339,22 @@ const Planes = () => {
       <FormDialog
         open={verificacion !== null}
         onOpenChange={(o) => !o && setVerificacion(null)}
-        title="Comprobación con los routers"
+        title="Diagnóstico de planes"
         subtitle={
           verificacion
-            ? `${verificacion.length} zona(s) con túnel · ${
+            ? `Lo que dice cada router sobre tus planes — ${verificacion.length} zona(s) con túnel, ${
                 verificacion.filter((z) => z.sin_contacto || z.problemas > 0).length
               } con algo que revisar`
             : undefined
         }
-        icon="tabler:router"
+        icon="tabler:stethoscope"
         tone="primary"
         size="xl"
         footer={
           <FormActions
             onCancel={() => setVerificacion(null)}
             cancelLabel="Cerrar"
-            submitLabel={comprobando ? 'Consultando…' : 'Volver a comprobar'}
+            submitLabel={comprobando ? 'Revisando…' : 'Revisar otra vez'}
             submitIcon="tabler:refresh"
             onSubmit={comprobarEnRouters}
             submitting={comprobando}
