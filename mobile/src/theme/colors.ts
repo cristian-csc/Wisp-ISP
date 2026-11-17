@@ -44,6 +44,21 @@ export const COLORS = {
   sidebarText: '#2a3547',
   white: '#ffffff',
 
+  // ── Superficies oscuras ────────────────────────────────────────────────
+  // La barra de abajo y las cabeceras. Sobre oscuro el naranja de la marca
+  // resalta de verdad; sobre blanco se apaga y hay que recurrir al tono
+  // fuerte para que se lea.
+  /** Fondo de la barra inferior y de las cabeceras */
+  surfaceDark: '#0f172a',
+  /** Un escalon mas claro, para lo que se apoya encima del oscuro */
+  surfaceDarkSoft: '#1e293b',
+  /** Texto principal sobre oscuro */
+  onDark: '#f8fafc',
+  /** Texto secundario sobre oscuro. Da 7:1 contra #0f172a. */
+  onDarkMuted: '#94a3b8',
+  /** Lineas y separadores sobre oscuro */
+  borderDark: '#1e293b',
+
   background: '#f8fafc',
   card: '#ffffff',
   border: '#e2e8f0',

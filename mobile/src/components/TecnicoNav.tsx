@@ -38,7 +38,11 @@ export function TecnicoNav() {
             activeOpacity={0.7}
           >
             <View style={[s.iconWrap, isActive && s.iconWrapActive]}>
-              <Ionicons name={isActive ? t.iconActive : t.icon} size={20} color={isActive ? COLORS.brandStrong : COLORS.placeholder} />
+              <Ionicons
+                name={isActive ? t.iconActive : t.icon}
+                size={20}
+                color={isActive ? COLORS.brandForeground : COLORS.onDarkMuted}
+              />
             </View>
             <Text style={[s.label, isActive && s.labelActive]}>{t.label}</Text>
           </TouchableOpacity>
@@ -49,24 +53,28 @@ export function TecnicoNav() {
 }
 
 const s = StyleSheet.create({
+  // Oscura, como la barra lateral del panel. Sobre blanco el naranja de la
+  // marca se apagaba y habia que usar el tono fuerte para que se leyera;
+  // sobre oscuro se lee solo y es lo primero que se ve al abrir la app.
   container: {
     flexDirection: 'row',
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.surfaceDark,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    paddingTop: 8,
+    borderTopColor: COLORS.borderDark,
+    paddingBottom: Platform.OS === 'ios' ? 26 : 10,
+    paddingTop: 10,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -3 },
-    elevation: 10,
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 14,
   },
   tab: { flex: 1, alignItems: 'center', gap: 4 },
-  iconWrap: { width: 44, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  // Naranja de marca: es lo que dice "esta app es de WISP", igual que la
-  // barra lateral del panel. El azul queda para las acciones.
-  iconWrapActive: { backgroundColor: COLORS.lightbrand },
-  label: { fontSize: 11, fontWeight: '600', color: COLORS.placeholder },
-  labelActive: { color: COLORS.brandStrong, fontWeight: '700' },
+  iconWrap: {
+    width: 46, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  iconWrapActive: { backgroundColor: COLORS.brand },
+  label: { fontSize: 10.5, fontWeight: '600', color: COLORS.onDarkMuted },
+  labelActive: { color: COLORS.brand, fontWeight: '800' },
 });

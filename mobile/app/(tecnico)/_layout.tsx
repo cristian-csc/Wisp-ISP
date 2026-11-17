@@ -12,13 +12,10 @@ export default function TecnicoLayout() {
         contentStyle: { backgroundColor: COLORS.background },
       }}
     >
-      <Stack.Screen
-        name="index"
-        options={{
-          title: 'Órdenes',
-          headerLeft: () => null,
-        }}
-      />
+      {/* Sin cabecera nativa: esta pantalla trae la suya, oscura y con el
+          numero de ordenes. Dos cabeceras una encima de otra se ven mal y
+          roban media pantalla en un telefono. */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="instalar/[id]" options={{ title: 'Instalar servicio' }} />
       <Stack.Screen name="escanear-equipo" options={{ title: 'Escanear Equipo' }} />
       <Stack.Screen name="mapa" options={{ title: 'Mapa de mi zona' }} />
