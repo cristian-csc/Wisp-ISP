@@ -76,9 +76,11 @@ const AprobarClienteDialog = ({ cliente, onClose, onAprobado }: AprobarClienteDi
       .then((d) => {
         if (!vigente) return;
         setDatos(d);
-        // Se propone la que ya tenga apuntada, y si no, la primera libre:
-        // así en el caso normal solo hay que pulsar Aprobar.
-        const propuesta = d.ip_actual ?? d.sugerida;
+        // Primero la que el router ya le tiene puesta — un cliente migrado
+        // debe quedarse con la suya, o el corte por IP apuntaría a otra
+        // dirección. Después la que tenga apuntada el panel, y si no, la
+        // primera libre: así en el caso normal solo hay que pulsar Aprobar.
+        const propuesta = d.ip_en_el_router ?? d.ip_actual ?? d.sugerida;
         setEleccion(propuesta ?? SIN_IP);
       })
       .catch((err) => {
@@ -167,13 +169,30 @@ const AprobarClienteDialog = ({ cliente, onClose, onAprobado }: AprobarClienteDi
 
           {datos && (
             <>
+              {/* Cliente migrado: el router ya le tiene una IP puesta. Hay que
+                  dejarle esa, porque el corte mete la IP del panel en una
+                  lista del firewall — si no coinciden, se corta a otro. */}
+              {datos.ip_en_el_router && (
+                <FormCallout tone="warning">
+                  <b>Este cliente ya existe en el MikroTik</b> con la IP{' '}
+                  <b className="font-mono">{datos.ip_en_el_router}</b>. Déjale esa:
+                  el corte por morosidad usa la IP que guarde el panel, y si le
+                  pones otra se cortaría a quien de verdad la tenga.
+                </FormCallout>
+              )}
+
               <FormField label="IP del cliente" icon="tabler:router" htmlFor="ipCliente">
                 <Select value={eleccion} onValueChange={setEleccion}>
                   <SelectTrigger id="ipCliente">
                     <SelectValue placeholder="Elegir IP" />
                   </SelectTrigger>
                   <SelectContent>
-                    {datos.ip_actual && (
+                    {datos.ip_en_el_router && (
+                      <SelectItem value={datos.ip_en_el_router}>
+                        {datos.ip_en_el_router} — la que ya tiene en el router
+                      </SelectItem>
+                    )}
+                    {datos.ip_actual && datos.ip_actual !== datos.ip_en_el_router && (
                       <SelectItem value={datos.ip_actual}>
                         {datos.ip_actual} — la que ya tenía apuntada
                       </SelectItem>

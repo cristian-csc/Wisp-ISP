@@ -134,7 +134,7 @@ def _lista_corte(db: Session, zona_id) -> str:
 _RE_IPV4 = re.compile("(?<![0-9.])([0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3})(?![0-9.])")
 
 
-def _ips_del_pool(zona) -> tuple[list, set, str]:
+def _ips_del_pool(zona) -> tuple[list, set, dict, str]:
     """Qué IP caben en el pool PPPoE de la zona y cuáles ya están ocupadas.
 
     Devuelve (todas_las_del_pool, ocupadas, error). El router es la única
@@ -149,28 +149,33 @@ def _ips_del_pool(zona) -> tuple[list, set, str]:
         podríamos asignar a un cliente nuevo una IP que otro está usando.
     """
     if not zona or not zona.ip_wireguard:
-        return [], set(), "La zona no tiene túnel WireGuard configurado."
+        return [], set(), {}, "La zona no tiene túnel WireGuard configurado."
     pool = (zona.pool_pppoe or "").strip()
     if not pool:
-        return [], set(), "La zona no tiene configurado el nombre del pool PPPoE."
+        return [], set(), {}, "La zona no tiene configurado el nombre del pool PPPoE."
     pool_safe = _ros_str(pool)
 
     r = _mikrotik_exec(zona.ip_wireguard, [
         f':put [/ip pool get [find name="{pool_safe}"] ranges]',
-        ':foreach s in=[/ppp secret find] do={:put [/ppp secret get $s remote-address]}',
+        # Nombre e IP juntos: saber que una IP esta tomada no basta, hay que
+        # saber de quien es. Un cliente migrado ya tiene la suya en el router,
+        # y si no se distingue, el panel le prohibe quedarse con ella y le da
+        # otra distinta — y entonces el corte por IP apunta a la direccion
+        # equivocada.
+        ':foreach s in=[/ppp secret find] do={:put ([/ppp secret get $s name] . "=" . [/ppp secret get $s remote-address])}',
         f'/ip pool used print where pool="{pool_safe}"',
     ])
     if not r.get("ok"):
-        return [], set(), r.get("error", "No se pudo conectar con el router")
+        return [], set(), {}, r.get("error", "No se pudo conectar con el router")
     res = r.get("results") or []
     if len(res) < 3:
-        return [], set(), "El router no respondió a todas las consultas."
+        return [], set(), {}, "El router no respondió a todas las consultas."
 
     # Si la consulta de secretos falla y no devuelve nada, no se puede saber
     # qué IP están tomadas. Mejor no contestar que ofrecer una ocupada: eso
     # dejaría a dos clientes sin servicio.
     if (res[1].get("err") or "").strip() and not (res[1].get("out") or "").strip():
-        return [], set(), "El router no pudo listar los secretos PPPoE; no se puede saber qué IP están libres."
+        return [], set(), {}, "El router no pudo listar los secretos PPPoE; no se puede saber qué IP están libres."
 
     return _interpretar_pool(
         pool,
@@ -182,13 +187,18 @@ def _ips_del_pool(zona) -> tuple[list, set, str]:
 
 
 def _interpretar_pool(pool, salida_rangos, error_rangos, salida_secretos, salida_usadas):
-    """Convierte la salida cruda del router en (todas, ocupadas, error).
+    """Convierte la salida cruda del router en (todas, ocupadas, duenos, error).
+
+    `duenos` dice qué secreto PPPoE tiene fijada cada IP. Hace falta para
+    distinguir "ocupada por otro" de "ocupada por este mismo cliente", que es
+    el caso de todos los clientes migrados: ya tienen su IP en el router antes
+    de existir en el panel.
 
     Separado de la conexión para poder probarlo con salidas reales guardadas.
     """
     salida_rangos = salida_rangos.strip()
     if not salida_rangos or error_rangos:
-        return [], set(), f'El router no tiene ningún pool llamado "{pool}".'
+        return [], set(), {}, f'El router no tiene ningún pool llamado "{pool}".'
 
     # ranges puede traer varios tramos separados por coma, y un tramo puede
     # ser un rango (a-b) o una sola IP.
@@ -211,13 +221,23 @@ def _interpretar_pool(pool, salida_rangos, error_rangos, salida_secretos, salida
                 continue
             todas.append(ips[0])
     if not todas:
-        return [], set(), f'No se entendió el rango del pool "{pool}" ({salida_rangos}).'
+        return [], set(), {}, f'No se entendió el rango del pool "{pool}" ({salida_rangos}).'
 
+    # Cada linea viene como "usuario=1.2.3.4". Si el router es viejo y solo
+    # manda la IP, el dueno queda desconocido y se trata como ocupada a secas,
+    # que es como se comportaba antes.
     ocupadas = set()
+    duenos: dict = {}
     for linea in salida_secretos.splitlines():
         m = _RE_IPV4.search(linea)
-        if m:
-            ocupadas.add(m.group(1))
+        if not m:
+            continue
+        ip = m.group(1)
+        ocupadas.add(ip)
+        if "=" in linea:
+            nombre = linea.split("=", 1)[0].strip()
+            if nombre:
+                duenos[ip] = nombre
     # Las entregadas ahora mismo. Si esta consulta falla seguimos adelante:
     # las fijas, que son la mayoría, ya las tenemos.
     for linea in salida_usadas.splitlines():
@@ -225,7 +245,7 @@ def _interpretar_pool(pool, salida_rangos, error_rangos, salida_secretos, salida
         if m:
             ocupadas.add(m.group(1))
 
-    return todas, ocupadas, ""
+    return todas, ocupadas, duenos, ""
 
 
 def _alcance_clientes(
@@ -483,9 +503,21 @@ def ips_disponibles(
         raise HTTPException(status_code=400, detail="Un cliente satelital no usa la red propia.")
 
     zona = db.query(models.Zona).filter(models.Zona.id == cliente.zona_id).first()
-    todas, ocupadas, error = _ips_del_pool(zona)
+    todas, ocupadas, duenos, error = _ips_del_pool(zona)
     if error:
         raise HTTPException(status_code=502, detail=error)
+
+    # La IP que el router ya tiene fijada a ESTE cliente no esta ocupada para
+    # el: es suya. Es el caso de todos los migrados, que ya existian en el
+    # MikroTik antes que en el panel. Sin esto, el sistema le prohibe quedarse
+    # con la suya y le da otra distinta, y a partir de ahi el corte por IP
+    # apunta a una direccion que no es la de este cliente.
+    suya_en_el_router = next(
+        (ip for ip, dueno in duenos.items() if dueno == cliente.usuario_pppoe),
+        None,
+    )
+    if suya_en_el_router:
+        ocupadas = ocupadas - {suya_en_el_router}
 
     # Tambien las que este sistema ya tiene apuntadas en la misma zona: puede
     # haber un cliente dado de alta en el panel cuyo secreto aun no se creo en
@@ -507,7 +539,11 @@ def ips_disponibles(
         "ocupadas": len(todas) - len(libres),
         "total_libres": len(libres),
         "ip_actual": cliente.ip_estatica,
-        "sugerida": libres[0] if libres else None,
+        # La que el router ya le tiene puesta, si es un cliente migrado. La
+        # pantalla la propone antes que ninguna otra: cambiarsela obligaria a
+        # tocar el router, y dejarla distinta romperia el corte por IP.
+        "ip_en_el_router": suya_en_el_router,
+        "sugerida": suya_en_el_router or (libres[0] if libres else None),
         # La lista completa puede ser larguisima en un pool grande y no aporta
         # nada: con las primeras hay de sobra para elegir.
         "disponibles": libres[:200],
@@ -550,8 +586,11 @@ def aprobar_cliente(
         # Y que siga libre en el router: entre que se abrió la pantalla y se
         # pulsó aprobar, otro pudo haberla tomado.
         zona = db.query(models.Zona).filter(models.Zona.id == cliente.zona_id).first()
-        todas, ocupadas, error = _ips_del_pool(zona)
+        todas, ocupadas, duenos, error = _ips_del_pool(zona)
         if not error:
+            # Si esa IP la tiene el secreto de este mismo cliente, es suya.
+            if duenos.get(ip_elegida) == cliente.usuario_pppoe:
+                ocupadas = ocupadas - {ip_elegida}
             if ip_elegida not in todas:
                 raise HTTPException(
                     status_code=400,

@@ -189,7 +189,11 @@ export type IpsDisponibles = {
   total_libres: number;
   /** La que ya tiene apuntada el panel, si la tiene. */
   ip_actual: string | null;
-  /** La primera libre: la que se propone por defecto. */
+  /** La que el MikroTik ya le tiene fijada a su secreto PPPoE. Sale en los
+   *  clientes migrados, que existían en el router antes que en el panel. */
+  ip_en_el_router: string | null;
+  /** La propuesta por defecto: la del router si es migrado, si no la primera
+   *  libre. */
   sugerida: string | null;
   /** Recortada a 200 por el servidor; con eso hay de sobra para elegir. */
   disponibles: string[];
