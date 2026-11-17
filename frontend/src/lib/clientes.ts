@@ -50,6 +50,8 @@ export type ClienteListItem = {
   zona: Zona | null;
   plan: Plan | null;
   fecha_instalacion: string | null;
+  /** El dia de pago sale de esta fecha, no de la de instalacion. */
+  fecha_ultima_activacion: string | null;
   fecha_vencimiento: string | null;
   pausa_hasta: string | null;
   compromiso_pago_hasta: string | null;
@@ -127,6 +129,11 @@ export async function updateCliente(id: number, data: {
   cantidad_tv?: number;
   tipo_conexion?: TipoConexion;
   notas?: string | null;
+  /** Solo un administrador puede mandarlas; el servidor lo comprueba y deja
+   *  escrito el cambio en el historial del cliente. En formato AAAA-MM-DD. */
+  fecha_instalacion?: string;
+  fecha_ultima_activacion?: string;
+  fecha_vencimiento?: string;
   cuenta_starlink_email?: string | null;
   estado_equipo?: EstadoEquipo;
   equipo_marca?: string;

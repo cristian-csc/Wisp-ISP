@@ -194,6 +194,11 @@ const ClienteDetail = () => {
   const [editCantidadTv, setEditCantidadTv] = useState('0');
   const [editTipoConexion, setEditTipoConexion] = useState<'fibra_optica' | 'inalambrico'>('fibra_optica');
   const [editNotas, setEditNotas] = useState('');
+  /** Las fechas mueven el dinero: cuando se cobra y cuando se corta. Solo un
+   *  administrador las ve y las toca, y el servidor lo vuelve a comprobar. */
+  const [editFechaInstalacion, setEditFechaInstalacion] = useState('');
+  const [editFechaActivacion, setEditFechaActivacion] = useState('');
+  const [editFechaVencimiento, setEditFechaVencimiento] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
@@ -305,6 +310,9 @@ const ClienteDetail = () => {
     setEditCantidadTv(String(cliente.cantidad_tv ?? 0));
     setEditTipoConexion((cliente.tipo_conexion as 'fibra_optica' | 'inalambrico' | null) ?? 'fibra_optica');
     setEditNotas(cliente.notas ?? '');
+    setEditFechaInstalacion(cliente.fecha_instalacion ?? '');
+    setEditFechaActivacion(cliente.fecha_ultima_activacion ?? '');
+    setEditFechaVencimiento(cliente.fecha_vencimiento ?? '');
     setEditError(null);
     setEditarOpen(true);
   }
@@ -318,6 +326,19 @@ const ClienteDetail = () => {
     setGuardandoEdicion(true);
     setEditError(null);
     try {
+      // Las fechas solo viajan si de verdad cambiaron: mandarlas siempre
+      // dejaria una nota en el historial del cliente cada vez que alguien
+      // abre el editor y guarda sin tocarlas.
+      const fechas: Record<string, string> = {};
+      if (puedeAprobar) {
+        if (editFechaInstalacion !== (cliente.fecha_instalacion ?? ''))
+          fechas.fecha_instalacion = editFechaInstalacion;
+        if (editFechaActivacion !== (cliente.fecha_ultima_activacion ?? ''))
+          fechas.fecha_ultima_activacion = editFechaActivacion;
+        if (editFechaVencimiento !== (cliente.fecha_vencimiento ?? ''))
+          fechas.fecha_vencimiento = editFechaVencimiento;
+      }
+
       await updateCliente(cliente.id, {
         nombre: editNombre.trim(),
         telefono: editTelefono.trim() || null,
@@ -328,6 +349,7 @@ const ClienteDetail = () => {
         cantidad_tv: Number(editCantidadTv) || 0,
         tipo_conexion: editTipoConexion,
         notas: editNotas.trim() || null,
+        ...fechas,
       });
       setEditarOpen(false);
       reload();
@@ -1307,6 +1329,72 @@ const ClienteDetail = () => {
               />
             </FormField>
           </FormSection>
+
+          {/* Las fechas, solo para el administrador. Existen sobre todo para
+              migrar: los datos vienen copiados del sistema viejo y ahi se
+              cometen erratas. El servidor vuelve a comprobar el rol. */}
+          {puedeAprobar && (
+            <FormSection title="Fechas del servicio" icon="tabler:calendar-event">
+              <FormField
+                label="Fecha de instalación"
+                htmlFor="editFechaInstalacion"
+                hint="El día que se tendió el cable."
+              >
+                <Input
+                  id="editFechaInstalacion"
+                  type="date"
+                  value={editFechaInstalacion}
+                  onChange={(e) => setEditFechaInstalacion(e.target.value)}
+                />
+              </FormField>
+
+              <FormField
+                label="Fecha de activación"
+                htmlFor="editFechaActivacion"
+                aviso={
+                  <>
+                    <b>De aquí sale el día de pago.</b> Si la cambias y no tocas
+                    el vencimiento, el sistema lo recalcula al día nuevo. Del 26
+                    en adelante el cliente pasa a pagar el 1.
+                  </>
+                }
+              >
+                <Input
+                  id="editFechaActivacion"
+                  type="date"
+                  value={editFechaActivacion}
+                  onChange={(e) => setEditFechaActivacion(e.target.value)}
+                />
+              </FormField>
+
+              <FormField
+                label="Próximo vencimiento"
+                htmlFor="editFechaVencimiento"
+                wide
+                aviso={
+                  <>
+                    Es la fecha que decide <b>cuándo se le cobra y cuándo se le
+                    corta</b> — el corte automático salta 3 días después. En un
+                    cliente migrado, pon la que traía del sistema viejo.
+                  </>
+                }
+              >
+                <Input
+                  id="editFechaVencimiento"
+                  type="date"
+                  value={editFechaVencimiento}
+                  onChange={(e) => setEditFechaVencimiento(e.target.value)}
+                />
+              </FormField>
+
+              <div className="md:col-span-2">
+                <FormCallout tone="info" className="px-3 py-2 text-xs">
+                  Cada cambio de fecha queda escrito en el historial de este
+                  cliente, con tu nombre y de qué fecha a cuál.
+                </FormCallout>
+              </div>
+            </FormSection>
+          )}
 
           {editError && (
             <div className="md:col-span-2">

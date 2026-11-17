@@ -384,6 +384,9 @@ class ClienteOut(BaseModel):
     plan_id: int
     cantidad_tv: int
     fecha_instalacion: Optional[date] = None
+    # El dia de pago sale de aqui, no de la instalacion: la ficha tiene que
+    # poder mostrarla y un administrador corregirla. Ver app/facturacion.py.
+    fecha_ultima_activacion: Optional[date] = None
     fecha_vencimiento: Optional[date] = None
     pausa_hasta: Optional[date] = None
     compromiso_pago_hasta: Optional[date] = None
