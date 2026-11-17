@@ -3,7 +3,7 @@ import CardBox from 'src/components/shared/CardBox';
 import ClienteFilter from 'src/components/apps/clientes/ClienteFilter';
 import ClienteListing from 'src/components/apps/clientes/ClienteListing';
 import { getMe, type Usuario } from 'src/lib/api';
-import type { EstadoCliente } from 'src/lib/clientes';
+import { resumenEstados, type EstadoCliente, type ResumenEstados } from 'src/lib/clientes';
 
 interface Props {
   initialFilter?: EstadoCliente | 'todos';
@@ -15,10 +15,22 @@ interface Props {
 const Clientes = ({ initialFilter = 'todos', tipo }: Props) => {
   const [filter, setFilter] = useState<EstadoCliente | 'todos'>(initialFilter);
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
+  /** Las cuentas por estado se piden aquí, una sola vez, y las usan tanto las
+   *  tarjetas como el desplegable de la barra. Antes vivían dentro del filtro
+   *  y el desplegable no habría podido mostrar los números sin volver a
+   *  pedirlas. No dependen de `filter`: los totales no cambian porque se mire
+   *  un estado u otro. */
+  const [resumen, setResumen] = useState<ResumenEstados | null>(null);
 
   useEffect(() => {
     getMe().then(setCurrentUser).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    resumenEstados({ tipo_conexion: tipo ?? 'fibra_optica,inalambrico' })
+      .then(setResumen)
+      .catch(() => setResumen(null));
+  }, [tipo]);
 
   useEffect(() => {
     setFilter(initialFilter);
@@ -39,8 +51,14 @@ const Clientes = ({ initialFilter = 'todos', tipo }: Props) => {
       </div>
 
       <CardBox>
-        <ClienteFilter filter={filter} setFilter={setFilter} tipo={tipo} />
-        <ClienteListing filter={filter} currentUser={currentUser} tipo={tipo} />
+        <ClienteFilter filter={filter} setFilter={setFilter} resumen={resumen} />
+        <ClienteListing
+          filter={filter}
+          setFilter={setFilter}
+          resumen={resumen}
+          currentUser={currentUser}
+          tipo={tipo}
+        />
       </CardBox>
     </div>
   );
