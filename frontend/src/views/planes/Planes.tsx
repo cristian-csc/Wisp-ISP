@@ -102,6 +102,10 @@ const Planes = () => {
   const [cargandoPerfiles, setCargandoPerfiles] = useState(false);
   const [errorPerfiles, setErrorPerfiles] = useState<string | null>(null);
 
+  /** Un plan satelital no se sincroniza con ningún MikroTik: ni tiene
+   *  perfil PPPoE que copiar, ni código que deba coincidir con nada. */
+  const esSatelital = form.tipoConexion === 'satelital';
+
   async function reload() {
     setPlanes(await listPlanes());
   }
@@ -447,7 +451,11 @@ const Planes = () => {
             <FieldIcon icon="tabler:router">
               <Select
                 value={form.tipoConexion}
-                onValueChange={(v) => setForm({ ...form, tipoConexion: v as TipoConexion })}
+                onValueChange={(v) => {
+                  // Si venía de fibra con perfiles cargados, dejan de valer.
+                  if (v === 'satelital') limpiarPerfiles();
+                  setForm({ ...form, tipoConexion: v as TipoConexion });
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -468,14 +476,20 @@ const Planes = () => {
                 htmlFor="codigoPlan"
                 required
                 aviso={
-                  <>
-                    Tiene que ser el nombre <b>exacto</b> del perfil PPPoE en el
-                    MikroTik — con sus mayúsculas.
-                    <b> Si no coincide, el cliente se autentica y no navega</b>,
-                    y nada avisa hasta que llama.
-                  </>
+                  esSatelital ? undefined : (
+                    <>
+                      Tiene que ser el nombre <b>exacto</b> del perfil PPPoE en el
+                      MikroTik — con sus mayúsculas.
+                      <b> Si no coincide, el cliente se autentica y no navega</b>,
+                      y nada avisa hasta que llama.
+                    </>
+                  )
                 }
-                hint="Tráelo del router aquí abajo en vez de escribirlo de memoria."
+                hint={
+                  esSatelital
+                    ? 'Un nombre corto para identificarlo, por ejemplo STARLINK150. Acá no tiene que coincidir con nada.'
+                    : 'Tráelo del router acá abajo en vez de escribirlo de memoria.'
+                }
               >
                 <FieldIcon icon="tabler:hash">
                   <Input
@@ -487,7 +501,9 @@ const Planes = () => {
                 </FieldIcon>
               </FormField>
 
-              {zonas.length > 0 && (
+              {/* Un plan satelital no pasa por ningún MikroTik: no hay perfil
+                  PPPoE que copiar ni que hacer coincidir. */}
+              {zonas.length > 0 && !esSatelital && (
                 <div className="rounded-xl border border-primary/30 bg-lightprimary/40 p-3.5">
                   <FormField
                     label="Traerlo de un router"

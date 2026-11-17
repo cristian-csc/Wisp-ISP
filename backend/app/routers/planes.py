@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import re
 
@@ -14,13 +15,17 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _perfiles_del_router(zona) -> tuple[dict, str]:
+def _perfiles_del_router(ip: str) -> tuple[dict, str]:
     """Lee los perfiles PPPoE de un MikroTik: {nombre: rate-limit}.
 
     Devuelve ({}, motivo) si no se pudo hablar con el router. Un perfil sin
     rate-limit (como el "default" de fábrica) aparece con cadena vacía.
+
+    Recibe la IP y no la zona a propósito: así se puede llamar desde varios
+    hilos a la vez sin tocar la sesión de la base de datos, que no es segura
+    entre hilos.
     """
-    r = _mikrotik_exec(zona.ip_wireguard, ["/ppp profile print detail"])
+    r = _mikrotik_exec(ip, ["/ppp profile print detail"])
     if not r.get("ok"):
         return {}, r.get("error", "No se pudo conectar con el router")
 
@@ -146,12 +151,29 @@ def verificar_planes(
         models.Plan.tipo_conexion != models.TipoConexion.satelital
     ).order_by(models.Plan.codigo).all()
 
+    # Los routers se consultan en paralelo. En serie, cada zona que no
+    # contesta son ~10 s de espera encadenados: con 7 zonas caídas la
+    # respuesta tardaba 70 s y parecía que el botón no hacía nada; con 15
+    # routers serían dos minutos y medio. Es espera de red, no cálculo, así
+    # que en paralelo tarda lo que la zona más lenta.
+    #
+    # Los datos salen del ORM antes de repartir el trabajo: la sesión de la
+    # base no se puede tocar desde varios hilos.
+    objetivos = [
+        {"zona_id": z.id, "nombre": z.nombre, "ip": z.ip_wireguard}
+        for z in zonas
+    ]
+    if objetivos:
+        with ThreadPoolExecutor(max_workers=min(10, len(objetivos))) as pool:
+            lecturas = list(pool.map(lambda o: _perfiles_del_router(o["ip"]), objetivos))
+    else:
+        lecturas = []
+
     filas = []
-    for zona in zonas:
-        perfiles, error = _perfiles_del_router(zona)
+    for objetivo, (perfiles, error) in zip(objetivos, lecturas):
         if error:
             filas.append({
-                "zona": zona.nombre,
+                "zona": objetivo["nombre"],
                 "sin_contacto": True,
                 "detalle": error,
                 "problemas": 0,
@@ -164,7 +186,7 @@ def verificar_planes(
         for plan in planes:
             esperado = f"{plan.subida_mbps}M/{plan.bajada_mbps}M"
             en_router = perfiles.get(plan.codigo)
-            clientes = conteos.get((zona.id, plan.id), 0)
+            clientes = conteos.get((objetivo["zona_id"], plan.id), 0)
             if en_router is None and clientes == 0:
                 estado = "no_usado"
                 detalle = "Ningún cliente de esta zona tiene este plan"
@@ -191,7 +213,7 @@ def verificar_planes(
             })
 
         filas.append({
-            "zona": zona.nombre,
+            "zona": objetivo["nombre"],
             "sin_contacto": False,
             "detalle": f"{len(perfiles)} perfil(es) en el router",
             "perfiles_del_router": sorted(perfiles.keys()),
@@ -222,7 +244,7 @@ def perfiles_de_zona(
             status_code=400,
             detail="La zona todavía no tiene túnel WireGuard configurado.",
         )
-    perfiles, error = _perfiles_del_router(zona)
+    perfiles, error = _perfiles_del_router(zona.ip_wireguard)
     if error:
         raise HTTPException(status_code=502, detail=error)
     return {
