@@ -282,7 +282,7 @@ const s = StyleSheet.create({
   modalInput: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 12, fontSize: 14, color: COLORS.dark },
   modalRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   modalCancelBtn: { flex: 1, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
-  modalCancelText: { color: '#64748B', fontWeight: '700', fontSize: 13 },
+  modalCancelText: { color: COLORS.mutedForeground, fontWeight: '700', fontSize: 13 },
   modalSubmitBtn: { flex: 1, backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   modalSubmitText: { color: COLORS.white, fontWeight: '800', fontSize: 13 },
 });

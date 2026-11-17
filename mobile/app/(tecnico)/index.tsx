@@ -150,7 +150,7 @@ const st = StyleSheet.create({
   zonaTag: { fontSize: 11, color: COLORS.info, fontWeight: '600' },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.lightprimary, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
   badgeText: { fontSize: 11, color: COLORS.primaryEmphasis, fontWeight: '700' },
-  planText: { fontSize: 13, color: '#475569', fontWeight: '600', marginBottom: 10 },
+  planText: { fontSize: 13, color: COLORS.mutedForeground, fontWeight: '600', marginBottom: 10 },
   btnRow: { flexDirection: 'row', gap: 8 },
   btnGhost: { flex: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center', backgroundColor: COLORS.lighterror, borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)' },
   btnGhostText: { color: COLORS.error, fontWeight: '700', fontSize: 12 },

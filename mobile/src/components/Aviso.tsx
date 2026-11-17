@@ -176,6 +176,6 @@ const a = StyleSheet.create({
   },
   botonCancelar: { backgroundColor: 'transparent' },
   botonBorrar: { backgroundColor: COLORS.error },
-  botonTexto: { fontSize: 15.5, fontWeight: '800', color: '#fff' },
+  botonTexto: { fontSize: 15.5, fontWeight: '800', color: COLORS.white },
   botonTextoCancelar: { color: COLORS.mutedForeground },
 });

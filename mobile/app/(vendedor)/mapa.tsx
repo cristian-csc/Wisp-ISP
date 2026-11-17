@@ -35,5 +35,5 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  avisoText: { flex: 1, fontSize: 12, color: '#334155', lineHeight: 17 },
+  avisoText: { flex: 1, fontSize: 12, color: COLORS.sidebarText, lineHeight: 17 },
 });

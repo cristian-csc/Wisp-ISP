@@ -181,7 +181,7 @@ export default function InstalarScreen() {
             onPress={() => { setCajaId(c.id); setBorneNum(null); }}
           >
             <View style={s.chipRow}>
-              <Ionicons name="cube-outline" size={14} color={cajaId === c.id ? COLORS.primaryEmphasis : '#64748B'} />
+              <Ionicons name="cube-outline" size={14} color={cajaId === c.id ? COLORS.primaryEmphasis : COLORS.mutedForeground} />
               <Text style={[s.chipText, cajaId === c.id && s.chipTextActive]}>{c.codigo}</Text>
             </View>
           </TouchableOpacity>
@@ -227,7 +227,7 @@ export default function InstalarScreen() {
             onPress={() => setOnuId(o.id)}
           >
             <View style={s.chipRow}>
-              <Ionicons name="hardware-chip-outline" size={14} color={onuId === o.id ? COLORS.primaryEmphasis : '#64748B'} />
+              <Ionicons name="hardware-chip-outline" size={14} color={onuId === o.id ? COLORS.primaryEmphasis : COLORS.mutedForeground} />
               <Text style={[s.chipText, onuId === o.id && s.chipTextActive]}>{o.numero_serie}</Text>
             </View>
           </TouchableOpacity>
@@ -289,8 +289,8 @@ export default function InstalarScreen() {
       {fotoCajaNap && <Image source={{ uri: fotoCajaNap }} style={s.fotoPreview} />}
 
       <TouchableOpacity style={[s.fotoBtn, s.fotoBtnOpcional, fotoRouter && s.fotoBtnDone]} onPress={() => tomarFotoGenerica(setFotoRouter)}>
-        <Ionicons name={fotoRouter ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoRouter ? COLORS.success : '#64748B'} />
-        <Text style={[s.fotoBtnText, { color: fotoRouter ? COLORS.success : '#64748B' }]}>
+        <Ionicons name={fotoRouter ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoRouter ? COLORS.success : COLORS.mutedForeground} />
+        <Text style={[s.fotoBtnText, { color: fotoRouter ? COLORS.success : COLORS.mutedForeground }]}>
           {fotoRouter ? 'Router — tocar para repetir' : 'Foto del router instalado (opcional)'}
         </Text>
       </TouchableOpacity>
@@ -348,7 +348,7 @@ const s = StyleSheet.create({
   chip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginRight: 10, backgroundColor: COLORS.card },
   chipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.lightprimary },
   chipRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  chipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  chipText: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground },
   chipTextActive: { color: COLORS.primaryEmphasis, fontWeight: '700' },
   emptyText: { fontSize: 12, color: COLORS.mutedForeground, paddingVertical: 10 },
   bornesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
@@ -368,7 +368,7 @@ const s = StyleSheet.create({
   fotoBtnText: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.primary },
   fotoPreview: { width: '100%', height: 160, borderRadius: 12, marginBottom: 16, backgroundColor: COLORS.muted },
   row: { flexDirection: 'row', marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6 },
+  label: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground, marginBottom: 6 },
   input: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: COLORS.dark },
   fechasCaja: {
     borderWidth: 1, borderColor: COLORS.border, borderRadius: 12,

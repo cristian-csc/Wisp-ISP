@@ -38,7 +38,7 @@ export function VendedorNav() {
             activeOpacity={0.7}
           >
             <View style={[s.iconWrap, isActive && s.iconWrapActive]}>
-              <Ionicons name={isActive ? t.iconActive : t.icon} size={20} color={isActive ? COLORS.primary : COLORS.placeholder} />
+              <Ionicons name={isActive ? t.iconActive : t.icon} size={20} color={isActive ? COLORS.brandStrong : COLORS.placeholder} />
               {t.id === 'jornada' && jornada?.estado === 'activa' && <View style={s.liveDot} />}
             </View>
             <Text style={[s.label, isActive && s.labelActive]}>{t.label}</Text>
@@ -65,8 +65,10 @@ const s = StyleSheet.create({
   },
   tab: { flex: 1, alignItems: 'center', gap: 4 },
   iconWrap: { width: 44, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  liveDot: { position: 'absolute', top: 2, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', borderWidth: 1.5, borderColor: COLORS.card },
-  iconWrapActive: { backgroundColor: COLORS.lightprimary },
+  liveDot: { position: 'absolute', top: 2, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.success, borderWidth: 1.5, borderColor: COLORS.card },
+  // Naranja de marca: es lo que dice "esta app es de WISP", igual que la
+  // barra lateral del panel. El azul queda para las acciones.
+  iconWrapActive: { backgroundColor: COLORS.lightbrand },
   label: { fontSize: 11, fontWeight: '600', color: COLORS.placeholder },
-  labelActive: { color: COLORS.primary, fontWeight: '700' },
+  labelActive: { color: COLORS.brandStrong, fontWeight: '700' },
 });

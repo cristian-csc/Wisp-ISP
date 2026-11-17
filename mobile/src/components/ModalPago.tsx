@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { registrarPago } from '@/services/api';
 import { alerta } from '@/components/Aviso';
+import { COLORS } from '@/theme/colors';
 
 const METODOS = [
   { id: 'efectivo',       label: 'Efectivo',      icon: '💵' },
@@ -162,37 +163,37 @@ export function ModalPago({ visible, onClose, onSuccess, clienteId, clienteNombr
 const s = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: {
-    backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     paddingHorizontal: 20, paddingBottom: 40, paddingTop: 12, maxHeight: '85%',
   },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0', alignSelf: 'center', marginBottom: 16 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, alignSelf: 'center', marginBottom: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-  title: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
-  sub: { fontSize: 13, color: '#64748B', marginTop: 2, maxWidth: 220 },
+  title: { fontSize: 20, fontWeight: '900', color: COLORS.dark },
+  sub: { fontSize: 13, color: COLORS.mutedForeground, marginTop: 2, maxWidth: 220 },
   closeBtn: { padding: 6 },
-  closeText: { fontSize: 18, color: '#94A3B8' },
+  closeText: { fontSize: 18, color: COLORS.placeholder },
 
-  label: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 1.5, marginBottom: 8, marginTop: 16 },
-  input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#1E293B' },
+  label: { fontSize: 10, fontWeight: '700', color: COLORS.placeholder, letterSpacing: 1.5, marginBottom: 8, marginTop: 16 },
+  input: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: COLORS.dark },
 
   mesRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  mesArrow: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  mesArrowText: { fontSize: 22, color: '#475569', fontWeight: '700' },
-  mesBadge: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  mesText: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
+  mesArrow: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.muted, alignItems: 'center', justifyContent: 'center' },
+  mesArrowText: { fontSize: 22, color: COLORS.mutedForeground, fontWeight: '700' },
+  mesBadge: { flex: 1, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  mesText: { fontSize: 16, fontWeight: '700', color: COLORS.dark },
 
-  montoWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14 },
-  montoPrefix: { fontSize: 18, fontWeight: '700', color: '#64748B', marginRight: 6 },
-  montoInput: { flex: 1, paddingVertical: 12, fontSize: 22, fontWeight: '900', color: '#1E293B' },
+  montoWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14 },
+  montoPrefix: { fontSize: 18, fontWeight: '700', color: COLORS.mutedForeground, marginRight: 6 },
+  montoInput: { flex: 1, paddingVertical: 12, fontSize: 22, fontWeight: '900', color: COLORS.dark },
 
   metodosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metodoBtn: { flex: 1, minWidth: '45%', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, alignItems: 'center', backgroundColor: '#F8FAFC' },
-  metodoBtnActive: { borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.06)' },
+  metodoBtn: { flex: 1, minWidth: '45%', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, padding: 12, alignItems: 'center', backgroundColor: COLORS.background },
+  metodoBtnActive: { borderColor: COLORS.success, backgroundColor: 'rgba(5,150,105,0.06)' },
   metodoIcon: { fontSize: 22, marginBottom: 4 },
-  metodoLabel: { fontSize: 12, fontWeight: '700', color: '#64748B' },
-  metodoLabelActive: { color: '#059669' },
+  metodoLabel: { fontSize: 12, fontWeight: '700', color: COLORS.mutedForeground },
+  metodoLabelActive: { color: COLORS.success },
 
-  btn: { backgroundColor: '#059669', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 24 },
+  btn: { backgroundColor: COLORS.success, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 24 },
   btnDisabled: { opacity: 0.7 },
-  btnText: { color: '#FFFFFF', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },
+  btnText: { color: COLORS.white, fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },
 });

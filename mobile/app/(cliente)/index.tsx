@@ -48,7 +48,7 @@ function PulseDot({ activo }: { activo: boolean }) {
 
 function DiasBar({ dias }: { dias: number | null }) {
   if (dias === null) return null;
-  const color = dias < 0 ? '#DC2626' : dias <= 7 ? '#D97706' : '#059669';
+  const color = dias < 0 ? COLORS.error : dias <= 7 ? COLORS.warning : COLORS.success;
   const label = dias < 0
     ? `Vencido hace ${Math.abs(dias)} día${Math.abs(dias) !== 1 ? 's' : ''}`
     : dias === 0 ? 'Vence hoy'
@@ -61,7 +61,7 @@ function DiasBar({ dias }: { dias: number | null }) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
           <Ionicons name={icon} size={13} color={color} />
-          <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>{label}</Text>
+          <Text style={{ fontSize: 12, color: COLORS.mutedForeground, fontWeight: '600' }}>{label}</Text>
         </View>
         {dias > 0 && <Text style={{ fontSize: 12, color: color, fontWeight: '700' }}>{Math.round(pct * 100)}%</Text>}
       </View>
@@ -104,7 +104,7 @@ export default function MiCuentaScreen() {
     <Animated.ScrollView
       style={[s.container, { opacity: fadeAnim }]}
       contentContainerStyle={{ paddingBottom: 40 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={activo ? '#34D399' : '#F87171'} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={activo ? COLORS.success : COLORS.error} />}
     >
       {/* ── HERO ─────────────────────────────────────────────── */}
       <View style={[s.hero, activo ? s.heroGreen : s.heroRed]}>
@@ -144,8 +144,8 @@ export default function MiCuentaScreen() {
 
         {/* ── QUICK STATS ────────────────────────────────────── */}
         <View style={s.statsRow}>
-          <View style={[s.statCard, { borderTopColor: '#6366F1' }]}>
-            <Text style={[s.statNum, { color: '#6366F1' }]}>
+          <View style={[s.statCard, { borderTopColor: COLORS.primary }]}>
+            <Text style={[s.statNum, { color: COLORS.primary }]}>
               {dias !== null ? (dias < 0 ? '0' : String(dias)) : '—'}
             </Text>
             <Text style={s.statLabel}>Días{'\n'}restantes</Text>
@@ -156,8 +156,8 @@ export default function MiCuentaScreen() {
             </Text>
             <Text style={s.statLabel}>Mensua-{'\n'}lidad</Text>
           </View>
-          <View style={[s.statCard, { borderTopColor: activo ? '#10B981' : '#EF4444' }]}>
-            <Ionicons name={activo ? 'checkmark-circle' : 'close-circle'} size={20} color={activo ? '#10B981' : '#EF4444'} style={{ marginBottom: 4 }} />
+          <View style={[s.statCard, { borderTopColor: activo ? COLORS.success : COLORS.error }]}>
+            <Ionicons name={activo ? 'checkmark-circle' : 'close-circle'} size={20} color={activo ? COLORS.success : COLORS.error} style={{ marginBottom: 4 }} />
             <Text style={s.statLabel}>Estado{'\n'}actual</Text>
           </View>
         </View>
@@ -167,7 +167,7 @@ export default function MiCuentaScreen() {
           <View style={s.cardHeader}>
             <Text style={s.cardTitle}>FACTURACIÓN</Text>
             <View style={[s.cardBadge, { backgroundColor: activo ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)' }]}>
-              <Text style={[s.cardBadgeText, { color: activo ? '#059669' : '#DC2626' }]}>
+              <Text style={[s.cardBadgeText, { color: activo ? COLORS.success : COLORS.error }]}>
                 {activo ? 'Al día' : 'Vencido'}
               </Text>
             </View>
@@ -187,7 +187,7 @@ export default function MiCuentaScreen() {
 
           {dias !== null && (
             <View style={[s.venceRow, dias < 0 ? s.venceRojo : dias <= 7 ? s.venceOrange : s.venceGreen]}>
-              <Text style={[s.venceText, { color: dias < 0 ? '#DC2626' : dias <= 7 ? '#D97706' : '#059669' }]}>
+              <Text style={[s.venceText, { color: dias < 0 ? COLORS.error : dias <= 7 ? COLORS.warning : COLORS.success }]}>
                 {dias < 0
                   ? `Vencido el ${fmt(cuenta?.fecha_vencimiento)} — contáctanos`
                   : `Próximo pago: ${fmt(cuenta?.fecha_vencimiento)}`}
@@ -210,8 +210,8 @@ export default function MiCuentaScreen() {
                   {activo ? 'Conexión estable y funcionando' : 'Servicio suspendido temporalmente'}
                 </Text>
               </View>
-              <View style={[s.connStatus, { backgroundColor: activo ? '#DCFCE7' : '#FEE2E2' }]}>
-                <Ionicons name={activo ? 'checkmark' : 'close'} size={18} color={activo ? '#059669' : '#DC2626'} />
+              <View style={[s.connStatus, { backgroundColor: activo ? COLORS.lightsuccess : COLORS.lighterror }]}>
+                <Ionicons name={activo ? 'checkmark' : 'close'} size={18} color={activo ? COLORS.success : COLORS.error} />
               </View>
             </View>
           </View>
@@ -239,7 +239,7 @@ export default function MiCuentaScreen() {
 
         {/* ── AYUDA ───────────────────────────────────────────── */}
         <TouchableOpacity
-          style={[s.card, { backgroundColor: COLORS.dark, borderColor: '#334155' }]}
+          style={[s.card, { backgroundColor: COLORS.dark, borderColor: COLORS.sidebarText }]}
           onPress={() => Linking.openURL('https://wa.me/51990807069')}
           activeOpacity={0.8}
         >
@@ -248,8 +248,8 @@ export default function MiCuentaScreen() {
               <Ionicons name="logo-whatsapp" size={24} color="#25D366" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: '#F1F5F9', fontWeight: '800', fontSize: 14 }}>¿Problemas con tu servicio?</Text>
-              <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>Toca aquí para escribirnos por WhatsApp</Text>
+              <Text style={{ color: COLORS.muted, fontWeight: '800', fontSize: 14 }}>¿Problemas con tu servicio?</Text>
+              <Text style={{ color: COLORS.placeholder, fontSize: 12, marginTop: 2 }}>Toca aquí para escribirnos por WhatsApp</Text>
             </View>
             <View style={s.helpBadge}>
               <Text style={{ color: COLORS.secondary, fontWeight: '900', fontSize: 11 }}>SOPORTE</Text>
@@ -263,16 +263,16 @@ export default function MiCuentaScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: COLORS.background },
 
   /* Hero */
   hero: {
     paddingTop: 28, paddingBottom: 40, paddingHorizontal: 24,
     alignItems: 'center', overflow: 'hidden',
   },
-  heroGreen: { backgroundColor: '#059669' },
-  heroRed:   { backgroundColor: '#DC2626' },
-  deco: { position: 'absolute', borderRadius: 999, backgroundColor: '#FFFFFF' },
+  heroGreen: { backgroundColor: COLORS.success },
+  heroRed:   { backgroundColor: COLORS.error },
+  deco: { position: 'absolute', borderRadius: 999, backgroundColor: COLORS.white },
 
   heroGreeting: { color: 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: '600', marginBottom: 14, letterSpacing: 0.5 },
 
@@ -283,10 +283,10 @@ const s = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)',
   },
-  heroBubbleText: { fontSize: 34, fontWeight: '900', color: '#FFFFFF' },
-  heroName: { fontSize: 17, fontWeight: '800', color: '#FFFFFF', opacity: 0.9, marginBottom: 12, textAlign: 'center' },
+  heroBubbleText: { fontSize: 34, fontWeight: '900', color: COLORS.white },
+  heroName: { fontSize: 17, fontWeight: '800', color: COLORS.white, opacity: 0.9, marginBottom: 12, textAlign: 'center' },
   heroStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-  heroStatus: { fontSize: 20, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1 },
+  heroStatus: { fontSize: 20, fontWeight: '900', color: COLORS.white, letterSpacing: 1 },
 
   dotWrap: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
   dot: { width: 10, height: 10, borderRadius: 5 },
@@ -302,35 +302,35 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 20, paddingHorizontal: 16, paddingVertical: 7,
   },
-  heroPlanText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  heroPlanText: { fontSize: 14, fontWeight: '800', color: COLORS.white },
 
   /* Quick stats */
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   statCard: {
-    flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12,
+    flex: 1, backgroundColor: COLORS.white, borderRadius: 14, padding: 12,
     alignItems: 'center', borderTopWidth: 3,
     shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   statNum: { fontSize: 22, fontWeight: '900', marginBottom: 4 },
-  statLabel: { fontSize: 10, color: '#94A3B8', fontWeight: '600', textAlign: 'center', lineHeight: 14 },
+  statLabel: { fontSize: 10, color: COLORS.placeholder, fontWeight: '600', textAlign: 'center', lineHeight: 14 },
 
   /* Cards */
   card: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1,
-    borderColor: '#E2E8F0', padding: 16, marginBottom: 14,
+    backgroundColor: COLORS.white, borderRadius: 16, borderWidth: 1,
+    borderColor: COLORS.border, padding: 16, marginBottom: 14,
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  cardTitle: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 2 },
+  cardTitle: { fontSize: 10, fontWeight: '700', color: COLORS.placeholder, letterSpacing: 2 },
   cardBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   cardBadgeText: { fontSize: 11, fontWeight: '700' },
 
   montoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  montoLabel: { fontSize: 15, color: '#64748B', fontWeight: '600' },
-  montoSub: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  montoValor: { fontSize: 30, fontWeight: '900', color: '#1E293B' },
+  montoLabel: { fontSize: 15, color: COLORS.mutedForeground, fontWeight: '600' },
+  montoSub: { fontSize: 11, color: COLORS.placeholder, marginTop: 2 },
+  montoValor: { fontSize: 30, fontWeight: '900', color: COLORS.dark },
 
-  progressBg: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' },
+  progressBg: { height: 6, backgroundColor: COLORS.muted, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, borderRadius: 3 },
 
   venceRow: { borderRadius: 10, padding: 10, borderWidth: 1, marginTop: 12 },
@@ -342,18 +342,18 @@ const s = StyleSheet.create({
   connRow: { flexDirection: 'row', alignItems: 'center' },
   connIcon: {
     width: 52, height: 52, borderRadius: 26,
-    backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.muted, alignItems: 'center', justifyContent: 'center',
   },
-  connPlan: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
-  connSub: { fontSize: 12, color: '#64748B', marginTop: 3 },
+  connPlan: { fontSize: 15, fontWeight: '800', color: COLORS.dark },
+  connSub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 3 },
   connStatus: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 
   fila: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.muted,
   },
-  filaLabel: { color: '#64748B', fontSize: 13 },
-  filaValue: { color: '#1E293B', fontSize: 13, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: 12 },
+  filaLabel: { color: COLORS.mutedForeground, fontSize: 13 },
+  filaValue: { color: COLORS.dark, fontSize: 13, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: 12 },
 
   helpIcon: {
     width: 42, height: 42, borderRadius: 21,

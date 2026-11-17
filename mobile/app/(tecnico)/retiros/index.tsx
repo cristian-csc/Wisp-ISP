@@ -109,8 +109,8 @@ const st = StyleSheet.create({
   badge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 },
-  rowText: { fontSize: 12, color: '#475569', flexShrink: 1 },
-  motivo: { fontSize: 13, color: '#475569', marginTop: 4 },
+  rowText: { fontSize: 12, color: COLORS.mutedForeground, flexShrink: 1 },
+  motivo: { fontSize: 13, color: COLORS.mutedForeground, marginTop: 4 },
   ctaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
   ctaText: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
 });

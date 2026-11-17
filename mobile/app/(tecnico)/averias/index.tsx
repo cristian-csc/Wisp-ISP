@@ -126,7 +126,7 @@ const st = StyleSheet.create({
   cliente: { fontSize: 14, fontWeight: '700', color: COLORS.dark, flex: 1, marginRight: 8 },
   badge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
-  motivo: { fontSize: 13, color: '#475569' },
+  motivo: { fontSize: 13, color: COLORS.mutedForeground },
   iniciarBtn: { flexDirection: 'row', gap: 6, marginTop: 10, backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 9, alignItems: 'center', justifyContent: 'center' },
   iniciarText: { color: COLORS.white, fontWeight: '800', fontSize: 12 },
   enProcesoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },

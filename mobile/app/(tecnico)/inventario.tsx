@@ -132,7 +132,7 @@ const st = StyleSheet.create({
   addBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 13 },
   statCard: { flex: 1, backgroundColor: COLORS.card, borderRadius: 14, padding: 12, alignItems: 'center', borderTopWidth: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
   statValue: { fontSize: 24, fontWeight: '900' },
-  statLabel: { fontSize: 11, color: '#64748B', marginTop: 2, fontWeight: '600' },
+  statLabel: { fontSize: 11, color: COLORS.mutedForeground, marginTop: 2, fontWeight: '600' },
   card: { backgroundColor: COLORS.card, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 14, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   serie: { fontSize: 14, fontWeight: '700', color: COLORS.dark },

@@ -112,7 +112,7 @@ const st = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   statCard: { flex: 1, backgroundColor: COLORS.card, borderRadius: 14, padding: 12, alignItems: 'center', borderTopWidth: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
   statValue: { fontSize: 22, fontWeight: '900' },
-  statLabel: { fontSize: 11, color: '#64748B', marginTop: 2, fontWeight: '600' },
+  statLabel: { fontSize: 11, color: COLORS.mutedForeground, marginTop: 2, fontWeight: '600' },
   card: { backgroundColor: COLORS.card, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 14, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
   nombre: { fontSize: 15, fontWeight: '700', color: COLORS.dark },
@@ -121,5 +121,5 @@ const st = StyleSheet.create({
   zonaTag: { fontSize: 11, color: COLORS.info, fontWeight: '600' },
   badge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4, maxWidth: 140 },
   badgeText: { fontSize: 10, fontWeight: '700', textAlign: 'right' },
-  planText: { fontSize: 13, color: '#475569', fontWeight: '600' },
+  planText: { fontSize: 13, color: COLORS.mutedForeground, fontWeight: '600' },
 });

@@ -242,7 +242,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
                 <Ionicons
                   name={op.icono}
                   size={16}
-                  color={tipoDoc === op.v ? '#fff' : COLORS.primary}
+                  color={tipoDoc === op.v ? COLORS.white : COLORS.primary}
                 />
                 <Text style={[f.tipoChipText, tipoDoc === op.v && f.tipoChipTextActive]}>
                   {op.etiqueta}
@@ -408,12 +408,12 @@ const f = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
 
   section: { backgroundColor: COLORS.card, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, padding: 16, marginBottom: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: COLORS.muted },
   sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.primary, letterSpacing: 1.5 },
 
   campo: { marginBottom: 12 },
   row: { flexDirection: 'row', marginBottom: 4 },
-  label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6 },
+  label: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground, marginBottom: 6 },
   input: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: COLORS.dark },
   textArea: { minHeight: 80, paddingTop: 12 },
 
@@ -452,21 +452,21 @@ const f = StyleSheet.create({
     color: COLORS.primary,
   },
   tipoChipTextActive: {
-    color: '#fff',
+    color: COLORS.white,
   },
 
   planChip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10, marginRight: 10, minWidth: 100, backgroundColor: COLORS.background, alignItems: 'center' },
   planChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.lightprimary },
-  planNombre: { fontSize: 13, fontWeight: '700', color: '#64748B' },
+  planNombre: { fontSize: 13, fontWeight: '700', color: COLORS.mutedForeground },
   planNombreActive: { color: COLORS.primaryEmphasis },
-  planPrecio: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  planPrecio: { fontSize: 12, color: COLORS.placeholder, marginTop: 2 },
 
   pinHint: { flexDirection: 'row', backgroundColor: COLORS.lightprimary, borderWidth: 1, borderColor: 'rgba(93,135,255,0.25)', borderRadius: 10, padding: 12, marginTop: 4 },
-  pinHintText: { flex: 1, fontSize: 12, color: '#64748B', lineHeight: 18 },
+  pinHintText: { flex: 1, fontSize: 12, color: COLORS.mutedForeground, lineHeight: 18 },
 
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   switchLabel: { fontSize: 14, fontWeight: '600', color: COLORS.dark },
-  switchSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  switchSub: { fontSize: 12, color: COLORS.placeholder, marginTop: 2 },
 
   guardarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   guardarDisabled: { opacity: 0.7 },

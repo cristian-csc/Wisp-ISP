@@ -265,12 +265,12 @@ const s = StyleSheet.create({
 
   chip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginRight: 10, backgroundColor: COLORS.card },
   chipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.lightprimary },
-  chipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  chipText: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground },
   chipTextActive: { color: COLORS.primaryEmphasis, fontWeight: '700' },
   emptyText: { fontSize: 12, color: COLORS.mutedForeground, paddingVertical: 10 },
 
   motivoChip: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, marginRight: 8, backgroundColor: COLORS.card },
-  motivoChipText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  motivoChipText: { fontSize: 12, fontWeight: '600', color: COLORS.mutedForeground },
 
   fotosRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
   fotoWrap: { position: 'relative' },

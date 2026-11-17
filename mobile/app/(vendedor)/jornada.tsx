@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getZonas } from '@/services/api';
+import { SelectorZona } from '@/components/SelectorZona';
 import { useJornada } from '@/hooks/useJornada';
 import { VendedorNav } from '@/components/VendedorNav';
 import { COLORS } from '@/theme/colors';
@@ -21,7 +22,7 @@ function horaInicio(iniciadoEn: string): string {
 
 export default function JornadaScreen() {
   const { jornada, loading, iniciar, finalizar, reportarReclamo } = useJornada();
-  const [zonas, setZonas] = useState<{ id: number; nombre: string }[]>([]);
+  const [zonas, setZonas] = useState<{ id: number; nombre: string; total_clientes?: number }[]>([]);
   const [zonaId, setZonaId] = useState<number | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [, forceTick] = useState(0);
@@ -136,7 +137,7 @@ export default function JornadaScreen() {
             // reclamo anterior. En ambos casos no tiene nada que reportar.
             <View style={[s.reclamoBadge, s.reclamoBadgeOk]}>
               <Ionicons name="checkmark-circle" size={15} color="#059669" />
-              <Text style={[s.reclamoBadgeText, { color: '#059669' }]}>
+              <Text style={[s.reclamoBadgeText, { color: COLORS.success }]}>
                 {jornada.reclamo_reintegrado
                   ? `Pasaje reintegrado — S/ ${jornada.monto_pasaje.toFixed(2)}`
                   : `Pasaje de hoy registrado — S/ ${jornada.monto_pasaje.toFixed(2)}`}
@@ -170,18 +171,19 @@ export default function JornadaScreen() {
           <Text style={s.cardTitle}>¿A qué zona vas hoy?</Text>
           <Text style={s.cardSub}>Opcional — ayuda a tu administrador a ubicarte más rápido.</Text>
 
+          {/* Eran pastillas que se desbordaban en varias filas irregulares:
+              con catorce zonas de nombres desiguales quedaba un bloque
+              desordenado y costaba encontrar la que se buscaba. Es el mismo
+              selector que el registro de clientes, asi que la vendedora lo
+              usa igual en las dos pantallas. */}
           {zonas.length > 0 && (
-            <View style={s.chipsRow}>
-              {zonas.map((z) => (
-                <TouchableOpacity
-                  key={z.id}
-                  style={[s.chip, zonaId === z.id && s.chipActivo]}
-                  onPress={() => setZonaId(zonaId === z.id ? null : z.id)}
-                >
-                  <Text style={[s.chipText, zonaId === z.id && s.chipTextActivo]}>{z.nombre}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <SelectorZona
+              zonas={zonas}
+              valor={zonaId}
+              onChange={setZonaId}
+              opcional
+              placeholder="Elegir zona (opcional)"
+            />
           )}
 
           <TouchableOpacity style={[s.btn, s.btnIniciar, procesando && { opacity: 0.6 }]} onPress={handleIniciar} disabled={procesando}>
@@ -249,7 +251,7 @@ const s = StyleSheet.create({
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
-  heroActiva: { backgroundColor: '#059669' },
+  heroActiva: { backgroundColor: COLORS.success },
   heroIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 14, borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)' },
   heroTitle: { fontSize: 19, fontWeight: '800', color: COLORS.white },
   heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 6, textAlign: 'center', lineHeight: 18 },
@@ -259,22 +261,18 @@ const s = StyleSheet.create({
   cardSub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 3, marginBottom: 4 },
 
   estadoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  estadoText: { fontSize: 14, fontWeight: '800', color: '#059669' },
-  pulseDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#10B981' },
+  estadoText: { fontSize: 14, fontWeight: '800', color: COLORS.success },
+  pulseDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.success },
 
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   infoText: { fontSize: 13, color: COLORS.dark, fontWeight: '600' },
   hint: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 14, lineHeight: 17 },
 
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-  chip: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: COLORS.background },
-  chipActivo: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { fontSize: 12, fontWeight: '700', color: COLORS.mutedForeground },
-  chipTextActivo: { color: COLORS.white },
 
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 10, paddingVertical: 14, marginTop: 18 },
   btnIniciar: { backgroundColor: COLORS.primary },
-  btnFinalizar: { backgroundColor: '#DC2626' },
+  btnFinalizar: { backgroundColor: COLORS.error },
   btnText: { color: COLORS.white, fontWeight: '800', fontSize: 14 },
 
   reclamoLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, alignSelf: 'flex-start' },
@@ -291,7 +289,7 @@ const s = StyleSheet.create({
   modalInput: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 12, fontSize: 14, color: COLORS.dark },
   modalRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   modalCancelBtn: { flex: 1, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
-  modalCancelText: { color: '#64748B', fontWeight: '700', fontSize: 13 },
+  modalCancelText: { color: COLORS.mutedForeground, fontWeight: '700', fontSize: 13 },
   modalSubmitBtn: { flex: 1, backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   modalSubmitText: { color: COLORS.white, fontWeight: '800', fontSize: 13 },
 });

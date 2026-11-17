@@ -22,10 +22,16 @@ export function SelectorZona({
   zonas,
   valor,
   onChange,
+  /** Donde la zona no es obligatoria —la jornada de la vendedora, por
+   *  ejemplo— se ofrece también la opción de no elegir ninguna. */
+  opcional = false,
+  placeholder = 'Elegir zona',
 }: {
   zonas: ZonaOpcion[];
   valor: number | null;
-  onChange: (id: number) => void;
+  onChange: (id: number | null) => void;
+  opcional?: boolean;
+  placeholder?: string;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [busca, setBusca] = useState('');
@@ -56,7 +62,7 @@ export function SelectorZona({
           color={elegida ? COLORS.info : COLORS.mutedForeground}
         />
         <Text style={[s.campoTexto, !elegida && s.campoVacio]} numberOfLines={1}>
-          {elegida ? elegida.nombre : 'Elegir zona'}
+          {elegida ? elegida.nombre : placeholder}
         </Text>
         <Ionicons name="chevron-down" size={18} color={COLORS.mutedForeground} />
       </TouchableOpacity>
@@ -90,6 +96,31 @@ export function SelectorZona({
             </View>
           )}
 
+          {/* Sin zona, arriba del todo: es una respuesta válida y tiene que
+              estar tan a mano como las demás. */}
+          {opcional && (
+            <TouchableOpacity
+              style={[s.fila, { marginHorizontal: 16, marginTop: 10 }, valor === null && s.filaActiva]}
+              onPress={() => {
+                onChange(null);
+                cerrar();
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[s.filaIcono, valor === null && s.filaIconoActivo]}>
+                <Ionicons
+                  name="remove-circle-outline"
+                  size={18}
+                  color={valor === null ? COLORS.white : COLORS.mutedForeground}
+                />
+              </View>
+              <Text style={[s.filaNombre, valor === null && s.filaNombreActivo]}>
+                Sin zona definida
+              </Text>
+              {valor === null && <Ionicons name="checkmark-circle" size={22} color={COLORS.info} />}
+            </TouchableOpacity>
+          )}
+
           <FlatList
             data={filtradas}
             keyExtractor={(z) => String(z.id)}
@@ -120,7 +151,7 @@ export function SelectorZona({
                     <Ionicons
                       name="location"
                       size={18}
-                      color={activa ? '#fff' : COLORS.info}
+                      color={activa ? COLORS.white : COLORS.info}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
