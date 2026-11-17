@@ -272,6 +272,11 @@ class ClienteUpdate(BaseModel):
     plan_id: Optional[int] = None
     cantidad_tv: Optional[int] = None
     fecha_vencimiento: Optional[date] = None
+    # Solo un administrador puede tocarlas, y cada cambio queda en el
+    # historial del cliente. Hacen falta para migrar: los datos vienen
+    # copiados del sistema viejo y ahi se cometen erratas.
+    fecha_instalacion: Optional[date] = None
+    fecha_ultima_activacion: Optional[date] = None
     tipo_conexion: Optional[TipoConexion] = None
     notas: Optional[str] = None
     cuenta_starlink_email: Optional[str] = None

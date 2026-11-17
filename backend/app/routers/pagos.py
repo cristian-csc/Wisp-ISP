@@ -16,6 +16,7 @@ from ..database import get_db
 from .. import models, schemas
 from .auth import get_current_user, require_roles
 from ..config import settings
+from ..facturacion import dia_de_pago
 from ..billing import monto_mensual, detalle_monto
 from ..recibos import DatosRecibo, LineaRecibo, etiqueta_mes, generar_recibo_pdf
 from ..mensajeria import enviar_archivo, enviar_texto, oculta
@@ -430,7 +431,13 @@ def create_pago(
         anio_p, mes_p = map(int, meses[-1].split("-"))
         next_mes  = mes_p % 12 + 1
         next_anio = anio_p + (1 if mes_p == 12 else 0)
-        dia_ciclo = cliente.fecha_instalacion.day if cliente.fecha_instalacion else 1
+        # El dia de pago sale de cuando se ACTIVO el servicio, no de cuando se
+        # instalo: se puede tender el cable un martes y dejarlo funcionando el
+        # jueves porque la caja no tenia potencia, y el cliente cuenta desde
+        # que tiene internet. Para los migrados, que no tienen fecha de
+        # activacion, sigue valiendo la de instalacion.
+        base = cliente.fecha_ultima_activacion or cliente.fecha_instalacion
+        dia_ciclo = dia_de_pago(base) if base else 1
         dia_ciclo = min(dia_ciclo, calendar.monthrange(next_anio, next_mes)[1])
         nueva_vencimiento = date(next_anio, next_mes, dia_ciclo)
         # Nunca retroceder si ya hay una fecha posterior (pagos de meses atrasados)

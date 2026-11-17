@@ -17,6 +17,7 @@ from .auth import get_current_user, get_password_hash, require_roles, zonas_asig
 from ..config import settings
 from ..mensajeria import cabeceras_bot
 from ..billing import monto_mensual, detalle_monto
+from ..facturacion import con_dia, dia_de_pago, primer_vencimiento
 from .whatsapp import wa_request
 
 router = APIRouter()
@@ -771,8 +772,11 @@ def instalar_cliente(
     hoy = date.today()
     cliente.estado = models.EstadoCliente.activo
     cliente.fecha_instalacion = hoy
-    cliente.fecha_vencimiento = hoy + timedelta(days=30)
     cliente.fecha_ultima_activacion = hoy
+    # Un mes de servicio, no treinta dias: sumar 30 a un 31 de enero da el 2
+    # de marzo, y a partir de ahi el cliente ya no paga el dia que le dijeron.
+    # Ver app/facturacion.py, que tiene la regla entera y por que es asi.
+    cliente.fecha_vencimiento = primer_vencimiento(hoy)
     cliente.tecnico_instalador_id = current_user.id
     cliente.metros_cable = data.metros_cable
 
@@ -1075,6 +1079,57 @@ def update_cliente(
 
     update_data = data.model_dump(exclude_unset=True)
 
+    # Las fechas mandan el dinero: mueven cuando se le cobra y cuando se le
+    # corta. Solo un administrador las toca, y cada cambio queda escrito con
+    # su nombre, de que fecha a cual. Si alguien corre una fecha de pago, se
+    # sabe quien fue.
+    _FECHAS = {
+        "fecha_instalacion": "instalación",
+        "fecha_ultima_activacion": "activación",
+        "fecha_vencimiento": "vencimiento",
+    }
+    cambios_de_fecha = []
+    for campo, etiqueta in _FECHAS.items():
+        if campo not in update_data:
+            continue
+        if current_user.rol != models.RolUsuario.admin:
+            raise HTTPException(
+                status_code=403,
+                detail="Solo un administrador puede corregir las fechas del cliente.",
+            )
+        antes = getattr(cliente, campo)
+        despues = update_data[campo]
+        if antes != despues:
+            cambios_de_fecha.append(
+                "%s: %s → %s"
+                % (
+                    etiqueta,
+                    antes.strftime("%d/%m/%Y") if antes else "vacía",
+                    despues.strftime("%d/%m/%Y") if despues else "vacía",
+                )
+            )
+
+    # Si se corrige la activacion y no se dice nada del vencimiento, el dia de
+    # pago cambia y el vencimiento viejo deja de cuadrar: se recalcula al
+    # mismo dia del mes que ya tenia apuntado.
+    if (
+        "fecha_ultima_activacion" in update_data
+        and update_data["fecha_ultima_activacion"]
+        and "fecha_vencimiento" not in update_data
+        and cliente.fecha_vencimiento
+    ):
+        nuevo_dia = dia_de_pago(update_data["fecha_ultima_activacion"])
+        if nuevo_dia != cliente.fecha_vencimiento.day:
+            update_data["fecha_vencimiento"] = con_dia(
+                cliente.fecha_vencimiento.year,
+                cliente.fecha_vencimiento.month,
+                nuevo_dia,
+            )
+            cambios_de_fecha.append(
+                "vencimiento recalculado al día %d por el cambio de activación"
+                % nuevo_dia
+            )
+
     # Un cliente satelital no tiene secreto PPPoE — no hay nada que
     # sincronizar en ningún MikroTik.
     if cliente.tipo_conexion != models.TipoConexion.satelital:
@@ -1098,6 +1153,16 @@ def update_cliente(
 
     for key, value in update_data.items():
         setattr(cliente, key, value)
+
+    # Las fechas mueven el dinero, asi que el cambio queda firmado.
+    if cambios_de_fecha:
+        db.add(models.Historial(
+            cliente_id=cliente.id,
+            tipo=models.TipoHistorial.nota,
+            descripcion="Fechas corregidas por %s — %s."
+                        % (current_user.nombre, "; ".join(cambios_de_fecha)),
+            usuario_id=current_user.id,
+        ))
 
     db.commit()
     db.refresh(cliente)
