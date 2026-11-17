@@ -250,7 +250,7 @@ const Planes = () => {
         toast.success('Todos los routers coinciden con el panel');
       } else {
         toast.warning(`${problemas} zona(s) con diferencias`, {
-          description: 'Revisa el detalle debajo del título.',
+          description: 'El detalle se abre en una ventana.',
         });
       }
     } catch (err: any) {
@@ -272,55 +272,6 @@ const Planes = () => {
         </div>
       </div>
 
-      {verificacion && (
-        <div className="mb-5 flex flex-col gap-2">
-          {verificacion.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Ninguna zona tiene todavía túnel WireGuard configurado, así que no
-              hay routers a los que preguntar.
-            </p>
-          )}
-          {verificacion.map((z) => (
-            <div key={z.zona} className="rounded-xl border border-ld p-3">
-              <div className="mb-1.5 flex items-center gap-2">
-                <Icon
-                  icon={z.sin_contacto ? 'tabler:plug-connected-x' : 'tabler:router'}
-                  height={17}
-                  className={z.sin_contacto ? 'text-error' : 'text-primary'}
-                />
-                <span className="text-sm font-semibold">{z.zona}</span>
-                <span className="text-xs text-muted-foreground">{z.detalle}</span>
-                {!z.sin_contacto && (
-                  <span
-                    className={`rounded-md px-2 py-0.5 text-xs font-medium ${
-                      z.problemas === 0
-                        ? 'bg-lightsuccess text-success'
-                        : 'bg-lighterror text-error'
-                    }`}
-                  >
-                    {z.problemas === 0
-                      ? 'nada que arreglar'
-                      : `${z.problemas} por arreglar`}
-                  </span>
-                )}
-              </div>
-              {!z.sin_contacto && (
-                <div className="flex flex-wrap gap-1.5">
-                  {z.planes.map((p) => (
-                    <span
-                      key={p.codigo}
-                      title={p.detalle}
-                      className={`rounded-md px-2 py-0.5 text-xs ${ESTILO_ESTADO[p.estado]}`}
-                    >
-                      {p.codigo} · {TEXTO_ESTADO[p.estado](p)}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
 
       <Table>
         <TableHeader>
@@ -373,6 +324,108 @@ const Planes = () => {
         </TableBody>
       </Table>
 
+      {/* La comprobación con los routers vive en su propia ventana.
+          Antes se desplegaba bajo el título y empujaba la tabla hacia abajo:
+          con catorce zonas, el listado de planes desaparecía de la pantalla. */}
+      <FormDialog
+        open={verificacion !== null}
+        onOpenChange={(o) => !o && setVerificacion(null)}
+        title="Comprobación con los routers"
+        subtitle={
+          verificacion
+            ? `${verificacion.length} zona(s) con túnel · ${
+                verificacion.filter((z) => z.sin_contacto || z.problemas > 0).length
+              } con algo que revisar`
+            : undefined
+        }
+        icon="tabler:router"
+        tone="primary"
+        size="xl"
+        footer={
+          <FormActions
+            onCancel={() => setVerificacion(null)}
+            cancelLabel="Cerrar"
+            submitLabel={comprobando ? 'Consultando…' : 'Volver a comprobar'}
+            submitIcon="tabler:refresh"
+            onSubmit={comprobarEnRouters}
+            submitting={comprobando}
+          />
+        }
+      >
+        <div className="flex flex-col gap-2.5">
+          {verificacion?.length === 0 && (
+            <FormCallout tone="warning">
+              Ninguna zona tiene todavía túnel WireGuard configurado, así que no
+              hay routers a los que preguntar.
+            </FormCallout>
+          )}
+
+          {verificacion?.map((z) => (
+            <div
+              key={z.zona}
+              className={`rounded-xl border p-3 ${
+                z.sin_contacto
+                  ? 'border-error/40 bg-lighterror/40'
+                  : z.problemas > 0
+                  ? 'border-warning/40 bg-lightwarning/40'
+                  : 'border-success/40 bg-lightsuccess/40'
+              }`}
+            >
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <Icon
+                  icon={
+                    z.sin_contacto
+                      ? 'tabler:plug-connected-x'
+                      : z.problemas > 0
+                      ? 'tabler:alert-triangle'
+                      : 'tabler:circle-check'
+                  }
+                  height={18}
+                  className={
+                    z.sin_contacto
+                      ? 'text-error'
+                      : z.problemas > 0
+                      ? 'text-warning'
+                      : 'text-success'
+                  }
+                />
+                <span className="text-sm font-bold">{z.zona}</span>
+                <span
+                  className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                    z.sin_contacto
+                      ? 'bg-lighterror text-error'
+                      : z.problemas === 0
+                      ? 'bg-lightsuccess text-success'
+                      : 'bg-lightwarning text-warning'
+                  }`}
+                >
+                  {z.sin_contacto
+                    ? 'no contesta'
+                    : z.problemas === 0
+                    ? 'todo correcto'
+                    : `${z.problemas} por arreglar`}
+                </span>
+                <span className="text-xs text-muted-foreground">{z.detalle}</span>
+              </div>
+
+              {!z.sin_contacto && (
+                <div className="flex flex-wrap gap-1.5">
+                  {z.planes.map((p) => (
+                    <span
+                      key={p.codigo}
+                      title={p.detalle}
+                      className={`rounded-md px-2 py-1 text-xs font-medium ${ESTILO_ESTADO[p.estado]}`}
+                    >
+                      {p.codigo} · {TEXTO_ESTADO[p.estado](p)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </FormDialog>
+
       <FormDialog
         open={open}
         onOpenChange={setOpen}
@@ -414,7 +467,15 @@ const Planes = () => {
                 label="Código"
                 htmlFor="codigoPlan"
                 required
-                hint="Es el nombre exacto del perfil PPPoE en el MikroTik. Si no coincide, el cliente no conecta."
+                aviso={
+                  <>
+                    Tiene que ser el nombre <b>exacto</b> del perfil PPPoE en el
+                    MikroTik — con sus mayúsculas.
+                    <b> Si no coincide, el cliente se autentica y no navega</b>,
+                    y nada avisa hasta que llama.
+                  </>
+                }
+                hint="Tráelo del router aquí abajo en vez de escribirlo de memoria."
               >
                 <FieldIcon icon="tabler:hash">
                   <Input
@@ -427,12 +488,12 @@ const Planes = () => {
               </FormField>
 
               {zonas.length > 0 && (
-                <div className="rounded-xl border border-dashed border-border p-3">
+                <div className="rounded-xl border border-primary/30 bg-lightprimary/40 p-3.5">
                   <FormField
                     label="Traerlo de un router"
                     icon="tabler:cloud-download"
                     htmlFor="zonaPerfiles"
-                    hint="Opcional. Evita erratas y copia también las velocidades."
+                    hint="Copia el código y las velocidades tal como están en el router."
                   >
                     <Select value={zonaPerfiles} onValueChange={cargarPerfiles}>
                       <SelectTrigger id="zonaPerfiles" className="w-full">
@@ -449,37 +510,70 @@ const Planes = () => {
                   </FormField>
 
                   {cargandoPerfiles && (
-                    <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="mt-3 flex items-center gap-2 text-sm font-medium text-primary-text">
                       <Icon icon="tabler:loader-2" width={17} className="animate-spin" />
-                      Leyendo los perfiles del router…
+                      Preguntándole al router…
                     </div>
                   )}
 
                   {errorPerfiles && (
-                    <p className="mt-3 text-sm text-error-text">{errorPerfiles}</p>
+                    <div className="mt-3">
+                      <FormCallout tone="error" className="px-3 py-2 text-xs">
+                        {errorPerfiles}
+                      </FormCallout>
+                    </div>
                   )}
 
                   {perfiles.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {perfiles.map((p) => (
-                        <button
-                          key={p.nombre}
-                          type="button"
-                          onClick={() => usarPerfil(p.nombre)}
-                          className={
-                            'rounded-lg border px-2.5 py-1 text-xs transition-colors ' +
-                            (form.codigo === p.nombre
-                              ? 'border-primary bg-lightprimary text-primary-text'
-                              : 'border-border hover:bg-muted')
-                          }
-                        >
-                          <span className="font-medium">{p.nombre}</span>
-                          {p.rate_limit && (
-                            <span className="ml-1.5 text-muted-foreground">{p.rate_limit}</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
+                    <>
+                      <p className="mt-3 text-xs font-semibold text-primary-text">
+                        {perfiles.length} perfil(es) en ese router — toca el que
+                        corresponde a este plan:
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {perfiles.map((p) => {
+                          const elegido = form.codigo === p.nombre;
+                          return (
+                            <button
+                              key={p.nombre}
+                              type="button"
+                              onClick={() => usarPerfil(p.nombre)}
+                              aria-pressed={elegido}
+                              className={
+                                'transition-ui flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ' +
+                                (elegido
+                                  ? 'border-primary bg-primary text-white shadow-sm'
+                                  : 'border-ld bg-card hover:border-primary/60 hover:shadow-sm')
+                              }
+                            >
+                              {elegido && <Icon icon="tabler:check" width={14} />}
+                              <span className="font-semibold">{p.nombre}</span>
+                              {/* Sin rate-limit el perfil no limita nada: se dice
+                                  en ambar en vez de dejar un hueco mudo. */}
+                              {p.rate_limit ? (
+                                <span
+                                  className={
+                                    'rounded px-1.5 py-0.5 font-mono text-[11px] ' +
+                                    (elegido ? 'bg-white/20' : 'bg-lightsuccess text-success')
+                                  }
+                                >
+                                  {p.rate_limit}
+                                </span>
+                              ) : (
+                                <span
+                                  className={
+                                    'rounded px-1.5 py-0.5 text-[11px] ' +
+                                    (elegido ? 'bg-white/20' : 'bg-lightwarning text-warning')
+                                  }
+                                >
+                                  sin límite
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
               )}

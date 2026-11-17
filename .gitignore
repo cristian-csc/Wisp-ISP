@@ -63,3 +63,7 @@ whatsapp/node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Ajustes locales de Windows (ver docker-compose.override.yml)
+docker-compose.override.yml
+nginx/nginx.local.conf
