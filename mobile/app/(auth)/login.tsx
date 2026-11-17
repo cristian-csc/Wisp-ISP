@@ -1,15 +1,12 @@
 import { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
-  ScrollView,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession, ROLES_MOBILE_PERMITIDOS } from '@/hooks/useSession';
 import { loginAdmin, loginCliente, getMeWithToken } from '@/services/api';
 import { Logo } from '@/components/Logo';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 const FEATURES: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
   { icon: 'flash-outline', label: 'Instalación rápida' },
@@ -30,7 +27,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!usuario.trim() || !clave.trim()) {
-      Alert.alert('Campos requeridos', 'Ingresa tu usuario y contraseña.');
+      alerta('Campos requeridos', 'Ingresa tu usuario y contraseña.');
       return;
     }
     setLoading(true);
@@ -39,7 +36,7 @@ export default function LoginScreen() {
         const res = await loginAdmin(usuario.trim(), clave);
         const me = await getMeWithToken(res.access_token);
         if (!ROLES_MOBILE_PERMITIDOS.includes(me.rol as any)) {
-          Alert.alert(
+          alerta(
             'Acceso no disponible aquí',
             'Tu usuario debe ingresar desde el sistema web, no desde la app móvil.',
           );
@@ -51,7 +48,7 @@ export default function LoginScreen() {
         await signIn({ token: res.access_token, role: 'cliente', nombre: res.nombre, clienteId: res.cliente_id });
       }
     } catch (e: any) {
-      Alert.alert('Error al ingresar', e.message ?? 'Credenciales incorrectas');
+      alerta('Error al ingresar', e.message ?? 'Credenciales incorrectas');
     } finally {
       setLoading(false);
     }

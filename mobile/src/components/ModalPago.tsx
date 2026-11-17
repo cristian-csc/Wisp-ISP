@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import {
-  Modal, View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { registrarPago } from '@/services/api';
+import { alerta } from '@/components/Aviso';
 
 const METODOS = [
   { id: 'efectivo',       label: 'Efectivo',      icon: '💵' },
@@ -51,16 +49,16 @@ export function ModalPago({ visible, onClose, onSuccess, clienteId, clienteNombr
 
   async function guardar() {
     const n = parseFloat(monto);
-    if (!monto || isNaN(n) || n <= 0) { Alert.alert('Monto inválido', 'Ingresa un monto mayor a 0.'); return; }
-    if (!fecha.match(/^\d{4}-\d{2}-\d{2}$/)) { Alert.alert('Fecha inválida', 'Formato: AAAA-MM-DD'); return; }
+    if (!monto || isNaN(n) || n <= 0) { alerta('Monto inválido', 'Ingresa un monto mayor a 0.'); return; }
+    if (!fecha.match(/^\d{4}-\d{2}-\d{2}$/)) { alerta('Fecha inválida', 'Formato: AAAA-MM-DD'); return; }
     setSaving(true);
     try {
       await registrarPago({ cliente_id: clienteId, monto: n, mes_pagado: mes, fecha_pago: fecha, metodo_pago: metodo, numero_operacion: numeroOperacion.trim() || undefined });
-      Alert.alert('✓ Pago registrado', `Pago de S/ ${n.toFixed(2)} registrado para ${mesLabel(mes)}.`, [
+      alerta('✓ Pago registrado', `Pago de S/ ${n.toFixed(2)} registrado para ${mesLabel(mes)}.`, [
         { text: 'OK', onPress: () => { onSuccess(); onClose(); } },
       ]);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo registrar el pago');
+      alerta('Error', e.message ?? 'No se pudo registrar el pago');
     } finally { setSaving(false); }
   }
 

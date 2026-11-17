@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getClientes, noInstalarCliente, ClienteListItem } from '@/services/api';
 import { TecnicoNav } from '@/components/TecnicoNav';
 import { PromptModal } from '@/components/PromptModal';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 function OrdenCard({ item, onInstalar, onNoInstalar }: {
   item: ClienteListItem; onInstalar: () => void; onNoInstalar: () => void;
@@ -66,7 +67,7 @@ export default function TecnicoOrdenesScreen() {
       setNoInstalarTarget(null);
       load();
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      alerta('Error', e.message);
     }
   }
 

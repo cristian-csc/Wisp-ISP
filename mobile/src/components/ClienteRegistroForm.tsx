@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Switch, Image,
-} from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { crearCliente, subirFotoFachada, getZonas, getPlanes, consultarDocumento} from '@/services/api';
 import { useSession } from '@/hooks/useSession';
@@ -10,6 +7,7 @@ import { UbicacionPickerModal } from './UbicacionPickerModal';
 import { SelectorZona } from './SelectorZona';
 import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 type Opcion = { id: number; nombre: string; precio?: number; total_clientes?: number };
 type Coords = { lat: number; lng: number };
@@ -161,7 +159,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
     const esEmpresa = tipoDoc === 'ruc';
 
     if (!nombre.trim() || !dni.trim() || !zonaId || !planId) {
-      Alert.alert(
+      alerta(
         'Campos requeridos',
         esEmpresa
           ? 'Completa: Razón social, DNI del responsable, Zona y Plan.'
@@ -170,21 +168,21 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
       return;
     }
     if (dni.trim().length !== 8) {
-      Alert.alert('DNI inválido', 'El DNI debe tener 8 dígitos.');
+      alerta('DNI inválido', 'El DNI debe tener 8 dígitos.');
       return;
     }
     if (esEmpresa) {
       if (!/^(10|15|17|20)\d{9}$/.test(ruc.trim())) {
-        Alert.alert('RUC inválido', 'El RUC debe tener 11 dígitos y empezar en 10, 15, 17 o 20.');
+        alerta('RUC inválido', 'El RUC debe tener 11 dígitos y empezar en 10, 15, 17 o 20.');
         return;
       }
       if (!responsable.trim()) {
-        Alert.alert('Falta el responsable', 'Indica quién es el responsable del servicio en la empresa.');
+        alerta('Falta el responsable', 'Indica quién es el responsable del servicio en la empresa.');
         return;
       }
     }
     if (fotoObligatoria && !fotoUri) {
-      Alert.alert('Falta la foto de la fachada', 'Como estás en campo, tienes que tomar la foto de la vivienda antes de registrar al cliente.');
+      alerta('Falta la foto de la fachada', 'Como estás en campo, tienes que tomar la foto de la vivienda antes de registrar al cliente.');
       return;
     }
     setSaving(true);
@@ -211,13 +209,13 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
         try {
           await subirFotoFachada(cliente.id, fotoUri);
         } catch {
-          Alert.alert('Cliente registrado', 'El cliente se guardó, pero la foto de la fachada no se pudo subir. Puedes intentarlo más tarde desde el detalle del cliente.');
+          alerta('Cliente registrado', 'El cliente se guardó, pero la foto de la fachada no se pudo subir. Puedes intentarlo más tarde desde el detalle del cliente.');
         }
       }
 
       onDone(nombre.trim());
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo registrar el cliente');
+      alerta('Error', e.message ?? 'No se pudo registrar el cliente');
     } finally {
       setSaving(false);
     }

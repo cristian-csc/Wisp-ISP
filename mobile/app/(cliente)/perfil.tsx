@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useSession } from '@/hooks/useSession';
 import { cambiarPin } from '@/services/api';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 export default function PerfilScreen() {
   const { session, signOut } = useSession();
@@ -12,16 +13,16 @@ export default function PerfilScreen() {
   const [saving, setSaving] = useState(false);
 
   async function handleCambiarPin() {
-    if (!pinActual || !pinNuevo || !pinConfirm) { Alert.alert('Campos requeridos', 'Completa todos los campos.'); return; }
-    if (pinNuevo.length < 8) { Alert.alert('Contraseña inválida', 'La contraseña nueva debe tener al menos 8 caracteres.'); return; }
-    if (pinNuevo !== pinConfirm) { Alert.alert('No coincide', 'La contraseña nueva y la confirmación no son iguales.'); return; }
+    if (!pinActual || !pinNuevo || !pinConfirm) { alerta('Campos requeridos', 'Completa todos los campos.'); return; }
+    if (pinNuevo.length < 8) { alerta('Contraseña inválida', 'La contraseña nueva debe tener al menos 8 caracteres.'); return; }
+    if (pinNuevo !== pinConfirm) { alerta('No coincide', 'La contraseña nueva y la confirmación no son iguales.'); return; }
     setSaving(true);
     try {
       await cambiarPin(pinActual, pinNuevo);
       setPinActual(''); setPinNuevo(''); setPinConfirm('');
-      Alert.alert('Contraseña actualizada', 'Tu contraseña fue cambiada correctamente.');
+      alerta('Contraseña actualizada', 'Tu contraseña fue cambiada correctamente.');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo cambiar la contraseña');
+      alerta('Error', e.message ?? 'No se pudo cambiar la contraseña');
     } finally { setSaving(false); }
   }
 

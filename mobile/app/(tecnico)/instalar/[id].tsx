@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -9,6 +9,7 @@ import {
 } from '@/services/api';
 import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 /** La fecha de hace `dias` dias, a medianoche local. */
 function haceDias(dias: number): Date {
@@ -18,10 +19,11 @@ function haceDias(dias: number): Date {
   return d;
 }
 
-const DIAS_SEMANA = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
 
-function fechaCorta(d: Date): string {
-  return DIAS_SEMANA[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1);
+function fechaLarga(d: Date): string {
+  return d.getDate() + ' de ' + MESES[d.getMonth()];
 }
 
 /**
@@ -48,8 +50,6 @@ export default function InstalarScreen() {
   const [borneNum, setBorneNum] = useState<number | null>(null);
   const [onuId, setOnuId] = useState<number | null>(null);
   const [metros, setMetros] = useState('');
-  // Cuantos dias atras quedo funcionando el servicio. Casi siempre hoy.
-  const [diasAtras, setDiasAtras] = useState(0);
   const [potencia, setPotencia] = useState('');
   const [precinto, setPrecinto] = useState('');
 
@@ -76,7 +76,7 @@ export default function InstalarScreen() {
         setOnus(o);
         setTieneFoto(evidencias.length > 0);
       } catch {
-        Alert.alert('Error', 'No se pudo cargar la información de instalación');
+        alerta('Error', 'No se pudo cargar la información de instalación');
       } finally {
         setLoading(false);
       }
@@ -90,26 +90,27 @@ export default function InstalarScreen() {
 
   const tomarFoto = () => tomarFotoGenerica(setFotoUri);
 
-  const fechaActivacion = haceDias(diasAtras);
+  // Instalar es hoy. Corregirla es cosa del administrador, desde la ficha.
+  const fechaActivacion = haceDias(0);
 
   const cajaSeleccionada = cajas.find(c => c.id === cajaId) ?? null;
   const bornesLibres: Borne[] = cajaSeleccionada?.bornes.filter(b => b.estado === 'libre') ?? [];
 
   async function confirmar() {
     if (!cajaId || !borneNum || !onuId) {
-      Alert.alert('Faltan datos', 'Selecciona caja NAP, borne y ONU.');
+      alerta('Faltan datos', 'Selecciona caja NAP, borne y ONU.');
       return;
     }
     if (!tieneFoto && !fotoUri) {
-      Alert.alert('Falta la foto de la fachada', 'Este cliente se registró sin foto — tómala ahora antes de confirmar la instalación.');
+      alerta('Falta la foto de la fachada', 'Este cliente se registró sin foto — tómala ahora antes de confirmar la instalación.');
       return;
     }
     if (!fotoPowerMeter) {
-      Alert.alert('Falta la foto del power meter', 'Toma una foto de la lectura del power meter antes de confirmar.');
+      alerta('Falta la foto del power meter', 'Toma una foto de la lectura del power meter antes de confirmar.');
       return;
     }
     if (!fotoCajaNap) {
-      Alert.alert('Falta la foto de la caja NAP', 'Toma una foto de la caja NAP con el precinto y el puerto usado antes de confirmar.');
+      alerta('Falta la foto de la caja NAP', 'Toma una foto de la caja NAP con el precinto y el puerto usado antes de confirmar.');
       return;
     }
     setSaving(true);
@@ -121,7 +122,6 @@ export default function InstalarScreen() {
         metros_cable: metros ? Number(metros) : undefined,
         potencia_optica_dbm: potencia ? Number(potencia) : undefined,
         codigo_precinto: precinto.trim() || undefined,
-        fecha_activacion: fechaActivacion.toISOString().slice(0, 10),
       });
       if (!tieneFoto && fotoUri) {
         try {
@@ -139,11 +139,11 @@ export default function InstalarScreen() {
       } catch {
         // La instalación ya se guardó — las fotos se pueden volver a subir después, no bloquea el flujo.
       }
-      Alert.alert('✓ Instalación completada', `${cliente?.nombre} quedó activo.`, [
+      alerta('✓ Instalación completada', `${cliente?.nombre} quedó activo.`, [
         { text: 'OK', onPress: () => router.replace('/(tecnico)') },
       ]);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo completar la instalación');
+      alerta('Error', e.message ?? 'No se pudo completar la instalación');
     } finally {
       setSaving(false);
     }
@@ -296,30 +296,32 @@ export default function InstalarScreen() {
       </TouchableOpacity>
       {fotoRouter && <Image source={{ uri: fotoRouter }} style={s.fotoPreview} />}
 
-      <Text style={s.sectionTitle}>5. DESDE CUANDO FUNCIONA</Text>
-      {/* De esta fecha sale el dia de pago, asi que se elige aca y no se
-          supone: se tiende el cable un martes, la caja no tiene potencia y el
-          servicio queda andando el jueves. El cliente cuenta desde que tiene
-          internet. Mas atras de una semana ya lo corrige un administrador. */}
-      <View style={s.diasRow}>
-        {[0, 1, 2, 3].map((d) => (
-          <TouchableOpacity
-            key={d}
-            style={[s.diaChip, diasAtras === d && s.diaChipActivo]}
-            onPress={() => setDiasAtras(d)}
-            activeOpacity={0.8}
-          >
-            <Text style={[s.diaChipText, diasAtras === d && s.diaChipTextActivo]}>
-              {d === 0 ? 'Hoy' : d === 1 ? 'Ayer' : fechaCorta(haceDias(d))}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <Text style={s.sectionTitle}>5. FECHAS DEL SERVICIO</Text>
+      {/* El tecnico no las elige: instalar es hoy y el servicio queda
+          funcionando hoy, que es el caso normal. Las ve para saber que dia le
+          va a tocar pagar al cliente y poder decirselo ahi mismo. Si hay que
+          corregirlas --un cliente migrado que traia otra fecha, o una
+          instalacion que se registra dias despues-- lo hace un administrador
+          desde la ficha, donde el cambio queda firmado en el historial. */}
+      <View style={s.fechasCaja}>
+        <View style={s.fechaFila}>
+          <Ionicons name="construct-outline" size={17} color={COLORS.mutedForeground} />
+          <Text style={s.fechaEtiqueta}>Instalacion</Text>
+          <Text style={s.fechaValor}>{fechaLarga(fechaActivacion)}</Text>
+        </View>
+        <View style={s.fechaSeparador} />
+        <View style={s.fechaFila}>
+          <Ionicons name="flash-outline" size={17} color={COLORS.mutedForeground} />
+          <Text style={s.fechaEtiqueta}>Activacion</Text>
+          <Text style={s.fechaValor}>{fechaLarga(fechaActivacion)}</Text>
+        </View>
       </View>
       <View style={s.pagoAviso}>
         <Ionicons name="calendar-outline" size={16} color={COLORS.info} />
         <Text style={s.pagoAvisoText}>
           Este cliente pagara los{' '}
-          <Text style={s.pagoAvisoFuerte}>{diaDePago(fechaActivacion)}</Text> de cada mes.
+          <Text style={s.pagoAvisoFuerte}>{diaDePago(fechaActivacion)}</Text> de cada mes,
+          con 3 dias de gracia antes del corte.
         </Text>
       </View>
 
@@ -368,14 +370,15 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6 },
   input: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: COLORS.dark },
-  diasRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  diaChip: {
-    flex: 1, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10,
-    paddingVertical: 10, alignItems: 'center', backgroundColor: COLORS.background,
+  fechasCaja: {
+    borderWidth: 1, borderColor: COLORS.border, borderRadius: 12,
+    backgroundColor: COLORS.background, marginBottom: 10,
+    paddingHorizontal: 14, paddingVertical: 4,
   },
-  diaChipActivo: { borderColor: COLORS.info, backgroundColor: COLORS.lightinfo },
-  diaChipText: { fontSize: 13, fontWeight: '700', color: COLORS.mutedForeground },
-  diaChipTextActivo: { color: COLORS.info },
+  fechaFila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 },
+  fechaEtiqueta: { flex: 1, fontSize: 14, color: COLORS.mutedForeground, fontWeight: '600' },
+  fechaValor: { fontSize: 14, fontWeight: '800', color: COLORS.dark },
+  fechaSeparador: { height: 1, backgroundColor: COLORS.border },
   pagoAviso: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: COLORS.lightinfo, borderRadius: 10,

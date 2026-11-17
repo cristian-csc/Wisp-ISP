@@ -1,5 +1,5 @@
-import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { alerta } from '@/components/Aviso';
 
 /**
  * Pedir una foto: con la cámara o de la galería.
@@ -10,14 +10,15 @@ import * as ImagePicker from 'expo-image-picker';
  * teléfono, o se fotografió el poste antes de abrir la app. Ahí la única
  * opción era volver a subir al poste.
  *
- * Se pregunta con el aviso del propio sistema en vez de montar una pantalla:
- * son dos opciones, se ven grandes, y no hay nada que aprender.
+ * Se pregunta con el aviso de la app (components/Aviso) y no con el del
+ * sistema: son dos opciones, se ven grandes, y la ventana tiene la cara del
+ * resto de la aplicación en vez de la de Android.
  *
  * Devuelve la ruta de la imagen, o null si se cerró sin elegir.
  */
 export function elegirFoto(titulo = 'Agregar foto'): Promise<string | null> {
   return new Promise((resolve) => {
-    Alert.alert(
+    alerta(
       titulo,
       undefined,
       [
@@ -41,7 +42,7 @@ export function elegirFoto(titulo = 'Agregar foto'): Promise<string | null> {
 async function conLaCamara(): Promise<string | null> {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert('Permiso necesario', 'Activa el permiso de cámara para tomar la foto.');
+    alerta('Permiso necesario', 'Activa el permiso de cámara para tomar la foto.');
     return null;
   }
   // Calidad 0.6: la foto se sube por datos móviles desde el campo, y a
@@ -53,7 +54,7 @@ async function conLaCamara(): Promise<string | null> {
 async function deLaGaleria(): Promise<string | null> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert('Permiso necesario', 'Activa el permiso de fotos para elegir una de la galería.');
+    alerta('Permiso necesario', 'Activa el permiso de fotos para elegir una de la galería.');
     return null;
   }
   const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6, allowsEditing: false });

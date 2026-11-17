@@ -1,10 +1,11 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/hooks/useSession';
 import { getMe, actualizarMiPerfil, cambiarPassword, UsuarioMe } from '@/services/api';
 import { Logo } from '@/components/Logo';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 function initials(nombre: string) {
   return nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
@@ -78,7 +79,7 @@ export function CuentaScreen({
   useEffect(() => { cargarPerfil(); }, []);
 
   function confirmarSalir() {
-    Alert.alert('Cerrar sesión', '¿Seguro que quieres salir?', [
+    alerta('Cerrar sesión', '¿Seguro que quieres salir?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Cerrar sesión', style: 'destructive', onPress: signOut },
     ]);
@@ -97,7 +98,7 @@ export function CuentaScreen({
       setPerfil(actualizado);
       setEditando(false);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar');
+      alerta('Error', e.message ?? 'No se pudo guardar');
     } finally {
       setGuardandoPerfil(false);
     }
@@ -110,20 +111,20 @@ export function CuentaScreen({
 
   async function guardarPassword() {
     if (passwordNueva.length < 8) {
-      Alert.alert('Clave muy corta', 'La contraseña nueva debe tener al menos 8 caracteres.');
+      alerta('Clave muy corta', 'La contraseña nueva debe tener al menos 8 caracteres.');
       return;
     }
     if (passwordNueva !== passwordConfirmar) {
-      Alert.alert('No coinciden', 'La confirmación no coincide con la contraseña nueva.');
+      alerta('No coinciden', 'La confirmación no coincide con la contraseña nueva.');
       return;
     }
     setGuardandoPassword(true);
     try {
       await cambiarPassword(passwordActual, passwordNueva);
       setCambiandoPassword(false);
-      Alert.alert('✓ Listo', 'Tu contraseña se actualizó correctamente.');
+      alerta('✓ Listo', 'Tu contraseña se actualizó correctamente.');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo cambiar la contraseña');
+      alerta('Error', e.message ?? 'No se pudo cambiar la contraseña');
     } finally {
       setGuardandoPassword(false);
     }

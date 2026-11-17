@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider, useSession, resetInactivity, clearInactivityTimer, seccionDeRol } from '@/hooks/useSession';
+import { AvisoHost } from '@/components/Aviso';
 
 const INACTIVITY_MS = 10 * 60 * 1000;
 
@@ -62,6 +63,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <SessionProvider>
           <AppNavigator />
+          {/* Los avisos de la app. Va por encima de todo y una sola vez: las
+              pantallas los piden con alerta(), sin montar nada. */}
+          <AvisoHost />
         </SessionProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

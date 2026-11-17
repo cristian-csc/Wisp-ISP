@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { getCliente, ClienteDetalle, EstadoCliente } from '@/services/api';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 const ESTADO_LABEL: Record<EstadoCliente, string> = {
   pendiente_aprobacion: 'Pendiente de aprobación',
@@ -45,7 +46,7 @@ export default function VendedorClienteDetalleScreen() {
         setCliente(data);
         navigation.setOptions({ title: data.nombre });
       } catch {
-        Alert.alert('Error', 'No se pudo cargar el cliente');
+        alerta('Error', 'No se pudo cargar el cliente');
       } finally {
         setLoading(false);
       }

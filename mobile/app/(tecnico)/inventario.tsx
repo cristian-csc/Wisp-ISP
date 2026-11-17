@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getOnus, marcarOnu, Onu } from '@/services/api';
 import { TecnicoNav } from '@/components/TecnicoNav';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 const ESTADO_LABEL: Record<Onu['estado'], string> = {
   en_almacen: 'En almacén',
@@ -66,7 +67,7 @@ export default function InventarioScreen() {
   useEffect(() => { load(); }, [load]);
 
   function marcar(item: Onu, estado: 'danado' | 'perdido') {
-    Alert.alert(
+    alerta(
       `¿Marcar ${item.numero_serie} como ${estado === 'danado' ? 'dañada' : 'perdida'}?`,
       'Esta acción la retira de tu inventario disponible.',
       [
@@ -75,7 +76,7 @@ export default function InventarioScreen() {
           text: 'Confirmar', style: 'destructive',
           onPress: async () => {
             try { await marcarOnu(item.id, estado); load(); }
-            catch (e: any) { Alert.alert('Error', e.message); }
+            catch (e: any) { alerta('Error', e.message); }
           },
         },
       ],

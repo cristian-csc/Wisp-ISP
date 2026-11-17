@@ -1,14 +1,12 @@
 import { useRef, useState } from 'react';
-import {
-  View, Text, Image, TextInput, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal,
-} from 'react-native';
+import { View, Text, Image, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { CameraView, useCameraPermissions, scanFromURLAsync, type BarcodeScanningResult } from 'expo-camera';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { registrarOnuPropio, detectarMarcaOnu, WifiVersion } from '@/services/api';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 type Campo = 'mac' | 'serie' | null;
 
@@ -70,7 +68,7 @@ function ScannerModal({ visible, onClose, onScanned }: {
       const encontrados = await scanFromURLAsync(captura.uri, [...BARCODE_TYPES]);
       setCodigos(encontrados);
     } catch {
-      Alert.alert('Error', 'No se pudo tomar la foto. Intenta de nuevo.');
+      alerta('Error', 'No se pudo tomar la foto. Intenta de nuevo.');
       setFoto(null);
     } finally {
       setAnalizando(false);
@@ -202,7 +200,7 @@ export default function EscanearEquipoScreen() {
 
   async function guardar() {
     if (!serie.trim()) {
-      Alert.alert('Falta el N° de serie', 'El N° de serie GPON es obligatorio.');
+      alerta('Falta el N° de serie', 'El N° de serie GPON es obligatorio.');
       return;
     }
     setSaving(true);
@@ -213,13 +211,13 @@ export default function EscanearEquipoScreen() {
         marca: marca.trim() || undefined,
         wifi_version: wifiVersion || undefined,
       });
-      Alert.alert(
+      alerta(
         '✓ Equipo registrado',
         `ONU ${serie.trim()} quedó en tu inventario.`,
         [{ text: 'OK', onPress: () => router.replace('/(tecnico)/inventario') }],
       );
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo registrar el equipo');
+      alerta('Error', e.message ?? 'No se pudo registrar el equipo');
     } finally {
       setSaving(false);
     }

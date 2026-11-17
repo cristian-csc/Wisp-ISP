@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Switch, Image } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -8,6 +8,7 @@ import {
 } from '@/services/api';
 import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 export default function AveriaDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,7 +38,7 @@ export default function AveriaDetalleScreen() {
         const srcs = await Promise.all(ev.map((e) => getEvidenciaImageSource(e.id)));
         setEvidenciaSrc(Object.fromEntries(ev.map((e, i) => [e.id, srcs[i]])));
       } catch {
-        Alert.alert('Error', 'No se pudo cargar la avería');
+        alerta('Error', 'No se pudo cargar la avería');
       } finally {
         setLoading(false);
       }
@@ -58,7 +59,7 @@ export default function AveriaDetalleScreen() {
 
   async function confirmar() {
     if (!diagnostico.trim()) {
-      Alert.alert('Falta el diagnóstico', 'Describe lo que realmente se hizo para resolver la avería.');
+      alerta('Falta el diagnóstico', 'Describe lo que realmente se hizo para resolver la avería.');
       return;
     }
     setSaving(true);
@@ -76,9 +77,9 @@ export default function AveriaDetalleScreen() {
           // La avería ya quedó resuelta — si una foto falla no se pierde el registro.
         }
       }
-      Alert.alert('✓ Avería resuelta', '', [{ text: 'OK', onPress: () => router.replace('/(tecnico)/averias') }]);
+      alerta('✓ Avería resuelta', '', [{ text: 'OK', onPress: () => router.replace('/(tecnico)/averias') }]);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo resolver la avería');
+      alerta('Error', e.message ?? 'No se pudo resolver la avería');
     } finally {
       setSaving(false);
     }

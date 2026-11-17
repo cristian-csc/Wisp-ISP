@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image, Linking } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -9,6 +9,7 @@ import {
 } from '@/services/api';
 import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 export default function RetiroDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -46,7 +47,7 @@ export default function RetiroDetalleScreen() {
         const srcs = await Promise.all(ev.map((e) => getEvidenciaImageSource(e.id)));
         setEvidenciaSrc(Object.fromEntries(ev.map((e, i) => [e.id, srcs[i]])));
       } catch {
-        Alert.alert('Error', 'No se pudo cargar la orden de retiro');
+        alerta('Error', 'No se pudo cargar la orden de retiro');
       } finally {
         setLoading(false);
       }
@@ -72,7 +73,7 @@ export default function RetiroDetalleScreen() {
   function confirmar() {
     if (!orden) return;
     if (!numeroAviso) {
-      Alert.alert(
+      alerta(
         'Sin número',
         'El cliente no tiene celular registrado, así que no va a recibir el mensaje de despedida. ¿Completar igual?',
         [
@@ -82,7 +83,7 @@ export default function RetiroDetalleScreen() {
       );
       return;
     }
-    Alert.alert(
+    alerta(
       'Marcar equipos recogidos',
       `Se cierra el servicio y se le manda el mensaje de despedida al ${numeroAviso}.`,
       [
@@ -115,11 +116,11 @@ export default function RetiroDetalleScreen() {
       const aviso = resultado.whatsapp_enviado
         ? 'El servicio quedó anulado y al cliente le llegó el mensaje de despedida.'
         : `El servicio quedó anulado, pero el mensaje de despedida no salió: ${resultado.whatsapp_detalle ?? 'motivo desconocido'}. Avísale a la oficina para reenviarlo.`;
-      Alert.alert('✓ Equipos recogidos', aviso, [
+      alerta('✓ Equipos recogidos', aviso, [
         { text: 'OK', onPress: () => router.replace('/(tecnico)/retiros') },
       ]);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo completar el retiro');
+      alerta('Error', e.message ?? 'No se pudo completar el retiro');
     } finally {
       setSaving(false);
     }

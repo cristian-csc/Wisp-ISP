@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getZonas } from '@/services/api';
 import { useJornada } from '@/hooks/useJornada';
 import { VendedorNav } from '@/components/VendedorNav';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 function tiempoActivo(iniciadoEn: string): string {
   const ms = Date.now() - new Date(iniciadoEn).getTime();
@@ -43,14 +44,14 @@ export default function JornadaScreen() {
     try {
       await iniciar(zonaId);
     } catch (e: any) {
-      Alert.alert('No se pudo iniciar', e.message ?? 'Intenta de nuevo.');
+      alerta('No se pudo iniciar', e.message ?? 'Intenta de nuevo.');
     } finally {
       setProcesando(false);
     }
   }
 
   function handleFinalizar() {
-    Alert.alert('Finalizar jornada', '¿Seguro que terminaste tu salida a campo?', [
+    alerta('Finalizar jornada', '¿Seguro que terminaste tu salida a campo?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Finalizar', style: 'destructive', onPress: async () => {
@@ -58,7 +59,7 @@ export default function JornadaScreen() {
           try {
             await finalizar();
           } catch (e: any) {
-            Alert.alert('No se pudo finalizar', e.message ?? 'Intenta de nuevo.');
+            alerta('No se pudo finalizar', e.message ?? 'Intenta de nuevo.');
           } finally {
             setProcesando(false);
           }
@@ -78,7 +79,7 @@ export default function JornadaScreen() {
   async function handleGuardarReclamo() {
     const monto = Number(montoReclamo);
     if (!montoReclamo.trim() || Number.isNaN(monto) || monto <= 0) {
-      Alert.alert('Monto inválido', 'Ingresa cuánto gastaste de tu bolsillo.');
+      alerta('Monto inválido', 'Ingresa cuánto gastaste de tu bolsillo.');
       return;
     }
     setGuardandoReclamo(true);
@@ -86,7 +87,7 @@ export default function JornadaScreen() {
       await reportarReclamo(monto, notaReclamo.trim() || undefined);
       setModalReclamoVisible(false);
     } catch (e: any) {
-      Alert.alert('No se pudo guardar', e.message ?? 'Intenta de nuevo.');
+      alerta('No se pudo guardar', e.message ?? 'Intenta de nuevo.');
     } finally {
       setGuardandoReclamo(false);
     }

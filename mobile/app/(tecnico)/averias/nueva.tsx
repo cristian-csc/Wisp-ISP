@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Image,
-} from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -11,6 +8,7 @@ import {
 } from '@/services/api';
 import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 const MOTIVOS_CLIENTE = ['Cambio de router', 'Conectores', 'Cable drop', 'Patchcord', 'Cambio de roseta'];
 const MOTIVOS_PLANTA = ['Sin potencia óptica', 'Caja dañada', 'Corte de troncal'];
@@ -71,15 +69,15 @@ export default function NuevaAveriaScreen() {
 
   async function guardar() {
     if (tipo === 'cliente' && !clienteSel) {
-      Alert.alert('Falta el cliente', 'Busca y selecciona el cliente afectado.');
+      alerta('Falta el cliente', 'Busca y selecciona el cliente afectado.');
       return;
     }
     if (tipo === 'planta' && !cajaSel) {
-      Alert.alert('Falta la caja NAP', 'Selecciona la caja NAP afectada.');
+      alerta('Falta la caja NAP', 'Selecciona la caja NAP afectada.');
       return;
     }
     if (!motivo.trim()) {
-      Alert.alert('Falta el motivo', 'Describe el problema.');
+      alerta('Falta el motivo', 'Describe el problema.');
       return;
     }
     setSaving(true);
@@ -96,11 +94,11 @@ export default function NuevaAveriaScreen() {
           // La avería ya se guardó — si una foto falla no se pierde el reporte.
         }
       }
-      Alert.alert('✓ Avería reportada', '', [
+      alerta('✓ Avería reportada', '', [
         { text: 'OK', onPress: () => router.replace('/(tecnico)/averias') },
       ]);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo registrar la avería');
+      alerta('Error', e.message ?? 'No se pudo registrar la avería');
     } finally {
       setSaving(false);
     }

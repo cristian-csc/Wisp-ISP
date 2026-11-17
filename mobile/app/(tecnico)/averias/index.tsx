@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getAverias, iniciarAveria, Averia } from '@/services/api';
 import { TecnicoNav } from '@/components/TecnicoNav';
 import { COLORS } from '@/theme/colors';
+import { alerta } from '@/components/Aviso';
 
 const ESTADO_LABEL: Record<Averia['estado'], string> = {
   pendiente: 'Pendiente',
@@ -66,7 +67,7 @@ export default function AveriasScreen() {
     try {
       await iniciarAveria(item.id);
       load();
-    } catch (e: any) { Alert.alert('Error', e.message); }
+    } catch (e: any) { alerta('Error', e.message); }
   }
 
   const header = (
