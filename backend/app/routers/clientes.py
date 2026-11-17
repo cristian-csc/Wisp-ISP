@@ -749,6 +749,27 @@ def instalar_cliente(
         raise HTTPException(status_code=400, detail="El cliente no está aprobado para instalación")
     _check_zona_access(db, current_user, cliente.zona_id)
 
+    # El dia en que el servicio quedo funcionando. El tecnico puede correrla
+    # hacia atras --se instalo el lunes y recien hoy se registra-- pero no
+    # hacia adelante ni mas de una semana atras: de aqui sale el dia de pago,
+    # y una fecha inventada le cambia el cobro al cliente todos los meses.
+    # Se comprueba aca, antes que la caja y la ONU, porque es lo barato y
+    # porque si esta mal el tecnico tiene que ver ESTE error y no otro.
+    hoy = date.today()
+    activacion = data.fecha_activacion or hoy
+    if activacion > hoy:
+        raise HTTPException(
+            status_code=400,
+            detail="La fecha de activación no puede ser futura.",
+        )
+    if (hoy - activacion).days > 7:
+        raise HTTPException(
+            status_code=400,
+            detail="La fecha de activación no puede ser de hace más de 7 días. "
+                   "Si hay que corregirla más atrás, lo hace un administrador "
+                   "desde la ficha del cliente.",
+        )
+
     caja = db.query(models.CajaNap).filter(models.CajaNap.id == data.caja_nap_id).first()
     if not caja:
         raise HTTPException(status_code=404, detail="Caja NAP no encontrada")
@@ -769,14 +790,13 @@ def instalar_cliente(
     ):
         raise HTTPException(status_code=400, detail="La ONU no está disponible en el inventario de este técnico")
 
-    hoy = date.today()
     cliente.estado = models.EstadoCliente.activo
     cliente.fecha_instalacion = hoy
-    cliente.fecha_ultima_activacion = hoy
+    cliente.fecha_ultima_activacion = activacion
     # Un mes de servicio, no treinta dias: sumar 30 a un 31 de enero da el 2
     # de marzo, y a partir de ahi el cliente ya no paga el dia que le dijeron.
     # Ver app/facturacion.py, que tiene la regla entera y por que es asi.
-    cliente.fecha_vencimiento = primer_vencimiento(hoy)
+    cliente.fecha_vencimiento = primer_vencimiento(activacion)
     cliente.tecnico_instalador_id = current_user.id
     cliente.metros_cable = data.metros_cable
 

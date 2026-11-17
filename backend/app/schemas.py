@@ -335,6 +335,11 @@ class ClienteInstalarRequest(BaseModel):
     metros_cable: Optional[float] = None
     potencia_optica_dbm: Optional[float] = None
     codigo_precinto: Optional[str] = None
+    # El dia en que el servicio quedo funcionando, que no siempre es hoy: se
+    # tiende el cable un martes, la caja no tiene potencia y queda andando el
+    # jueves. De esta fecha sale el dia de pago del cliente, asi que la pone
+    # quien estuvo ahi. Si no viene, es hoy.
+    fecha_activacion: Optional[date] = None
 
 
 class ClienteActivarSatelitalRequest(BaseModel):

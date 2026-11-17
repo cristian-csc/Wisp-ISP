@@ -10,6 +10,29 @@ import {
 import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
 
+/** La fecha de hace `dias` dias, a medianoche local. */
+function haceDias(dias: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - dias);
+  return d;
+}
+
+const DIAS_SEMANA = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+
+function fechaCorta(d: Date): string {
+  return DIAS_SEMANA[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1);
+}
+
+/**
+ * El dia del mes en que pagara el cliente, con la misma regla que el
+ * servidor: del 26 en adelante no hay dia seguro --el 31 no existe en medio
+ * anio-- y se pasa al 1.
+ */
+function diaDePago(d: Date): number {
+  return d.getDate() <= 25 ? d.getDate() : 1;
+}
+
 export default function InstalarScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
@@ -25,6 +48,8 @@ export default function InstalarScreen() {
   const [borneNum, setBorneNum] = useState<number | null>(null);
   const [onuId, setOnuId] = useState<number | null>(null);
   const [metros, setMetros] = useState('');
+  // Cuantos dias atras quedo funcionando el servicio. Casi siempre hoy.
+  const [diasAtras, setDiasAtras] = useState(0);
   const [potencia, setPotencia] = useState('');
   const [precinto, setPrecinto] = useState('');
 
@@ -65,6 +90,8 @@ export default function InstalarScreen() {
 
   const tomarFoto = () => tomarFotoGenerica(setFotoUri);
 
+  const fechaActivacion = haceDias(diasAtras);
+
   const cajaSeleccionada = cajas.find(c => c.id === cajaId) ?? null;
   const bornesLibres: Borne[] = cajaSeleccionada?.bornes.filter(b => b.estado === 'libre') ?? [];
 
@@ -94,6 +121,7 @@ export default function InstalarScreen() {
         metros_cable: metros ? Number(metros) : undefined,
         potencia_optica_dbm: potencia ? Number(potencia) : undefined,
         codigo_precinto: precinto.trim() || undefined,
+        fecha_activacion: fechaActivacion.toISOString().slice(0, 10),
       });
       if (!tieneFoto && fotoUri) {
         try {
@@ -268,6 +296,33 @@ export default function InstalarScreen() {
       </TouchableOpacity>
       {fotoRouter && <Image source={{ uri: fotoRouter }} style={s.fotoPreview} />}
 
+      <Text style={s.sectionTitle}>5. DESDE CUANDO FUNCIONA</Text>
+      {/* De esta fecha sale el dia de pago, asi que se elige aca y no se
+          supone: se tiende el cable un martes, la caja no tiene potencia y el
+          servicio queda andando el jueves. El cliente cuenta desde que tiene
+          internet. Mas atras de una semana ya lo corrige un administrador. */}
+      <View style={s.diasRow}>
+        {[0, 1, 2, 3].map((d) => (
+          <TouchableOpacity
+            key={d}
+            style={[s.diaChip, diasAtras === d && s.diaChipActivo]}
+            onPress={() => setDiasAtras(d)}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.diaChipText, diasAtras === d && s.diaChipTextActivo]}>
+              {d === 0 ? 'Hoy' : d === 1 ? 'Ayer' : fechaCorta(haceDias(d))}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <View style={s.pagoAviso}>
+        <Ionicons name="calendar-outline" size={16} color={COLORS.info} />
+        <Text style={s.pagoAvisoText}>
+          Este cliente pagara los{' '}
+          <Text style={s.pagoAvisoFuerte}>{diaDePago(fechaActivacion)}</Text> de cada mes.
+        </Text>
+      </View>
+
       <TouchableOpacity style={[s.confirmarBtn, saving && { opacity: 0.7 }]} onPress={confirmar} disabled={saving}>
         {saving ? <ActivityIndicator color={COLORS.white} /> : (
           <>
@@ -313,6 +368,21 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6 },
   input: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: COLORS.dark },
+  diasRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  diaChip: {
+    flex: 1, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center', backgroundColor: COLORS.background,
+  },
+  diaChipActivo: { borderColor: COLORS.info, backgroundColor: COLORS.lightinfo },
+  diaChipText: { fontSize: 13, fontWeight: '700', color: COLORS.mutedForeground },
+  diaChipTextActivo: { color: COLORS.info },
+  pagoAviso: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: COLORS.lightinfo, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, marginBottom: 6,
+  },
+  pagoAvisoText: { flex: 1, fontSize: 13, color: COLORS.dark },
+  pagoAvisoFuerte: { fontWeight: '900', color: COLORS.info },
   confirmarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
   confirmarText: { color: COLORS.white, fontWeight: '900', fontSize: 15 },
 });

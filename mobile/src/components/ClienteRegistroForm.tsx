@@ -7,10 +7,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { crearCliente, subirFotoFachada, getZonas, getPlanes, consultarDocumento} from '@/services/api';
 import { useSession } from '@/hooks/useSession';
 import { UbicacionPickerModal } from './UbicacionPickerModal';
+import { SelectorZona } from './SelectorZona';
 import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
 
-type Opcion = { id: number; nombre: string; precio?: number };
+type Opcion = { id: number; nombre: string; precio?: number; total_clientes?: number };
 type Coords = { lat: number; lng: number };
 
 function Label({ text, required }: { text: string; required?: boolean }) {
@@ -343,17 +344,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
 
       <Section title="ZONA Y PLAN" icon="list-outline">
         <Label text="Zona" required />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, marginTop: 6 }}>
-          {zonas.map(z => (
-            <TouchableOpacity
-              key={z.id}
-              style={[f.zonaChip, zonaId === z.id && f.zonaChipActive]}
-              onPress={() => setZonaId(z.id)}
-            >
-              <Text style={[f.zonaChipText, zonaId === z.id && f.zonaChipTextActive]}>{z.nombre}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <SelectorZona zonas={zonas} valor={zonaId} onChange={setZonaId} />
 
         <Label text="Plan" required />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
@@ -465,10 +456,6 @@ const f = StyleSheet.create({
   tipoChipTextActive: {
     color: '#fff',
   },
-  zonaChip: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginRight: 8, backgroundColor: COLORS.background },
-  zonaChipActive: { borderColor: COLORS.info, backgroundColor: COLORS.lightinfo },
-  zonaChipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
-  zonaChipTextActive: { color: COLORS.info, fontWeight: '700' },
 
   planChip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10, marginRight: 10, minWidth: 100, backgroundColor: COLORS.background, alignItems: 'center' },
   planChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.lightprimary },

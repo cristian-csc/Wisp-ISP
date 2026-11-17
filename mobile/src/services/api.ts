@@ -282,6 +282,9 @@ export type InstalarClienteInput = {
   metros_cable?: number;
   potencia_optica_dbm?: number;
   codigo_precinto?: string;
+  /** AAAA-MM-DD. El dia en que quedo funcionando; de ahi sale el dia de pago
+   *  del cliente. Si no va, el servidor usa hoy. */
+  fecha_activacion?: string;
 };
 
 export async function instalarCliente(id: number, data: InstalarClienteInput): Promise<void> {
@@ -311,9 +314,14 @@ export async function registrarPago(data: {
   return request('/pagos', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function getZonas(): Promise<{ id: number; nombre: string }[]> {
-  const data: { items: { id: number; nombre: string }[] } = await request('/zonas?per_page=100');
-  return data.items ?? data;
+export async function getZonas(): Promise<
+  { id: number; nombre: string; total_clientes?: number }[]
+> {
+  // El conteo viene en la misma respuesta y ayuda a reconocer la zona en la
+  // lista: una con 40 clientes no se confunde con una recien creada.
+  const data: { items?: { id: number; nombre: string; total_clientes?: number }[] } =
+    await request('/zonas?per_page=100');
+  return (data.items ?? (data as any)) as { id: number; nombre: string; total_clientes?: number }[];
 }
 
 export async function getPlanes(): Promise<{ id: number; nombre: string; precio: number }[]> {
