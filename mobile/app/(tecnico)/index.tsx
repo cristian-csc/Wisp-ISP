@@ -32,11 +32,10 @@ function OrdenCard({ item, onInstalar, onNoInstalar }: {
       <Text style={st.planText}>{item.plan?.nombre ?? '—'}</Text>
       <View style={st.btnRow}>
         <TouchableOpacity style={st.btnGhost} onPress={onNoInstalar}>
-          <Text style={st.btnGhostText}>No se pudo instalar</Text>
+          <Text style={st.btnGhostText}>Anular instalación</Text>
         </TouchableOpacity>
         <TouchableOpacity style={st.btnPrimary} onPress={onInstalar}>
           <Text style={st.btnPrimaryText}>Instalar</Text>
-          <Ionicons name="arrow-forward" size={14} color={COLORS.white} />
         </TouchableOpacity>
       </View>
     </View>
@@ -120,8 +119,7 @@ export default function TecnicoOrdenesScreen() {
       <TecnicoNav />
       <PromptModal
         visible={!!noInstalarTarget}
-        title={`¿Por qué no se pudo instalar a ${noInstalarTarget?.nombre}?`}
-        placeholder="Ej: dirección no encontrada, cliente no estaba, zona sin cobertura..."
+        title={`¿Por qué se anula la instalación de ${noInstalarTarget?.nombre}?`}
         onCancel={() => setNoInstalarTarget(null)}
         onSubmit={confirmarNoInstalar}
         submitLabel="Confirmar"
