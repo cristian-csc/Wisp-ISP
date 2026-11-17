@@ -328,7 +328,6 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                         setNombre(e.target.value);
                         setNombreAuto(false);
                       }}
-                      placeholder="Transportes del Sur S.A.C."
                       required
                     />
                   </FieldIcon>
@@ -347,7 +346,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                       }}
                       maxLength={11}
                       inputMode="numeric"
-                      placeholder="11 dígitos"
+                      placeholder="11 números"
                       required
                     />
                   </FieldIcon>
@@ -365,7 +364,6 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                         setResponsableNombre(e.target.value);
                         setResponsableAuto(false);
                       }}
-                      placeholder="Gerente o persona de contacto"
                       required
                     />
                   </FieldIcon>
@@ -388,6 +386,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                         if (v.length === 8) void buscarNombre('dni', v);
                       }}
                       maxLength={8}
+                      placeholder="8 números"
                       inputMode="numeric"
                       pattern="\d{8}"
                       required
@@ -425,6 +424,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                       if (v.length === 8) void buscarNombre('dni', v);
                     }}
                     maxLength={8}
+                    placeholder="8 números"
                     inputMode="numeric"
                     pattern="\d{8}"
                     required

@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import {
   getOrdenRetiro, completarOrdenRetiro, subirEvidenciaRetiro,
   getEvidenciasOrdenRetiro, getEvidenciaImageSource,
   OrdenRetiro, Evidencia,
 } from '@/services/api';
+import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
 
 export default function RetiroDetalleScreen() {
@@ -54,15 +54,8 @@ export default function RetiroDetalleScreen() {
   }, [id]);
 
   async function tomarFoto() {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permiso necesario', 'Activa el permiso de cámara para tomar la evidencia.');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: false });
-    if (!result.canceled && result.assets?.[0]) {
-      setFotos((prev) => [...prev, result.assets[0].uri]);
-    }
+    const uri = await elegirFoto('Evidencia del retiro');
+    if (uri) setFotos((prev) => [...prev, uri]);
   }
 
   function quitarFoto(uri: string) {

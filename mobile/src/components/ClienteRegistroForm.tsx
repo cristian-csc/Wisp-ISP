@@ -3,11 +3,11 @@ import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Switch, Image,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { crearCliente, subirFotoFachada, getZonas, getPlanes, consultarDocumento} from '@/services/api';
 import { useSession } from '@/hooks/useSession';
 import { UbicacionPickerModal } from './UbicacionPickerModal';
+import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
 
 type Opcion = { id: number; nombre: string; precio?: number };
@@ -111,18 +111,8 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
   }, []);
 
   async function tomarFoto() {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permiso necesario', 'Activa el permiso de cámara para tomar la foto de la fachada.');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.6,
-      allowsEditing: false,
-    });
-    if (!result.canceled && result.assets?.[0]) {
-      setFotoUri(result.assets[0].uri);
-    }
+    const uri = await elegirFoto('Foto de la fachada');
+    if (uri) setFotoUri(uri);
   }
 
   /** Al completar el documento se busca el nombre. Si falla, se escribe el
@@ -267,7 +257,6 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
           label={tipoDoc === 'ruc' ? 'Razón social' : 'Nombre completo'}
           value={nombre}
           onChange={(v) => { setNombre(v); setNombreAuto(false); }}
-          placeholder={tipoDoc === 'ruc' ? 'Transportes del Sur S.A.C.' : undefined}
           required
         />
 
@@ -282,7 +271,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
                 setAvisoRuc(null);
                 if (n.length === 11) void buscarNombre('ruc', n);
               }}
-              placeholder="11 dígitos"
+              placeholder="11 números"
               keyboard="numeric"
               required
             />
@@ -291,7 +280,6 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
               label="Responsable del servicio"
               value={responsable}
               onChange={(v) => { setResponsable(v); setResponsableAuto(false); }}
-              placeholder="Gerente o persona de contacto"
               required
             />
           </>
@@ -308,7 +296,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
                 setAvisoDni(null);
                 if (n.length === 8) void buscarNombre('dni', n);
               }}
-              placeholder="8 dígitos"
+              placeholder="8 números"
               keyboard="numeric"
               required
             />

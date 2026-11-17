@@ -5,11 +5,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import {
   getClientes, getZonas, getCajasNap, crearAveria, subirEvidenciaAveria,
   ClienteListItem, CajaNap,
 } from '@/services/api';
+import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
 
 const MOTIVOS_CLIENTE = ['Cambio de router', 'Conectores', 'Cable drop', 'Patchcord', 'Cambio de roseta'];
@@ -61,15 +61,8 @@ export default function NuevaAveriaScreen() {
   }, [zonaSel]);
 
   async function tomarFoto() {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permiso necesario', 'Activa el permiso de cámara para tomar la evidencia.');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: false });
-    if (!result.canceled && result.assets?.[0]) {
-      setFotos((prev) => [...prev, result.assets[0].uri]);
-    }
+    const uri = await elegirFoto('Evidencia de la avería');
+    if (uri) setFotos((prev) => [...prev, uri]);
   }
 
   function quitarFoto(uri: string) {

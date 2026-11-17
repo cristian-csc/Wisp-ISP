@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import {
   getCliente, getCajasNap, getOnus, instalarCliente,
   getEvidenciasCliente, subirFotoFachada, subirEvidenciaInstalacion,
   ClienteDetalle, CajaNap, Borne, Onu,
 } from '@/services/api';
+import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
 
 export default function InstalarScreen() {
@@ -59,15 +59,8 @@ export default function InstalarScreen() {
   }, [id]);
 
   async function tomarFotoGenerica(setFoto: (uri: string) => void) {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permiso necesario', 'Activa el permiso de cámara para tomar la foto.');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: false });
-    if (!result.canceled && result.assets?.[0]) {
-      setFoto(result.assets[0].uri);
-    }
+    const uri = await elegirFoto();
+    if (uri) setFoto(uri);
   }
 
   const tomarFoto = () => tomarFotoGenerica(setFotoUri);

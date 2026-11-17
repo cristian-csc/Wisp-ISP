@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert, Modal,
 } from 'react-native';
 import { CameraView, useCameraPermissions, scanFromURLAsync, type BarcodeScanningResult } from 'expo-camera';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { registrarOnuPropio, detectarMarcaOnu, WifiVersion } from '@/services/api';
@@ -25,13 +26,31 @@ const BARCODE_TYPES = ['code128', 'code39', 'ean13', 'qr'] as const;
 // toca el botón, se toma UNA foto, se buscan todos los códigos que haya en
 // esa foto (scanFromURLAsync) y se le muestran como lista para que elija cuál
 // es — nunca se adivina ni se registra solo.
-const ZOOM_INICIAL = 0.45;
+// Sin zoom de salida. El 0.45 que habia obligaba a alejar el telefono para
+// que entrara la etiqueta entera, y con una etiqueta chica pasaba al reves.
+// Ahora empieza en 1x y el tecnico acerca pellizcando, que es lo que todo el
+// mundo hace ya sin que nadie se lo explique.
+const ZOOM_INICIAL = 0;
+const ZOOM_MAXIMO = 0.8;
 
 function ScannerModal({ visible, onClose, onScanned }: {
   visible: boolean; onClose: () => void; onScanned: (valor: string) => void;
 }) {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
+  const [zoom, setZoom] = useState(ZOOM_INICIAL);
+  // El zoom al empezar el pellizco, para que la escala sea relativa a el y no
+  // salte cada vez que se vuelven a poner los dedos.
+  const zoomAlEmpezar = useRef(ZOOM_INICIAL);
+  const pellizco = Gesture.Pinch()
+    .onBegin(() => {
+      zoomAlEmpezar.current = zoom;
+    })
+    .onUpdate((e) => {
+      const nuevo = zoomAlEmpezar.current + (e.scale - 1) * 0.35;
+      setZoom(Math.min(ZOOM_MAXIMO, Math.max(0, nuevo)));
+    })
+    .runOnJS(true);
   const [foto, setFoto] = useState<string | null>(null);
   const [analizando, setAnalizando] = useState(false);
   const [codigos, setCodigos] = useState<BarcodeScanningResult[]>([]);
@@ -67,7 +86,7 @@ function ScannerModal({ visible, onClose, onScanned }: {
 
   return (
     <Modal visible={visible} animationType="slide" onShow={handleShow}>
-      <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000' }}>
         {!permission ? (
           <ActivityIndicator style={{ flex: 1 }} color={COLORS.white} />
         ) : !permission.granted ? (
@@ -82,17 +101,27 @@ function ScannerModal({ visible, onClose, onScanned }: {
           </View>
         ) : !foto ? (
           <>
-            <CameraView
-              ref={cameraRef}
-              style={{ flex: 1 }}
-              facing="back"
-              zoom={ZOOM_INICIAL}
-            />
+            {/* El pellizco va sobre la camara entera: el tecnico acerca
+                hasta donde necesite en vez de que el sistema le imponga un
+                zoom fijo. */}
+            <GestureDetector gesture={pellizco}>
+              <CameraView
+                ref={cameraRef}
+                style={{ flex: 1 }}
+                facing="back"
+                zoom={zoom}
+              />
+            </GestureDetector>
             <View style={sc.overlay} pointerEvents="none">
-              <View style={sc.frame} />
+              {/* Sin recuadro: el de antes era decorativo --expo-camera lee
+                  toda la foto, no lo que cae dentro-- pero hacia creer que
+                  el codigo tenia que entrar ahi. */}
               <Text style={sc.hint}>
                 Encuadra un solo código{'\n'}y toca el botón para capturar
               </Text>
+              {zoom > 0.01 && (
+                <Text style={sc.zoomTag}>{(1 + zoom * 9).toFixed(1)}x</Text>
+              )}
             </View>
             <TouchableOpacity style={sc.shutterBtn} onPress={tomarFoto} disabled={analizando}>
               <View style={sc.shutterInner} />
@@ -145,7 +174,7 @@ function ScannerModal({ visible, onClose, onScanned }: {
           <Ionicons name="close" size={15} color="#fff" />
           <Text style={sc.closeBtnText}>Cerrar</Text>
         </TouchableOpacity>
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -281,7 +310,7 @@ const s = StyleSheet.create({
 
 const sc = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  frame: { width: 280, height: 90, borderWidth: 3, borderColor: COLORS.secondary, borderRadius: 10, backgroundColor: 'transparent' },
+  zoomTag: { color: '#fff', marginTop: 10, fontSize: 12, fontWeight: '800', backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   hint: { color: '#fff', marginTop: 16, fontSize: 13, fontWeight: '600', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   shutterBtn: {
     position: 'absolute', bottom: 40, alignSelf: 'center',
