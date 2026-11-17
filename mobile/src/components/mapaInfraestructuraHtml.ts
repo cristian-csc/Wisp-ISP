@@ -82,21 +82,35 @@ export function buildMapHtml(
   <script>
     const map = L.map('map', { maxZoom: 21 }).setView([${centro.lat}, ${centro.lng}], 15);
 
-    // maxNativeZoom evita el tile de "Map data not yet available" que Esri
-    // muestra en zonas rurales sin imagen satelital de alta resolución —
-    // Leaflet escala el último nivel real en vez de pedir uno que no existe.
+    // Hasta donde Esri tiene foto de verdad en Puno. Esta medido: de z15 a
+    // z17 los tiles pesan entre 12 y 30 KB (foto) y de z18 en adelante pesan
+    // 2.5 KB, que es el cartel gris de "Map data not yet available". Esri lo
+    // sirve como un JPEG valido, por eso Leaflet lo pintaba tal cual en vez
+    // de fallar. Con el tope puesto, el mapa deja de acercar justo antes.
+    const MAX_ZOOM_SATELITE = 17;
+    const MAX_ZOOM_CALLE = 21;
+
     const calle = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap', maxNativeZoom: 19, maxZoom: 21
+      attribution: '&copy; OpenStreetMap', maxNativeZoom: 19, maxZoom: MAX_ZOOM_CALLE
     }).addTo(map);
     const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri', maxNativeZoom: 18, maxZoom: 21
+      attribution: 'Tiles &copy; Esri',
+      maxNativeZoom: MAX_ZOOM_SATELITE, maxZoom: MAX_ZOOM_SATELITE
     });
 
     function cambiarCapa(cual) {
       document.getElementById('btnCalle').classList.toggle('activo', cual === 'calle');
       document.getElementById('btnSatelite').classList.toggle('activo', cual === 'satelite');
-      if (cual === 'satelite') { map.removeLayer(calle); satelite.addTo(map); }
-      else { map.removeLayer(satelite); calle.addTo(map); }
+      if (cual === 'satelite') {
+        map.removeLayer(calle); satelite.addTo(map);
+        // El tope del mapa se fija al crearlo; hay que moverlo al cambiar de
+        // capa, y alejar si se venia mas cerca desde el mapa de calles.
+        map.setMaxZoom(MAX_ZOOM_SATELITE);
+        if (map.getZoom() > MAX_ZOOM_SATELITE) map.setZoom(MAX_ZOOM_SATELITE);
+      } else {
+        map.removeLayer(satelite); calle.addTo(map);
+        map.setMaxZoom(MAX_ZOOM_CALLE);
+      }
     }
 
     const mufaIcon = L.divIcon({

@@ -54,6 +54,15 @@ const finIcon = L.divIcon({
   iconAnchor: [9, 9],
 });
 
+// Hasta donde Esri tiene foto de verdad en Puno. Medido pidiendo los tiles de
+// Juliaca, de una zona rural al noroeste, de Capachica y de Pucara: de z15 a
+// z17 pesan entre 12 y 30 KB (foto) y de z18 en adelante pesan 2.5 KB en los
+// cuatro sitios, que es el cartel gris de "Map data not yet available". Esri
+// lo sirve como un JPEG valido, por eso Leaflet lo pinta en vez de fallar.
+// El mismo numero esta en el mapa de la ficha de zona.
+const MAX_ZOOM_SATELITE = 17;
+const MAX_ZOOM_CALLE = 21;
+
 type CapaMapa = 'calle' | 'satelite';
 
 const CAPAS: Record<CapaMapa, { url: string; attribution: string }> = {
@@ -69,6 +78,17 @@ const CAPAS: Record<CapaMapa, { url: string; attribution: string }> = {
 
 function horaCorta(fecha: string) {
   return new Date(fecha).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Tope de zoom segun la capa: en satelite no se deja pasar de donde Esri
+ *  tiene imagen, y si se venia mas cerca desde calle, se aleja hasta el tope. */
+function LimiteDeZoom({ max }: { max: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setMaxZoom(max);
+    if (map.getZoom() > max) map.setZoom(max);
+  }, [map, max]);
+  return null;
 }
 
 export default function MapaJornadas({
@@ -156,11 +176,17 @@ export default function MapaJornadas({
       <MapContainer
         center={centro}
         zoom={zoom}
-        maxZoom={21}
+        maxZoom={MAX_ZOOM_CALLE}
         zoomControl={false}
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer attribution={CAPAS[capa].attribution} url={CAPAS[capa].url} maxZoom={21} />
+        <TileLayer
+          attribution={CAPAS[capa].attribution}
+          url={CAPAS[capa].url}
+          maxNativeZoom={capa === 'satelite' ? MAX_ZOOM_SATELITE : 19}
+          maxZoom={capa === 'satelite' ? MAX_ZOOM_SATELITE : MAX_ZOOM_CALLE}
+        />
+        <LimiteDeZoom max={capa === 'satelite' ? MAX_ZOOM_SATELITE : MAX_ZOOM_CALLE} />
         <RecentrarMapa centro={centro} zoom={zoom} clave={claveRecentrado} />
         <AjustarTamanoMapa />
         <ControlesZoom volverA={{ centro, zoom }} />
