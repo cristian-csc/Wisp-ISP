@@ -7,6 +7,16 @@ import { alerta } from '@/components/Aviso';
 
 export default function PerfilScreen() {
   const { session, signOut } = useSession();
+
+  // Confirmar antes de salir, igual que el tecnico y la vendedora: un toque
+  // sin querer obliga al cliente a volver a escribir su DNI y su clave, que
+  // es justo lo que no recuerda.
+  function confirmarSalir() {
+    alerta('Cerrar sesión', '¿Seguro que quieres salir?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: signOut },
+    ]);
+  }
   const [pinActual, setPinActual] = useState('');
   const [pinNuevo, setPinNuevo] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
@@ -70,7 +80,7 @@ export default function PerfilScreen() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={s.logoutBtn} onPress={signOut}>
+      <TouchableOpacity style={s.logoutBtn} onPress={confirmarSalir}>
         <Text style={s.logoutText}>Cerrar sesión</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -92,6 +102,6 @@ const s = StyleSheet.create({
   btn: { backgroundColor: COLORS.dark, borderRadius: 10, paddingVertical: 13, alignItems: 'center', marginTop: 20 },
   btnDisabled: { opacity: 0.7 },
   btnText: { color: COLORS.white, fontWeight: '800', fontSize: 14, letterSpacing: 1 },
-  logoutBtn: { borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 20, backgroundColor: COLORS.white },
+  logoutBtn: { borderWidth: 1.5, borderColor: COLORS.error, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginBottom: 20, backgroundColor: COLORS.card },
   logoutText: { color: COLORS.error, fontWeight: '700', fontSize: 15 },
 });
