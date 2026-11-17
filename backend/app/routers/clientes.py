@@ -770,25 +770,41 @@ def instalar_cliente(
                    "desde la ficha del cliente.",
         )
 
-    caja = db.query(models.CajaNap).filter(models.CajaNap.id == data.caja_nap_id).first()
-    if not caja:
-        raise HTTPException(status_code=404, detail="Caja NAP no encontrada")
-    borne = db.query(models.Borne).filter(
-        models.Borne.caja_nap_id == caja.id,
-        models.Borne.numero == data.numero_borne,
-    ).first()
-    if not borne:
-        raise HTTPException(status_code=404, detail="Borne no encontrado en esa caja")
-    if borne.estado != models.EstadoBorne.libre:
-        raise HTTPException(status_code=400, detail="El borne no está libre")
+    # Un cliente inalambrico llega por antena y PPPoE: no tiene fibra, ni caja
+    # NAP, ni borne, ni ONU. Pedirselos no era un requisito mal puesto, era un
+    # callejon sin salida: no existe ningun numero valido que darle, asi que
+    # no habia forma de dejarlo activo.
+    por_fibra = cliente.tipo_conexion == models.TipoConexion.fibra_optica
+    caja = None
+    borne = None
+    onu = None
 
-    onu = db.query(models.Onu).filter(models.Onu.id == data.onu_id).first()
-    if not onu:
-        raise HTTPException(status_code=404, detail="ONU no encontrada")
-    if onu.estado != models.EstadoOnu.asignado_tecnico or (
-        current_user.rol == models.RolUsuario.tecnico and onu.tecnico_id != current_user.id
-    ):
-        raise HTTPException(status_code=400, detail="La ONU no está disponible en el inventario de este técnico")
+    if por_fibra:
+        if data.caja_nap_id is None or data.numero_borne is None or data.onu_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Una instalación de fibra necesita caja NAP, borne y ONU.",
+            )
+
+        caja = db.query(models.CajaNap).filter(models.CajaNap.id == data.caja_nap_id).first()
+        if not caja:
+            raise HTTPException(status_code=404, detail="Caja NAP no encontrada")
+        borne = db.query(models.Borne).filter(
+            models.Borne.caja_nap_id == caja.id,
+            models.Borne.numero == data.numero_borne,
+        ).first()
+        if not borne:
+            raise HTTPException(status_code=404, detail="Borne no encontrado en esa caja")
+        if borne.estado != models.EstadoBorne.libre:
+            raise HTTPException(status_code=400, detail="El borne no está libre")
+
+        onu = db.query(models.Onu).filter(models.Onu.id == data.onu_id).first()
+        if not onu:
+            raise HTTPException(status_code=404, detail="ONU no encontrada")
+        if onu.estado != models.EstadoOnu.asignado_tecnico or (
+            current_user.rol == models.RolUsuario.tecnico and onu.tecnico_id != current_user.id
+        ):
+            raise HTTPException(status_code=400, detail="La ONU no está disponible en el inventario de este técnico")
 
     cliente.estado = models.EstadoCliente.activo
     cliente.fecha_instalacion = hoy
@@ -800,22 +816,29 @@ def instalar_cliente(
     cliente.tecnico_instalador_id = current_user.id
     cliente.metros_cable = data.metros_cable
 
-    borne.estado = models.EstadoBorne.ocupado
-    borne.cliente_id = cliente.id
-    borne.codigo_precinto = data.codigo_precinto
-    borne.potencia_optica_dbm = data.potencia_optica_dbm
+    if borne is not None:
+        borne.estado = models.EstadoBorne.ocupado
+        borne.cliente_id = cliente.id
+        borne.codigo_precinto = data.codigo_precinto
+        borne.potencia_optica_dbm = data.potencia_optica_dbm
 
-    onu.estado = models.EstadoOnu.instalado
-    onu.cliente_id = cliente.id
-    onu.fecha_instalacion = hoy
+    if onu is not None:
+        onu.estado = models.EstadoOnu.instalado
+        onu.cliente_id = cliente.id
+        onu.fecha_instalacion = hoy
+
+    if caja is not None and borne is not None and onu is not None:
+        detalle = (
+            f"Instalado por {current_user.nombre} — Caja {caja.codigo}, "
+            f"borne {borne.numero}, ONU {onu.numero_serie}."
+        )
+    else:
+        detalle = f"Instalado por {current_user.nombre} — enlace inalámbrico."
 
     historial = models.Historial(
         cliente_id=cliente.id,
         tipo=models.TipoHistorial.activacion,
-        descripcion=(
-            f"Instalado por {current_user.nombre} — Caja {caja.codigo}, borne {borne.numero}, "
-            f"ONU {onu.numero_serie}."
-        ),
+        descripcion=detalle,
         usuario_id=current_user.id,
     )
     db.add(historial)

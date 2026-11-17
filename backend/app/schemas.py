@@ -329,9 +329,15 @@ class CompromisoPagoRequest(BaseModel):
     fecha_limite: date
 
 class ClienteInstalarRequest(BaseModel):
-    caja_nap_id: int
-    numero_borne: int
-    onu_id: int
+    # Opcionales porque un cliente inalambrico no tiene nada de esto: va por
+    # antena y PPPoE, sin fibra, sin caja NAP y sin ONU. Para los de fibra
+    # siguen siendo obligatorios, y eso lo exige el endpoint segun el tipo de
+    # conexion del cliente, que es quien sabe cual es cual. Dejarlos
+    # obligatorios aqui impedia dar de alta a los inalambricos: no habia
+    # ningun numero valido que poner.
+    caja_nap_id: Optional[int] = None
+    numero_borne: Optional[int] = None
+    onu_id: Optional[int] = None
     metros_cable: Optional[float] = None
     potencia_optica_dbm: Optional[float] = None
     codigo_precinto: Optional[str] = None

@@ -93,11 +93,17 @@ export default function InstalarScreen() {
   // Instalar es hoy. Corregirla es cosa del administrador, desde la ficha.
   const fechaActivacion = haceDias(0);
 
+  // Un cliente inalambrico va por antena y PPPoE: no tiene caja NAP, ni
+  // borne, ni ONU. Pedirselos no era un requisito mal puesto, era un callejon
+  // sin salida -- no hay ningun numero valido que darle -- y por eso no se
+  // podia dejar activo.
+  const porFibra = cliente?.tipo_conexion !== 'inalambrico';
+
   const cajaSeleccionada = cajas.find(c => c.id === cajaId) ?? null;
   const bornesLibres: Borne[] = cajaSeleccionada?.bornes.filter(b => b.estado === 'libre') ?? [];
 
   async function confirmar() {
-    if (!cajaId || !borneNum || !onuId) {
+    if (porFibra && (!cajaId || !borneNum || !onuId)) {
       alerta('Faltan datos', 'Selecciona caja NAP, borne y ONU.');
       return;
     }
@@ -116,9 +122,9 @@ export default function InstalarScreen() {
     setSaving(true);
     try {
       await instalarCliente(Number(id), {
-        caja_nap_id: cajaId,
-        numero_borne: borneNum,
-        onu_id: onuId,
+        caja_nap_id: porFibra ? cajaId : undefined,
+        numero_borne: porFibra ? borneNum : undefined,
+        onu_id: porFibra ? onuId : undefined,
         metros_cable: metros ? Number(metros) : undefined,
         potencia_optica_dbm: potencia ? Number(potencia) : undefined,
         codigo_precinto: precinto.trim() || undefined,
@@ -172,80 +178,98 @@ export default function InstalarScreen() {
         )}
       </View>
 
-      <Text style={s.sectionTitle}>1. CAJA NAP</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-        {cajas.map(c => (
-          <TouchableOpacity
-            key={c.id}
-            style={[s.chip, cajaId === c.id && s.chipActive]}
-            onPress={() => { setCajaId(c.id); setBorneNum(null); }}
-          >
-            <View style={s.chipRow}>
-              <Ionicons name="cube-outline" size={14} color={cajaId === c.id ? COLORS.primaryEmphasis : COLORS.mutedForeground} />
-              <Text style={[s.chipText, cajaId === c.id && s.chipTextActive]}>{c.codigo}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-        {cajas.length === 0 && <Text style={s.emptyText}>No hay cajas NAP registradas en tu zona</Text>}
-      </ScrollView>
-
-      {cajaSeleccionada && (
+      {/* Caja, borne y ONU son de la fibra. Un enlace inalambrico no
+          tiene nada de eso, asi que estas tres secciones no se pintan:
+          ensenar campos que no se pueden llenar es peor que no tenerlos. */}
+      {porFibra && (
         <>
-          <Text style={s.sectionTitle}>2. BORNE LIBRE</Text>
-          <View style={s.bornesGrid}>
-            {cajaSeleccionada.bornes.map(b => (
-              <TouchableOpacity
-                key={b.id}
-                disabled={b.estado !== 'libre'}
-                style={[
-                  s.borne,
-                  b.estado === 'libre' && s.borneLibre,
-                  b.estado === 'ocupado' && s.borneOcupado,
-                  b.estado === 'danado' && s.borneDanado,
-                  borneNum === b.numero && s.borneSelected,
-                ]}
-                onPress={() => setBorneNum(b.numero)}
-              >
-                <Text style={[s.borneNum, borneNum === b.numero && { color: COLORS.white }]}>{b.numero}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={s.leyenda}>
-            <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.dark }]} /><Text style={s.leyendaText}>Libre</Text></View>
-            <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.success }]} /><Text style={s.leyendaText}>Ocupado</Text></View>
-            <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.error }]} /><Text style={s.leyendaText}>Dañado</Text></View>
-          </View>
+        <Text style={s.sectionTitle}>1. CAJA NAP</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+          {cajas.map(c => (
+            <TouchableOpacity
+              key={c.id}
+              style={[s.chip, cajaId === c.id && s.chipActive]}
+              onPress={() => { setCajaId(c.id); setBorneNum(null); }}
+            >
+              <View style={s.chipRow}>
+                <Ionicons name="cube-outline" size={14} color={cajaId === c.id ? COLORS.dark : COLORS.mutedForeground} />
+                <Text style={[s.chipText, cajaId === c.id && s.chipTextActive]}>{c.codigo}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+          {cajas.length === 0 && <Text style={s.emptyText}>No hay cajas NAP registradas en tu zona</Text>}
+        </ScrollView>
+
+        {cajaSeleccionada && (
+          <>
+            <Text style={s.sectionTitle}>2. BORNE LIBRE</Text>
+            <View style={s.bornesGrid}>
+              {cajaSeleccionada.bornes.map(b => (
+                <TouchableOpacity
+                  key={b.id}
+                  disabled={b.estado !== 'libre'}
+                  style={[
+                    s.borne,
+                    b.estado === 'libre' && s.borneLibre,
+                    b.estado === 'ocupado' && s.borneOcupado,
+                    b.estado === 'danado' && s.borneDanado,
+                    borneNum === b.numero && s.borneSelected,
+                  ]}
+                  onPress={() => setBorneNum(b.numero)}
+                >
+                  <Text style={[s.borneNum, borneNum === b.numero && { color: COLORS.white }]}>{b.numero}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={s.leyenda}>
+              <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.dark }]} /><Text style={s.leyendaText}>Libre</Text></View>
+              <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.success }]} /><Text style={s.leyendaText}>Ocupado</Text></View>
+              <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.error }]} /><Text style={s.leyendaText}>Dañado</Text></View>
+            </View>
+          </>
+        )}
+
+        <Text style={s.sectionTitle}>3. ONU (de tu inventario)</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+          {onus.map(o => (
+            <TouchableOpacity
+              key={o.id}
+              style={[s.chip, onuId === o.id && s.chipActive]}
+              onPress={() => setOnuId(o.id)}
+            >
+              <View style={s.chipRow}>
+                <Ionicons name="hardware-chip-outline" size={14} color={onuId === o.id ? COLORS.dark : COLORS.mutedForeground} />
+                <Text style={[s.chipText, onuId === o.id && s.chipTextActive]}>{o.numero_serie}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+          {onus.length === 0 && <Text style={s.emptyText}>No tienes ONUs asignadas — pide al admin que te entregue una</Text>}
+        </ScrollView>
+
+        {!tieneFoto && (
+          <>
+            <Text style={s.sectionTitle}>FOTO DE LA FACHADA (FALTA)</Text>
+            <TouchableOpacity style={[s.fotoBtn, fotoUri && s.fotoBtnDone]} onPress={tomarFoto}>
+              <Ionicons name={fotoUri ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoUri ? COLORS.success : COLORS.mutedForeground} />
+              <Text style={[s.fotoBtnText, fotoUri && { color: COLORS.success }]}>
+                {fotoUri ? 'Foto tomada — tocar para repetir' : 'Este cliente no tiene foto — tómala ahora'}
+              </Text>
+            </TouchableOpacity>
+            {fotoUri && <Image source={{ uri: fotoUri }} style={s.fotoPreview} />}
+          </>
+        )}
+
         </>
       )}
 
-      <Text style={s.sectionTitle}>3. ONU (de tu inventario)</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-        {onus.map(o => (
-          <TouchableOpacity
-            key={o.id}
-            style={[s.chip, onuId === o.id && s.chipActive]}
-            onPress={() => setOnuId(o.id)}
-          >
-            <View style={s.chipRow}>
-              <Ionicons name="hardware-chip-outline" size={14} color={onuId === o.id ? COLORS.primaryEmphasis : COLORS.mutedForeground} />
-              <Text style={[s.chipText, onuId === o.id && s.chipTextActive]}>{o.numero_serie}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-        {onus.length === 0 && <Text style={s.emptyText}>No tienes ONUs asignadas — pide al admin que te entregue una</Text>}
-      </ScrollView>
-
-      {!tieneFoto && (
-        <>
-          <Text style={s.sectionTitle}>FOTO DE LA FACHADA (FALTA)</Text>
-          <TouchableOpacity style={[s.fotoBtn, fotoUri && s.fotoBtnDone]} onPress={tomarFoto}>
-            <Ionicons name={fotoUri ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoUri ? COLORS.success : COLORS.mutedForeground} />
-            <Text style={[s.fotoBtnText, fotoUri && { color: COLORS.success }]}>
-              {fotoUri ? 'Foto tomada — tocar para repetir' : 'Este cliente no tiene foto — tómala ahora'}
-            </Text>
-          </TouchableOpacity>
-          {fotoUri && <Image source={{ uri: fotoUri }} style={s.fotoPreview} />}
-        </>
+      {!porFibra && (
+        <View style={s.inalambricoAviso}>
+          <Ionicons name="wifi" size={20} color={COLORS.brandStrong} />
+          <Text style={s.inalambricoTexto}>
+            Enlace inalambrico: no lleva caja NAP, borne ni ONU. Solo se
+            registra la instalacion y el cliente queda activo.
+          </Text>
+        </View>
       )}
 
       <Text style={s.sectionTitle}>4. DATOS TÉCNICOS</Text>
@@ -370,6 +394,12 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground, marginBottom: 6 },
   input: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: COLORS.dark },
+  inalambricoAviso: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.lightbrand, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 14, marginBottom: 18,
+  },
+  inalambricoTexto: { flex: 1, fontSize: 13, color: COLORS.dark, lineHeight: 18 },
   fechasCaja: {
     borderWidth: 1, borderColor: COLORS.border, borderRadius: 12,
     backgroundColor: COLORS.background, marginBottom: 10,

@@ -276,9 +276,11 @@ export async function rechazarCliente(id: number, motivo: string): Promise<void>
 }
 
 export type InstalarClienteInput = {
-  caja_nap_id: number;
-  numero_borne: number;
-  onu_id: number;
+  // Opcionales: un cliente inalambrico va por antena y PPPoE, sin caja NAP,
+  // sin borne y sin ONU. El servidor los exige solo cuando es fibra.
+  caja_nap_id?: number | null;
+  numero_borne?: number | null;
+  onu_id?: number | null;
   metros_cable?: number;
   potencia_optica_dbm?: number;
   codigo_precinto?: string;
