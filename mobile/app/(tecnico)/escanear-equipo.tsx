@@ -131,7 +131,7 @@ function ScannerModal({ visible, onClose, onScanned }: {
             <View style={sc.resultPanel}>
               {analizando ? (
                 <View style={sc.resultCentro}>
-                  <ActivityIndicator color={COLORS.primary} />
+                  <ActivityIndicator color={COLORS.mutedForeground} />
                   <Text style={sc.resultLoadingText}>Buscando códigos en la foto…</Text>
                 </View>
               ) : codigos.length === 0 ? (
@@ -226,7 +226,7 @@ export default function EscanearEquipoScreen() {
   return (
     <ScrollView style={s.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
       <View style={s.infoCard}>
-        <Ionicons name="cube-outline" size={18} color={COLORS.primary} style={{ marginRight: 8 }} />
+        <Ionicons name="cube-outline" size={18} color={COLORS.mutedForeground} style={{ marginRight: 8 }} />
         <Text style={s.infoText}>Registra un equipo que te dio el almacén y todavía no está en el sistema. Escanea el código de barras de la etiqueta o escríbelo a mano.</Text>
       </View>
 
@@ -292,17 +292,17 @@ export default function EscanearEquipoScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  infoCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: COLORS.lightprimary, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(93,135,255,0.25)' },
+  infoCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: COLORS.muted, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(93,135,255,0.25)' },
   infoText: { flex: 1, fontSize: 13, color: COLORS.dark, lineHeight: 19 },
-  label: { fontSize: 11, fontWeight: '800', color: COLORS.primary, letterSpacing: 1.2, marginBottom: 6, marginTop: 14 },
+  label: { fontSize: 11, fontWeight: '800', color: COLORS.dark, letterSpacing: 1.2, marginBottom: 6, marginTop: 14 },
   row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   input: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, color: COLORS.dark },
-  scanBtn: { width: 48, height: 48, borderRadius: 10, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
+  scanBtn: { width: 48, height: 48, borderRadius: 10, backgroundColor: COLORS.dark, alignItems: 'center', justifyContent: 'center' },
   chip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 10, backgroundColor: COLORS.card },
-  chipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.lightprimary },
+  chipActive: { borderColor: COLORS.dark, backgroundColor: COLORS.muted },
   chipText: { fontSize: 13, fontWeight: '700', color: COLORS.mutedForeground },
-  chipTextActive: { color: COLORS.primaryEmphasis },
-  guardarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  chipTextActive: { color: COLORS.dark },
+  guardarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.dark, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   guardarText: { color: COLORS.white, fontWeight: '900', fontSize: 15 },
 });
 
@@ -340,7 +340,7 @@ const sc = StyleSheet.create({
   retryBtnText: { color: COLORS.dark, fontWeight: '700', fontSize: 13 },
   permWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 },
   permText: { color: COLORS.white, textAlign: 'center', fontSize: 14 },
-  permBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
+  permBtn: { backgroundColor: COLORS.dark, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
   permBtnText: { color: COLORS.white, fontWeight: '700' },
   cancelText: { color: '#9CA3AF', fontSize: 13, marginTop: 4 },
 });

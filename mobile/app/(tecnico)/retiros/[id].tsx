@@ -126,7 +126,7 @@ export default function RetiroDetalleScreen() {
     }
   }
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
   if (!orden) return null;
 
   return (
@@ -142,8 +142,8 @@ export default function RetiroDetalleScreen() {
         )}
         {orden.cliente?.telefono && (
           <TouchableOpacity style={s.infoRow} onPress={llamar}>
-            <Ionicons name="call-outline" size={14} color={COLORS.primary} />
-            <Text style={[s.infoText, { color: COLORS.primary, fontWeight: '600' }]}>{orden.cliente.telefono}</Text>
+            <Ionicons name="call-outline" size={14} color={COLORS.mutedForeground} />
+            <Text style={[s.infoText, { color: COLORS.dark, fontWeight: '600' }]}>{orden.cliente.telefono}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -223,7 +223,7 @@ export default function RetiroDetalleScreen() {
                 <Text style={s.switchLabel}>Router / ONU</Text>
                 <Text style={s.switchSub}>{orden.onu_actual.numero_serie}</Text>
               </View>
-              <Ionicons name={retirarOnu ? 'checkbox' : 'square-outline'} size={22} color={retirarOnu ? COLORS.primary : COLORS.placeholder} />
+              <Ionicons name={retirarOnu ? 'checkbox' : 'square-outline'} size={22} color={retirarOnu ? COLORS.success : COLORS.placeholder} />
             </TouchableOpacity>
           ) : (
             <Text style={s.emptyText}>No hay un router/ONU registrado como instalado para este cliente.</Text>
@@ -231,12 +231,12 @@ export default function RetiroDetalleScreen() {
 
           <TouchableOpacity style={s.switchRow} onPress={() => setRoseta((v) => !v)}>
             <Text style={[s.switchLabel, { flex: 1 }]}>Roseta</Text>
-            <Ionicons name={roseta ? 'checkbox' : 'square-outline'} size={22} color={roseta ? COLORS.primary : COLORS.placeholder} />
+            <Ionicons name={roseta ? 'checkbox' : 'square-outline'} size={22} color={roseta ? COLORS.success : COLORS.placeholder} />
           </TouchableOpacity>
 
           <TouchableOpacity style={s.switchRow} onPress={() => setPatchcord((v) => !v)}>
             <Text style={[s.switchLabel, { flex: 1 }]}>Patchcord</Text>
-            <Ionicons name={patchcord ? 'checkbox' : 'square-outline'} size={22} color={patchcord ? COLORS.primary : COLORS.placeholder} />
+            <Ionicons name={patchcord ? 'checkbox' : 'square-outline'} size={22} color={patchcord ? COLORS.success : COLORS.placeholder} />
           </TouchableOpacity>
 
           <Text style={s.hint}>El cable drop no se recoge — queda en la vivienda.</Text>
@@ -263,7 +263,7 @@ export default function RetiroDetalleScreen() {
               </View>
             ))}
             <TouchableOpacity style={s.fotoAgregar} onPress={tomarFoto}>
-              <Ionicons name="camera-outline" size={22} color={COLORS.primary} />
+              <Ionicons name="camera-outline" size={22} color={COLORS.mutedForeground} />
             </TouchableOpacity>
           </View>
 
@@ -289,13 +289,13 @@ const s = StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   infoText: { fontSize: 13, color: COLORS.mutedForeground },
   motivo: { fontSize: 14, color: COLORS.dark, lineHeight: 20 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.primary, letterSpacing: 1.5, marginBottom: 10 },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.dark, letterSpacing: 1.5, marginBottom: 10 },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 10 },
   switchLabel: { fontSize: 14, fontWeight: '600', color: COLORS.dark },
   switchSub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 2 },
   emptyText: { fontSize: 12, color: COLORS.mutedForeground, marginBottom: 10 },
   hint: { fontSize: 11, color: COLORS.mutedForeground, marginBottom: 16, fontStyle: 'italic' },
-  label: { fontSize: 11, fontWeight: '800', color: COLORS.primary, letterSpacing: 1.2, marginBottom: 8, marginTop: 4 },
+  label: { fontSize: 11, fontWeight: '800', color: COLORS.dark, letterSpacing: 1.2, marginBottom: 8, marginTop: 4 },
   input: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: COLORS.dark },
   textArea: { minHeight: 80, paddingTop: 12, marginBottom: 20 },
   fotosRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
@@ -305,7 +305,7 @@ const s = StyleSheet.create({
   fotoAgregar: { width: 72, height: 72, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.card },
   avisoBox: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 11, paddingVertical: 9, marginBottom: 18 },
   avisoText: { flex: 1, fontSize: 12, color: COLORS.mutedForeground },
-  confirmarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
+  confirmarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.dark, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
   confirmarText: { color: COLORS.white, fontWeight: '900', fontSize: 15 },
   evidenciaThumb: { width: 90, height: 90, borderRadius: 10, marginRight: 10, backgroundColor: COLORS.muted },
 });

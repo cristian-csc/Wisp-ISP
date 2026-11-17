@@ -41,7 +41,7 @@ function OrdenCard({ item, onPress }: { item: OrdenRetiro; onPress: () => void }
       {item.estado === 'pendiente' && (
         <View style={st.ctaRow}>
           <Text style={st.ctaText}>Toca para registrar el equipo recogido</Text>
-          <Ionicons name="arrow-forward" size={13} color={COLORS.primary} />
+          <Ionicons name="arrow-forward" size={13} color={COLORS.mutedForeground} />
         </View>
       )}
     </TouchableOpacity>
@@ -71,7 +71,7 @@ export default function RetirosScreen() {
   if (loading) return (
     <>
       {header}
-      <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />
+      <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />
     </>
   );
 
@@ -87,7 +87,7 @@ export default function RetirosScreen() {
           <OrdenCard item={item} onPress={() => router.push(`/(tecnico)/retiros/${item.id}` as any)} />
         )}
         contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.dark} />}
         ListHeaderComponent={<Text style={st.listaHeader}>{pendientes.length} retiro{pendientes.length !== 1 ? 's' : ''} pendiente{pendientes.length !== 1 ? 's' : ''}</Text>}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 80 }}>
@@ -112,5 +112,5 @@ const st = StyleSheet.create({
   rowText: { fontSize: 12, color: COLORS.mutedForeground, flexShrink: 1 },
   motivo: { fontSize: 13, color: COLORS.mutedForeground, marginTop: 4 },
   ctaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  ctaText: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
+  ctaText: { fontSize: 11, color: COLORS.dark, fontWeight: '600' },
 });

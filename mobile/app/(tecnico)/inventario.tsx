@@ -16,7 +16,7 @@ const ESTADO_LABEL: Record<Onu['estado'], string> = {
 };
 const ESTADO_COLOR: Record<Onu['estado'], string> = {
   en_almacen: COLORS.mutedForeground,
-  asignado_tecnico: COLORS.primary,
+  asignado_tecnico: COLORS.dark,
   instalado: COLORS.success,
   danado: COLORS.error,
   perdido: COLORS.error,
@@ -86,7 +86,7 @@ export default function InventarioScreen() {
   const disponibles = onus.filter(o => o.estado === 'asignado_tecnico').length;
   const instaladas = onus.filter(o => o.estado === 'instalado').length;
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
@@ -95,12 +95,12 @@ export default function InventarioScreen() {
         keyExtractor={i => String(i.id)}
         renderItem={({ item }) => <OnuCard item={item} onMarcar={(estado) => marcar(item, estado)} />}
         contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.dark} />}
         ListHeaderComponent={
           <View>
             <View style={st.statsRow}>
-              <View style={[st.statCard, { borderTopColor: COLORS.primary }]}>
-                <Text style={[st.statValue, { color: COLORS.primary }]}>{disponibles}</Text>
+              <View style={[st.statCard, { borderTopColor: COLORS.dark }]}>
+                <Text style={[st.statValue, { color: COLORS.dark }]}>{disponibles}</Text>
                 <Text style={st.statLabel}>Disponibles</Text>
               </View>
               <View style={[st.statCard, { borderTopColor: COLORS.success }]}>
@@ -109,7 +109,7 @@ export default function InventarioScreen() {
               </View>
             </View>
             <TouchableOpacity style={st.addBtn} onPress={() => router.push('/(tecnico)/escanear-equipo' as any)}>
-              <Ionicons name="scan-outline" size={16} color={COLORS.primary} />
+              <Ionicons name="scan-outline" size={16} color={COLORS.mutedForeground} />
               <Text style={st.addBtnText}>Registrar equipo nuevo</Text>
             </TouchableOpacity>
           </View>
@@ -128,8 +128,11 @@ export default function InventarioScreen() {
 
 const st = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  addBtn: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: COLORS.primary, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 11, marginBottom: 14 },
-  addBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 13 },
+  // Naranja: es la accion que se busca al entrar al inventario. El rojo
+  // queda para marcar danada o perdida, que es de lo que hay que
+  // distinguirlo.
+  addBtn: { flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.brand, borderRadius: 14, paddingVertical: 14, marginBottom: 14 },
+  addBtnText: { color: COLORS.dark, fontWeight: '700', fontSize: 13 },
   statCard: { flex: 1, backgroundColor: COLORS.card, borderRadius: 14, padding: 12, alignItems: 'center', borderTopWidth: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
   statValue: { fontSize: 24, fontWeight: '900' },
   statLabel: { fontSize: 11, color: COLORS.mutedForeground, marginTop: 2, fontWeight: '600' },

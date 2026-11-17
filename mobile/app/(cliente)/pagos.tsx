@@ -58,7 +58,7 @@ function ReciboModal({ item, nombreCliente, onClose }: { item: Pago | null; nomb
 
           <View style={s.ticketBtnRow}>
             <TouchableOpacity style={s.ticketBtn} onPress={() => Share.share({ message: textoRecibo(item, nombreCliente) })}>
-              <Ionicons name="share-social-outline" size={16} color={COLORS.primary} />
+              <Ionicons name="share-social-outline" size={16} color={COLORS.mutedForeground} />
               <Text style={s.ticketBtnText}>Compartir</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.ticketBtn, s.ticketBtnCerrar]} onPress={onClose}>
@@ -76,7 +76,7 @@ function PagoCard({ item, onVerRecibo }: { item: Pago; onVerRecibo: () => void }
     <TouchableOpacity style={s.card} onPress={onVerRecibo} activeOpacity={0.8}>
       <View style={s.cardLeft}>
         <View style={s.iconCircle}>
-          <Ionicons name={METODO_ICON[item.metodo_pago] ?? 'wallet-outline'} size={20} color={COLORS.primary} />
+          <Ionicons name={METODO_ICON[item.metodo_pago] ?? 'wallet-outline'} size={20} color={COLORS.mutedForeground} />
         </View>
         <View style={{ marginLeft: 12 }}>
           <Text style={s.mes}>{formatMes(item.mes_pagado)}</Text>
@@ -122,7 +122,7 @@ export default function MisPagosScreen() {
     getMiCuenta().then((c) => setNombreCliente(c.nombre)).catch(() => {});
   }, []);
 
-  if (loading) return <ActivityIndicator style={{ flex:1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={{ flex:1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
 
   return (
     <>
@@ -132,7 +132,7 @@ export default function MisPagosScreen() {
       keyExtractor={i=>String(i.id)}
       renderItem={({item})=><PagoCard item={item} onVerRecibo={() => setReciboSeleccionado(item)}/>}
       contentContainerStyle={{ padding:16, paddingBottom:40 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true);load(1);}} tintColor={COLORS.primary}/>}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true);load(1);}} tintColor={COLORS.dark}/>}
       onEndReached={()=>{if(page<totalPages&&!loadingMore){setLoadingMore(true);load(page+1);}}}
       onEndReachedThreshold={0.3}
       ListHeaderComponent={pagos.length>0
@@ -144,7 +144,7 @@ export default function MisPagosScreen() {
           <Text style={s.emptyText}>Sin pagos registrados</Text>
         </View>
       }
-      ListFooterComponent={loadingMore?<ActivityIndicator color={COLORS.primary} style={{marginTop:12}}/>:null}
+      ListFooterComponent={loadingMore?<ActivityIndicator color={COLORS.mutedForeground} style={{marginTop:12}}/>:null}
     />
     <ReciboModal item={reciboSeleccionado} nombreCliente={nombreCliente} onClose={() => setReciboSeleccionado(null)} />
     </>
@@ -164,7 +164,7 @@ const s = StyleSheet.create({
   pagadoBadge: { flexDirection:'row', alignItems:'center', gap:3, backgroundColor:'rgba(16,185,129,0.1)', borderRadius:8, paddingHorizontal:7, paddingVertical:3, marginTop:4 },
   pagadoText: { fontSize:11, color:COLORS.success, fontWeight:'700' },
   ref: { fontSize:11, color:COLORS.placeholder, marginTop:4 },
-  verRecibo: { fontSize:11, color: COLORS.primary, fontWeight:'700', marginTop:6 },
+  verRecibo: { fontSize:11, color: COLORS.dark, fontWeight:'700', marginTop:6 },
   empty: { alignItems:'center', marginTop:80 },
   emptyText: { color:COLORS.placeholder, marginTop:12, fontSize:15 },
 
@@ -178,7 +178,7 @@ const s = StyleSheet.create({
   ticketFooter: { fontSize:12, color:COLORS.sidebarText, textAlign:'center', marginTop:4 },
   ticketFooterSmall: { fontSize:10, color:COLORS.placeholder, textAlign:'center', marginTop:6 },
   ticketBtnRow: { flexDirection:'row', gap:10, marginTop:18 },
-  ticketBtn: { flex:1, flexDirection:'row', alignItems:'center', justifyContent:'center', gap:6, borderRadius:10, paddingVertical:11, borderWidth:1, borderColor: COLORS.primary },
-  ticketBtnCerrar: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  ticketBtnText: { fontSize:13, fontWeight:'700', color: COLORS.primary },
+  ticketBtn: { flex:1, flexDirection:'row', alignItems:'center', justifyContent:'center', gap:6, borderRadius:10, paddingVertical:11, borderWidth:1, borderColor: COLORS.dark },
+  ticketBtnCerrar: { backgroundColor: COLORS.dark, borderColor: COLORS.dark },
+  ticketBtnText: { fontSize:13, fontWeight:'700', color: COLORS.dark },
 });

@@ -59,7 +59,7 @@ export function SelectorZona({
         <Ionicons
           name="location-outline"
           size={20}
-          color={elegida ? COLORS.info : COLORS.mutedForeground}
+          color={elegida ? COLORS.brandStrong : COLORS.mutedForeground}
         />
         <Text style={[s.campoTexto, !elegida && s.campoVacio]} numberOfLines={1}>
           {elegida ? elegida.nombre : placeholder}
@@ -117,7 +117,7 @@ export function SelectorZona({
               <Text style={[s.filaNombre, valor === null && s.filaNombreActivo]}>
                 Sin zona definida
               </Text>
-              {valor === null && <Ionicons name="checkmark-circle" size={22} color={COLORS.info} />}
+              {valor === null && <Ionicons name="checkmark-circle" size={22} color={COLORS.brandStrong} />}
             </TouchableOpacity>
           )}
 
@@ -151,7 +151,7 @@ export function SelectorZona({
                     <Ionicons
                       name="location"
                       size={18}
-                      color={activa ? COLORS.white : COLORS.info}
+                      color={activa ? COLORS.white : COLORS.brandStrong}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -165,7 +165,7 @@ export function SelectorZona({
                       </Text>
                     )}
                   </View>
-                  {activa && <Ionicons name="checkmark-circle" size={22} color={COLORS.info} />}
+                  {activa && <Ionicons name="checkmark-circle" size={22} color={COLORS.brandStrong} />}
                 </TouchableOpacity>
               );
             }}
@@ -183,7 +183,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 13,
     backgroundColor: COLORS.background, marginTop: 6, marginBottom: 12,
   },
-  campoElegido: { borderColor: COLORS.info, backgroundColor: COLORS.lightinfo },
+  campoElegido: { borderColor: COLORS.brandStrong, backgroundColor: COLORS.lightbrand },
   campoTexto: { flex: 1, fontSize: 15, fontWeight: '700', color: COLORS.dark },
   campoVacio: { fontWeight: '500', color: COLORS.mutedForeground },
 
@@ -209,14 +209,14 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 13, marginBottom: 10,
     backgroundColor: COLORS.card,
   },
-  filaActiva: { borderColor: COLORS.info, backgroundColor: COLORS.lightinfo },
+  filaActiva: { borderColor: COLORS.brandStrong, backgroundColor: COLORS.lightbrand },
   filaIcono: {
     width: 38, height: 38, borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.lightinfo,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.lightbrand,
   },
-  filaIconoActivo: { backgroundColor: COLORS.info },
+  filaIconoActivo: { backgroundColor: COLORS.brandStrong },
   filaNombre: { fontSize: 16, fontWeight: '700', color: COLORS.dark },
-  filaNombreActivo: { color: COLORS.info },
+  filaNombreActivo: { color: COLORS.brandStrong },
   filaSub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 1 },
 
   vacio: { alignItems: 'center', marginTop: 60, paddingHorizontal: 30 },

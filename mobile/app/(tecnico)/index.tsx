@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { getClientes, noInstalarCliente, ClienteListItem } from '@/services/api';
 import { TecnicoNav } from '@/components/TecnicoNav';
 import { PromptModal } from '@/components/PromptModal';
 import { COLORS } from '@/theme/colors';
+import { Cabecera, AccionCabecera, Rotulo, UI } from '@/components/Pantalla';
 import { alerta } from '@/components/Aviso';
 
 function OrdenCard({ item, onInstalar, onNoInstalar }: {
@@ -19,7 +19,7 @@ function OrdenCard({ item, onInstalar, onNoInstalar }: {
       <View
         style={[
           st.franja,
-          { backgroundColor: item.tipo_conexion === 'inalambrico' ? COLORS.info : COLORS.primary },
+          { backgroundColor: item.tipo_conexion === 'inalambrico' ? COLORS.brand : COLORS.dark },
         ]}
       />
 
@@ -89,12 +89,42 @@ export default function TecnicoOrdenesScreen() {
     }
   }
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={UI.pantalla} color={COLORS.dark} size="large" />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      {/* La hora y la bateria van en claro: la cabecera de abajo es oscura. */}
-      <StatusBar style="light" />
+    <View style={UI.pantalla}>
+      {/* La cabecera va FUERA de la lista: asi se queda fija y solo corre lo
+          de abajo. Dentro de ListHeaderComponent se desplazaba con el
+          contenido y el tecnico perdia de vista el acceso a Escanear justo
+          cuando mas lo usa, con la lista larga. */}
+      <Cabecera titulo="Órdenes de hoy">
+        <View style={st.heroNumeroFila}>
+          <Text style={st.heroValue}>{ordenes.length}</Text>
+          <Text style={st.heroUnidad}>
+            {ordenes.length === 1 ? 'instalación pendiente' : 'instalaciones pendientes'}
+          </Text>
+        </View>
+
+        <View style={st.heroActions}>
+          <AccionCabecera
+            icono="scan"
+            texto="Escanear"
+            destacada
+            onPress={() => router.push('/(tecnico)/escanear-equipo' as any)}
+          />
+          <AccionCabecera
+            icono="cube"
+            texto="Mi stock"
+            onPress={() => router.push('/(tecnico)/inventario' as any)}
+          />
+          <AccionCabecera
+            icono="map"
+            texto="Mapa"
+            onPress={() => router.push('/(tecnico)/mapa' as any)}
+          />
+        </View>
+      </Cabecera>
+
       <FlatList
         data={ordenes}
         keyExtractor={i => String(i.id)}
@@ -105,59 +135,18 @@ export default function TecnicoOrdenesScreen() {
             onNoInstalar={() => setNoInstalarTarget(item)}
           />
         )}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        // El relleno de abajo deja ver entera la ultima tarjeta por encima de
+        // la barra inferior, que flota sobre la lista.
+        contentContainerStyle={{ paddingBottom: 28 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.brand} />}
-        ListHeaderComponent={
-          <View>
-            {/* Cabecera oscura a sangre, sin margenes: es lo que separa una
-                app de un formulario. El numero grande es la respuesta a lo
-                unico que el tecnico pregunta al abrir: cuanto me queda hoy. */}
-            <View style={st.hero}>
-              <Text style={st.heroLabel}>ÓRDENES DE HOY</Text>
-              <View style={st.heroNumeroFila}>
-                <Text style={st.heroValue}>{ordenes.length}</Text>
-                <Text style={st.heroUnidad}>
-                  {ordenes.length === 1 ? 'instalación pendiente' : 'instalaciones pendientes'}
-                </Text>
-              </View>
-
-              <View style={st.heroActions}>
-                <TouchableOpacity
-                  style={st.heroBtnMarca}
-                  onPress={() => router.push('/(tecnico)/escanear-equipo' as any)}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="scan" size={17} color={COLORS.brandForeground} />
-                  <Text style={st.heroBtnMarcaText}>Escanear</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={st.heroBtnSuave}
-                  onPress={() => router.push('/(tecnico)/inventario' as any)}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="cube" size={17} color={COLORS.onDark} />
-                  <Text style={st.heroBtnSuaveText}>Mi stock</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={st.heroBtnSuave}
-                  onPress={() => router.push('/(tecnico)/mapa' as any)}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="map" size={17} color={COLORS.onDark} />
-                  <Text style={st.heroBtnSuaveText}>Mapa</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {ordenes.length > 0 && (
-              <Text style={st.listaHeader}>POR INSTALAR</Text>
-            )}
-          </View>
-        }
+        ListHeaderComponent={ordenes.length > 0 ? <Rotulo>POR INSTALAR</Rotulo> : null}
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 80 }}>
-            <Ionicons name="checkmark-circle-outline" size={44} color={COLORS.success} />
-            <Text style={{ color: COLORS.mutedForeground, marginTop: 12, fontSize: 15 }}>Sin órdenes pendientes</Text>
+          <View style={{ alignItems: 'center', marginTop: 70, paddingHorizontal: 30 }}>
+            <Ionicons name="checkmark-circle-outline" size={46} color={COLORS.success} />
+            <Text style={st.vacioTitulo}>Sin órdenes pendientes</Text>
+            <Text style={st.vacioTexto}>
+              Cuando el administrador apruebe una instalación, aparecerá acá.
+            </Text>
           </View>
         }
       />
@@ -174,37 +163,17 @@ export default function TecnicoOrdenesScreen() {
 }
 
 const st = StyleSheet.create({
-  // ── Cabecera oscura ────────────────────────────────────────────────────
-  hero: {
-    backgroundColor: COLORS.surfaceDark,
-    paddingHorizontal: 20, paddingTop: 54, paddingBottom: 22,
-    borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
-    marginBottom: 18,
-  },
-  heroLabel: {
-    color: COLORS.onDarkMuted, fontSize: 11, fontWeight: '800', letterSpacing: 1.6,
-  },
-  heroNumeroFila: { flexDirection: 'row', alignItems: 'baseline', gap: 9, marginTop: 6, marginBottom: 18 },
+  heroNumeroFila: { flexDirection: 'row', alignItems: 'baseline', gap: 9, marginTop: 10, marginBottom: 18 },
   // El numero en naranja: es el unico acento de marca de la pantalla, y cae
   // justo donde se mira primero.
   heroValue: { color: COLORS.brand, fontSize: 44, fontWeight: '900', lineHeight: 48 },
   heroUnidad: { color: COLORS.onDark, fontSize: 14, fontWeight: '600', flex: 1 },
-
   heroActions: { flexDirection: 'row', gap: 9 },
-  heroBtnMarca: {
-    flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.brand, borderRadius: 14, paddingVertical: 13,
-  },
-  heroBtnMarcaText: { color: COLORS.brandForeground, fontWeight: '800', fontSize: 12.5 },
-  heroBtnSuave: {
-    flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.surfaceDarkSoft, borderRadius: 14, paddingVertical: 13,
-  },
-  heroBtnSuaveText: { color: COLORS.onDark, fontWeight: '700', fontSize: 12.5 },
 
-  listaHeader: {
-    color: COLORS.placeholder, fontSize: 11, fontWeight: '800', letterSpacing: 1.4,
-    marginBottom: 10, marginHorizontal: 16,
+  vacioTitulo: { color: COLORS.dark, marginTop: 14, fontSize: 16, fontWeight: '800' },
+  vacioTexto: {
+    color: COLORS.mutedForeground, marginTop: 6, fontSize: 13.5,
+    textAlign: 'center', lineHeight: 19,
   },
 
   // ── Tarjeta ────────────────────────────────────────────────────────────

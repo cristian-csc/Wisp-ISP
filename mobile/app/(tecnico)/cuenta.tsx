@@ -44,8 +44,8 @@ export default function TecnicoCuentaScreen() {
           onPress={() => router.push('/(tecnico)/instalaciones?modo=registros' as any)}
           activeOpacity={0.8}
         >
-          <View style={[s.statIcon, { backgroundColor: COLORS.lightinfo }]}>
-            <Ionicons name="person-add-outline" size={20} color={COLORS.info} />
+          <View style={[s.statIcon, { backgroundColor: COLORS.muted }]}>
+            <Ionicons name="person-add-outline" size={20} color={COLORS.mutedForeground} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.statValue}>{registrados ?? '—'}</Text>

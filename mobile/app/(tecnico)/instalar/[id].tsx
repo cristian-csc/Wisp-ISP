@@ -149,7 +149,7 @@ export default function InstalarScreen() {
     }
   }
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
   if (!cliente) return null;
 
   return (
@@ -166,7 +166,7 @@ export default function InstalarScreen() {
               params: { clienteLat: String(cliente.lat), clienteLng: String(cliente.lng), clienteNombre: cliente.nombre },
             })}
           >
-            <Ionicons name="location-outline" size={16} color={COLORS.primary} />
+            <Ionicons name="location-outline" size={16} color={COLORS.mutedForeground} />
             <Text style={s.ubicacionBtnText}>Ver ubicación del cliente</Text>
           </TouchableOpacity>
         )}
@@ -211,7 +211,7 @@ export default function InstalarScreen() {
             ))}
           </View>
           <View style={s.leyenda}>
-            <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.primary }]} /><Text style={s.leyendaText}>Libre</Text></View>
+            <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.dark }]} /><Text style={s.leyendaText}>Libre</Text></View>
             <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.success }]} /><Text style={s.leyendaText}>Ocupado</Text></View>
             <View style={s.leyendaItem}><View style={[s.leyendaDot, { backgroundColor: COLORS.error }]} /><Text style={s.leyendaText}>Dañado</Text></View>
           </View>
@@ -239,7 +239,7 @@ export default function InstalarScreen() {
         <>
           <Text style={s.sectionTitle}>FOTO DE LA FACHADA (FALTA)</Text>
           <TouchableOpacity style={[s.fotoBtn, fotoUri && s.fotoBtnDone]} onPress={tomarFoto}>
-            <Ionicons name={fotoUri ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoUri ? COLORS.success : COLORS.primary} />
+            <Ionicons name={fotoUri ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoUri ? COLORS.success : COLORS.mutedForeground} />
             <Text style={[s.fotoBtnText, fotoUri && { color: COLORS.success }]}>
               {fotoUri ? 'Foto tomada — tocar para repetir' : 'Este cliente no tiene foto — tómala ahora'}
             </Text>
@@ -273,7 +273,7 @@ export default function InstalarScreen() {
       <Text style={s.sectionTitle}>5. EVIDENCIA FOTOGRÁFICA</Text>
 
       <TouchableOpacity style={[s.fotoBtn, fotoPowerMeter && s.fotoBtnDone]} onPress={() => tomarFotoGenerica(setFotoPowerMeter)}>
-        <Ionicons name={fotoPowerMeter ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoPowerMeter ? COLORS.success : COLORS.primary} />
+        <Ionicons name={fotoPowerMeter ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoPowerMeter ? COLORS.success : COLORS.mutedForeground} />
         <Text style={[s.fotoBtnText, fotoPowerMeter && { color: COLORS.success }]}>
           {fotoPowerMeter ? 'Power meter — tocar para repetir' : 'Foto del power meter (obligatoria)'}
         </Text>
@@ -281,7 +281,7 @@ export default function InstalarScreen() {
       {fotoPowerMeter && <Image source={{ uri: fotoPowerMeter }} style={s.fotoPreview} />}
 
       <TouchableOpacity style={[s.fotoBtn, fotoCajaNap && s.fotoBtnDone]} onPress={() => tomarFotoGenerica(setFotoCajaNap)}>
-        <Ionicons name={fotoCajaNap ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoCajaNap ? COLORS.success : COLORS.primary} />
+        <Ionicons name={fotoCajaNap ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoCajaNap ? COLORS.success : COLORS.mutedForeground} />
         <Text style={[s.fotoBtnText, fotoCajaNap && { color: COLORS.success }]}>
           {fotoCajaNap ? 'Caja NAP — tocar para repetir' : 'Foto de la caja NAP con precinto y puerto usado (obligatoria)'}
         </Text>
@@ -317,7 +317,7 @@ export default function InstalarScreen() {
         </View>
       </View>
       <View style={s.pagoAviso}>
-        <Ionicons name="calendar-outline" size={16} color={COLORS.info} />
+        <Ionicons name="calendar-outline" size={16} color={COLORS.mutedForeground} />
         <Text style={s.pagoAvisoText}>
           Este cliente pagara los{' '}
           <Text style={s.pagoAvisoFuerte}>{diaDePago(fechaActivacion)}</Text> de cada mes,
@@ -342,21 +342,21 @@ const s = StyleSheet.create({
   infoCard: { backgroundColor: COLORS.card, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 14, marginBottom: 18 },
   infoNombre: { fontSize: 16, fontWeight: '800', color: COLORS.dark },
   infoSub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 3 },
-  ubicacionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 10, borderWidth: 1, borderColor: COLORS.primary, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  ubicacionBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.primary, letterSpacing: 1.5, marginBottom: 10 },
+  ubicacionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 10, borderWidth: 1, borderColor: COLORS.dark, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  ubicacionBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.dark },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.dark, letterSpacing: 1.5, marginBottom: 10 },
   chip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginRight: 10, backgroundColor: COLORS.card },
-  chipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.lightprimary },
+  chipActive: { borderColor: COLORS.dark, backgroundColor: COLORS.muted },
   chipRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   chipText: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground },
-  chipTextActive: { color: COLORS.primaryEmphasis, fontWeight: '700' },
+  chipTextActive: { color: COLORS.dark, fontWeight: '700' },
   emptyText: { fontSize: 12, color: COLORS.mutedForeground, paddingVertical: 10 },
   bornesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
   borne: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
-  borneLibre: { backgroundColor: COLORS.lightprimary, borderColor: COLORS.primary },
+  borneLibre: { backgroundColor: COLORS.muted, borderColor: COLORS.dark },
   borneOcupado: { backgroundColor: COLORS.lightsuccess, borderColor: COLORS.success },
   borneDanado: { backgroundColor: COLORS.lighterror, borderColor: COLORS.error },
-  borneSelected: { backgroundColor: COLORS.primary },
+  borneSelected: { backgroundColor: COLORS.dark },
   borneNum: { fontWeight: '800', color: COLORS.dark },
   leyenda: { flexDirection: 'row', gap: 14, marginBottom: 16 },
   leyendaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -365,7 +365,7 @@ const s = StyleSheet.create({
   fotoBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: COLORS.warning, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 13, paddingHorizontal: 14, backgroundColor: COLORS.lightwarning, marginBottom: 16 },
   fotoBtnOpcional: { borderColor: COLORS.border, backgroundColor: COLORS.card },
   fotoBtnDone: { borderStyle: 'solid', borderColor: COLORS.success, backgroundColor: COLORS.lightsuccess },
-  fotoBtnText: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  fotoBtnText: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.dark },
   fotoPreview: { width: '100%', height: 160, borderRadius: 12, marginBottom: 16, backgroundColor: COLORS.muted },
   row: { flexDirection: 'row', marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground, marginBottom: 6 },
@@ -381,11 +381,11 @@ const s = StyleSheet.create({
   fechaSeparador: { height: 1, backgroundColor: COLORS.border },
   pagoAviso: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: COLORS.lightinfo, borderRadius: 10,
+    backgroundColor: COLORS.muted, borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 10, marginBottom: 6,
   },
   pagoAvisoText: { flex: 1, fontSize: 13, color: COLORS.dark },
-  pagoAvisoFuerte: { fontWeight: '900', color: COLORS.info },
-  confirmarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
+  pagoAvisoFuerte: { fontWeight: '900', color: COLORS.mutedForeground },
+  confirmarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.dark, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
   confirmarText: { color: COLORS.white, fontWeight: '900', fontSize: 15 },
 });

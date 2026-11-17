@@ -24,7 +24,7 @@ export default function VendedorCuentaScreen() {
       <CuentaScreen rolLabel="Vendedor de campo" rolIcon="people-outline">
         <TouchableOpacity style={s.statCard} onPress={() => router.push('/(vendedor)' as any)} activeOpacity={0.8}>
           <View style={s.statIcon}>
-            <Ionicons name="person-add-outline" size={20} color={COLORS.info} />
+            <Ionicons name="person-add-outline" size={20} color={COLORS.mutedForeground} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.statValue}>{total ?? '—'} <Text style={s.statValueSub}>registrados · {activos ?? '—'} activos</Text></Text>
@@ -40,7 +40,7 @@ export default function VendedorCuentaScreen() {
 
 const s = StyleSheet.create({
   statCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.card, borderRadius: 14, marginHorizontal: 20, marginTop: 16, padding: 14, borderWidth: 1, borderColor: COLORS.border },
-  statIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: COLORS.lightinfo, alignItems: 'center', justifyContent: 'center' },
+  statIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: COLORS.muted, alignItems: 'center', justifyContent: 'center' },
   statValue: { fontSize: 16, fontWeight: '900', color: COLORS.dark },
   statValueSub: { fontSize: 12, fontWeight: '600', color: COLORS.mutedForeground },
   statLabel: { fontSize: 12, color: COLORS.mutedForeground, fontWeight: '600', marginTop: 1 },

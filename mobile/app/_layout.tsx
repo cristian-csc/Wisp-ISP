@@ -59,7 +59,9 @@ function AppNavigator() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="dark" />
+      {/* Clara: encima hay azul marino en todas las pantallas con sesion.
+          El login pinta su propio bloque oscuro arriba, asi que tambien. */}
+      <StatusBar style="light" />
       <SafeAreaProvider>
         <SessionProvider>
           <AppNavigator />

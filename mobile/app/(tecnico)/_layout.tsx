@@ -5,8 +5,10 @@ export default function TecnicoLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: COLORS.card },
-        headerTintColor: COLORS.dark,
+        // Azul marino en todas: antes unas pantallas tenian cabecera clara
+        // y otras la oscura propia, y se notaba el salto al navegar.
+        headerStyle: { backgroundColor: COLORS.surfaceDark },
+        headerTintColor: COLORS.onDark,
         headerTitleStyle: { fontWeight: '800' },
         headerShadowVisible: true,
         contentStyle: { backgroundColor: COLORS.background },

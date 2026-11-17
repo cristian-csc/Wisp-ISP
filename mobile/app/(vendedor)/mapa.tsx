@@ -13,7 +13,7 @@ export default function VendedorMapaScreen() {
   return (
     <View style={s.container}>
       <View style={s.aviso}>
-        <Ionicons name="information-circle-outline" size={16} color={COLORS.info} />
+        <Ionicons name="information-circle-outline" size={16} color={COLORS.mutedForeground} />
         <Text style={s.avisoText}>
           Dentro del círculo verde hay fibra a menos de {RADIO_COBERTURA_M} m: ahí se puede
           instalar. Toca una caja para ver cuántos bornes le quedan.
@@ -31,7 +31,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: COLORS.lightinfo,
+    backgroundColor: COLORS.muted,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },

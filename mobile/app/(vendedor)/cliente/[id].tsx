@@ -16,7 +16,7 @@ const ESTADO_LABEL: Record<EstadoCliente, string> = {
 };
 const ESTADO_COLOR: Record<EstadoCliente, string> = {
   pendiente_aprobacion: COLORS.warning,
-  aprobado: COLORS.info,
+  aprobado: COLORS.dark,
   rechazado: COLORS.error,
   activo: COLORS.success,
   no_instalado: COLORS.error,
@@ -53,7 +53,7 @@ export default function VendedorClienteDetalleScreen() {
     })();
   }, [id]);
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
   if (!cliente) return <View style={s.container}><Text style={s.empty}>Cliente no encontrado</Text></View>;
 
   const color = ESTADO_COLOR[cliente.estado];

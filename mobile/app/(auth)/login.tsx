@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession, ROLES_MOBILE_PERMITIDOS } from '@/hooks/useSession';
 import { loginAdmin, loginCliente, getMeWithToken } from '@/services/api';
-import { Logo } from '@/components/Logo';
 import { COLORS } from '@/theme/colors';
 import { alerta } from '@/components/Aviso';
+import { useTopeSeguro } from '@/components/Pantalla';
 
-const FEATURES: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { icon: 'flash-outline', label: 'Instalación rápida' },
-  { icon: 'shield-checkmark-outline', label: 'Soporte 24/7' },
-  { icon: 'wifi-outline', label: 'Red de fibra propia' },
-];
+// El icono oficial de la app: la "W" sobre el cuadrado naranja. Es el
+// mismo archivo que se usa de icono en el telefono, asi que la app y su
+// pantalla de entrada dicen lo mismo.
+const ICONO = require('../../assets/icon.png');
 
 export default function LoginScreen() {
   const { signIn } = useSession();
@@ -20,6 +19,7 @@ export default function LoginScreen() {
   const [clave, setClave] = useState('');
   const [loading, setLoading] = useState(false);
   const [mostrarClave, setMostrarClave] = useState(false);
+  const tope = useTopeSeguro();
 
   // El DNI del cliente siempre es solo dígitos; cualquier otra cosa (email
   // o, en pruebas, un username corto sin @) se trata como login de staff.
@@ -55,87 +55,81 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={s.bg} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <StatusBar style="dark" />
+    <KeyboardAvoidingView
+      style={s.bg}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      {/* Clara: el bloque de arriba es azul marino. */}
+      <StatusBar style="light" />
 
-      {/* Formas decorativas sutiles, sin depender de assets nuevos */}
-      <View style={[s.deco, s.decoA]} />
-      <View style={[s.deco, s.decoB]} />
+      {/* Bloque de marca. Va fuera del scroll para que no se mueva, pero el
+          formulario si sube cuando aparece el teclado. */}
+      <View style={[s.marca, { paddingTop: tope + 26 }]}>
+        <Image source={ICONO} style={s.icono} resizeMode="contain" />
+        <Text style={s.marcaNombre}>WISP</Text>
+        <Text style={s.marcaLema}>Internet para todos</Text>
+      </View>
 
-      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View style={s.brand}>
-          <Logo height={56} />
-          <Text style={s.tagline}>Internet para todos</Text>
-          <Text style={s.taglineSub}>Rápida. Estable. Siempre contigo.</Text>
-        </View>
-
-        <View style={s.featuresRow}>
-          {FEATURES.map((f) => (
-            <View key={f.label} style={s.featurePill}>
-              <Ionicons name={f.icon} size={16} color={COLORS.primary} />
-              <Text style={s.featureText}>{f.label}</Text>
-            </View>
-          ))}
-        </View>
-
+      <ScrollView
+        contentContainerStyle={s.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={s.card}>
-          <View style={s.cardBody}>
-            <Text style={s.inputLabel}>USUARIO</Text>
-            <View style={s.inputWrap}>
-              <Ionicons name="person-outline" size={19} color={COLORS.mutedForeground} style={s.leadingIcon} />
-              <TextInput
-                style={[s.input, { flex: 1 }]}
-                value={usuario}
-                onChangeText={setUsuario}
-                placeholder="DNI o correo electrónico"
-                placeholderTextColor={COLORS.placeholder}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+          <Text style={s.cardTitulo}>Inicia sesión</Text>
 
-            <Text style={[s.inputLabel, { marginTop: 16 }]}>CONTRASEÑA</Text>
-            <View style={s.inputWrap}>
-              <Ionicons name="lock-closed-outline" size={19} color={COLORS.mutedForeground} style={s.leadingIcon} />
-              <TextInput
-                style={[s.input, { flex: 1 }]}
-                value={clave}
-                onChangeText={setClave}
-                placeholderTextColor={COLORS.placeholder}
-                secureTextEntry={!mostrarClave}
-                keyboardType="default"
-                autoComplete="off"
-                autoCorrect={false}
-                maxLength={100}
-              />
-              <TouchableOpacity style={s.eyeBtn} onPress={() => setMostrarClave(v => !v)}>
-                <Ionicons name={mostrarClave ? 'eye-off-outline' : 'eye-outline'} size={19} color={COLORS.mutedForeground} />
-              </TouchableOpacity>
-            </View>
+          <Text style={s.inputLabel}>USUARIO</Text>
+          <View style={s.inputWrap}>
+            <Ionicons name="person-outline" size={19} color={COLORS.mutedForeground} style={s.leadingIcon} />
+            <TextInput
+              style={[s.input, { flex: 1 }]}
+              value={usuario}
+              onChangeText={setUsuario}
+              placeholder="DNI o correo electrónico"
+              placeholderTextColor={COLORS.placeholder}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
 
-            <TouchableOpacity
-              style={[s.btn, loading && s.btnDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator color={COLORS.white} />
-              ) : (
-                <>
-                  <Text style={s.btnText}>INGRESAR</Text>
-                  <Ionicons name="arrow-forward" size={17} color={COLORS.white} />
-                </>
-              )}
+          <Text style={[s.inputLabel, { marginTop: 16 }]}>CONTRASEÑA</Text>
+          <View style={s.inputWrap}>
+            <Ionicons name="lock-closed-outline" size={19} color={COLORS.mutedForeground} style={s.leadingIcon} />
+            <TextInput
+              style={[s.input, { flex: 1 }]}
+              value={clave}
+              onChangeText={setClave}
+              placeholderTextColor={COLORS.placeholder}
+              secureTextEntry={!mostrarClave}
+              keyboardType="default"
+              autoComplete="off"
+              autoCorrect={false}
+              maxLength={100}
+            />
+            <TouchableOpacity style={s.eyeBtn} onPress={() => setMostrarClave(v => !v)} hitSlop={10}>
+              <Ionicons name={mostrarClave ? 'eye-off-outline' : 'eye-outline'} size={19} color={COLORS.mutedForeground} />
             </TouchableOpacity>
           </View>
 
-          <View style={s.cardFooter}>
-            <View style={s.statusRow}>
-              <View style={s.greenDot} />
-              <Text style={s.statusText}>Sistema activo</Text>
-            </View>
+          {/* Naranja de marca con tinta oscura encima: el blanco sobre este
+              naranja da 2,45:1 y no se lee. */}
+          <TouchableOpacity
+            style={[s.btn, loading && s.btnDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color={COLORS.brandForeground} />
+            ) : (
+              <Text style={s.btnText}>Ingresar</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={s.statusRow}>
+            <View style={s.greenDot} />
+            <Text style={s.statusText}>Sistema activo</Text>
           </View>
         </View>
 
@@ -146,59 +140,65 @@ export default function LoginScreen() {
 }
 
 const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: COLORS.authBg },
-  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 24 },
+  bg: { flex: 1, backgroundColor: COLORS.background },
 
-  deco: { position: 'absolute', borderRadius: 999, backgroundColor: COLORS.primary },
-  decoA: { width: 220, height: 220, top: -90, right: -80, opacity: 0.08 },
-  decoB: { width: 160, height: 160, bottom: -60, left: -70, opacity: 0.06 },
-
-  brand: { alignItems: 'center', marginBottom: 18 },
-  tagline: { color: COLORS.dark, fontSize: 17, fontWeight: '800', marginTop: 16, textAlign: 'center' },
-  taglineSub: { color: COLORS.mutedForeground, fontSize: 13, fontWeight: '600', marginTop: 4 },
-
-  featuresRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 22, flexWrap: 'wrap' },
-  featurePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: COLORS.card, borderRadius: 20, paddingHorizontal: 11, paddingVertical: 7,
-    borderWidth: 1, borderColor: COLORS.border,
+  // Bloque de marca, azul marino y a sangre.
+  marca: {
+    backgroundColor: COLORS.surfaceDark,
+    alignItems: 'center',
+    paddingBottom: 30,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  featureText: { fontSize: 11, fontWeight: '700', color: COLORS.dark },
+  // El icono oficial ya trae su cuadrado naranja: no hace falta ponerle
+  // fondo ni marco, solo dejarle aire.
+  icono: { width: 78, height: 78, borderRadius: 18 },
+  marcaNombre: {
+    color: COLORS.onDark, fontSize: 30, fontWeight: '900',
+    letterSpacing: 3, marginTop: 14,
+  },
+  marcaLema: { color: COLORS.onDarkMuted, fontSize: 13.5, fontWeight: '600', marginTop: 4 },
+
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 26 },
 
   card: {
-    backgroundColor: COLORS.card, borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 20, elevation: 6,
+    backgroundColor: COLORS.card, borderRadius: 20, padding: 22,
+    borderWidth: 1, borderColor: COLORS.border,
+    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 }, elevation: 5,
   },
-  cardBody: { padding: 22 },
-  inputLabel: { fontSize: 11, fontWeight: '700', color: COLORS.mutedForeground, letterSpacing: 2, marginBottom: 8 },
-  input: {
-    paddingVertical: 13, paddingRight: 12,
-    fontSize: 15, color: COLORS.dark,
+  cardTitulo: { fontSize: 20, fontWeight: '900', color: COLORS.dark, marginBottom: 18 },
+
+  inputLabel: {
+    fontSize: 11, fontWeight: '800', color: COLORS.mutedForeground,
+    letterSpacing: 1.6, marginBottom: 7,
   },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border,
-    borderRadius: 12, paddingLeft: 14,
+    borderRadius: 14, paddingLeft: 14,
   },
+  input: { paddingVertical: 14, paddingRight: 12, fontSize: 15, color: COLORS.dark },
   leadingIcon: { marginRight: 10 },
-  eyeBtn: { paddingHorizontal: 14, paddingVertical: 13, justifyContent: 'center', alignItems: 'center' },
+  eyeBtn: { paddingHorizontal: 14, paddingVertical: 13, justifyContent: 'center' },
+
   btn: {
-    backgroundColor: COLORS.primary, borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
-    flexDirection: 'row', gap: 8, marginTop: 22,
+    backgroundColor: COLORS.brand, borderRadius: 14,
+    paddingVertical: 16, alignItems: 'center', justifyContent: 'center',
+    marginTop: 22,
   },
-  btnDisabled: { opacity: 0.7 },
-  btnText: { color: COLORS.white, fontWeight: '900', fontSize: 14, letterSpacing: 1.5 },
+  btnDisabled: { opacity: 0.6 },
+  btnText: {
+    color: COLORS.brandForeground, fontWeight: '900',
+    fontSize: 16, letterSpacing: 0.3,
+  },
 
-  cardFooter: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    paddingHorizontal: 22, paddingVertical: 14,
-    borderTopWidth: 1, borderTopColor: COLORS.border,
-  },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 7, justifyContent: 'center', marginTop: 16 },
   greenDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.success },
-  statusText: { fontSize: 11, color: COLORS.success, fontWeight: '600' },
+  statusText: { fontSize: 12, color: COLORS.mutedForeground, fontWeight: '600' },
 
-  bottomText: { textAlign: 'center', fontSize: 12, color: COLORS.mutedForeground, marginTop: 18 },
+  bottomText: {
+    textAlign: 'center', color: COLORS.placeholder, fontSize: 12,
+    marginTop: 20, lineHeight: 17,
+  },
 });

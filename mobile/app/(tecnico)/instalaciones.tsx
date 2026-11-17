@@ -15,7 +15,7 @@ function InstalacionCard({ item }: { item: ClienteListItem }) {
           <Text style={st.sub}>{item.plan?.nombre ?? '—'}</Text>
           {item.zona && (
             <View style={st.zonaTagRow}>
-              <Ionicons name="location-outline" size={12} color={COLORS.info} />
+              <Ionicons name="location-outline" size={12} color={COLORS.mutedForeground} />
               <Text style={st.zonaTag}>{item.zona?.nombre ?? 'Sin zona'}</Text>
             </View>
           )}
@@ -63,7 +63,7 @@ export default function MisInstalacionesScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
 
   const activos = clientes.filter(c => c.estado === 'activo').length;
   // En "registros" la fecha de instalación no sirve de referencia: un cliente
@@ -88,19 +88,19 @@ export default function MisInstalacionesScreen() {
         keyExtractor={i => String(i.id)}
         renderItem={({ item }) => <InstalacionCard item={item} />}
         contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.dark} />}
         ListHeaderComponent={
           <View style={st.statsRow}>
-            <View style={[st.statCard, { borderTopColor: COLORS.primary }]}>
-              <Text style={[st.statValue, { color: COLORS.primary }]}>{clientes.length}</Text>
+            <View style={[st.statCard, { borderTopColor: COLORS.dark }]}>
+              <Text style={[st.statValue, { color: COLORS.dark }]}>{clientes.length}</Text>
               <Text style={st.statLabel}>{esRegistros ? 'Total registrados' : 'Total instaladas'}</Text>
             </View>
             <View style={[st.statCard, { borderTopColor: COLORS.success }]}>
               <Text style={[st.statValue, { color: COLORS.success }]}>{activos}</Text>
               <Text style={st.statLabel}>Activos</Text>
             </View>
-            <View style={[st.statCard, { borderTopColor: COLORS.info }]}>
-              <Text style={[st.statValue, { color: COLORS.info }]}>
+            <View style={[st.statCard, { borderTopColor: COLORS.dark }]}>
+              <Text style={[st.statValue, { color: COLORS.mutedForeground }]}>
                 {esRegistros ? pendientes : esteMes}
               </Text>
               <Text style={st.statLabel}>{esRegistros ? 'Sin activar' : 'Este mes'}</Text>
@@ -134,7 +134,7 @@ const st = StyleSheet.create({
   nombre: { fontSize: 15, fontWeight: '700', color: COLORS.dark },
   sub: { fontSize: 13, color: COLORS.mutedForeground, fontWeight: '600', marginTop: 2 },
   zonaTagRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
-  zonaTag: { fontSize: 11, color: COLORS.info, fontWeight: '600' },
+  zonaTag: { fontSize: 11, color: COLORS.mutedForeground, fontWeight: '600' },
   badge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   fechaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: COLORS.border },

@@ -90,7 +90,7 @@ export default function MiCuentaScreen() {
 
   useEffect(() => { load(); }, []);
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
 
   const activo    = cuenta?.estado === 'activo';
   const suspendido = cuenta?.estado === 'suspendido';
@@ -144,14 +144,14 @@ export default function MiCuentaScreen() {
 
         {/* ── QUICK STATS ────────────────────────────────────── */}
         <View style={s.statsRow}>
-          <View style={[s.statCard, { borderTopColor: COLORS.primary }]}>
-            <Text style={[s.statNum, { color: COLORS.primary }]}>
+          <View style={[s.statCard, { borderTopColor: COLORS.dark }]}>
+            <Text style={[s.statNum, { color: COLORS.dark }]}>
               {dias !== null ? (dias < 0 ? '0' : String(dias)) : '—'}
             </Text>
             <Text style={s.statLabel}>Días{'\n'}restantes</Text>
           </View>
-          <View style={[s.statCard, { borderTopColor: COLORS.primary }]}>
-            <Text style={[s.statNum, { color: COLORS.primary }]}>
+          <View style={[s.statCard, { borderTopColor: COLORS.dark }]}>
+            <Text style={[s.statNum, { color: COLORS.dark }]}>
               {cuenta?.plan ? `S/${cuenta.plan.precio.toFixed(0)}` : '—'}
             </Text>
             <Text style={s.statLabel}>Mensua-{'\n'}lidad</Text>
@@ -202,7 +202,7 @@ export default function MiCuentaScreen() {
             <Text style={s.cardTitle}>MI CONEXIÓN</Text>
             <View style={s.connRow}>
               <View style={s.connIcon}>
-                <Ionicons name="wifi" size={26} color={COLORS.primary} />
+                <Ionicons name="wifi" size={26} color={COLORS.mutedForeground} />
               </View>
               <View style={{ flex: 1, marginLeft: 14 }}>
                 <Text style={s.connPlan}>{cuenta.plan.nombre}</Text>
@@ -252,7 +252,7 @@ export default function MiCuentaScreen() {
               <Text style={{ color: COLORS.placeholder, fontSize: 12, marginTop: 2 }}>Toca aquí para escribirnos por WhatsApp</Text>
             </View>
             <View style={s.helpBadge}>
-              <Text style={{ color: COLORS.secondary, fontWeight: '900', fontSize: 11 }}>SOPORTE</Text>
+              <Text style={{ color: COLORS.mutedForeground, fontWeight: '900', fontSize: 11 }}>SOPORTE</Text>
             </View>
           </View>
         </TouchableOpacity>

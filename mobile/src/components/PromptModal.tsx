@@ -64,6 +64,6 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10, marginTop: 16 },
   cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   cancelText: { color: COLORS.mutedForeground, fontWeight: '700', fontSize: 13 },
-  submitBtn: { flex: 1, backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  submitBtn: { flex: 1, backgroundColor: COLORS.dark, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   submitText: { color: COLORS.white, fontWeight: '800', fontSize: 13 },
 });

@@ -110,7 +110,7 @@ export default function JornadaScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
+        <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.mutedForeground} />
       ) : activa && jornada ? (
         <View style={s.card}>
           <View style={s.estadoRow}>
@@ -119,12 +119,12 @@ export default function JornadaScreen() {
           </View>
 
           <View style={s.infoRow}>
-            <Ionicons name="time-outline" size={16} color={COLORS.primary} />
+            <Ionicons name="time-outline" size={16} color={COLORS.mutedForeground} />
             <Text style={s.infoText}>Desde las {horaInicio(jornada.iniciado_en)} · {tiempoActivo(jornada.iniciado_en)}</Text>
           </View>
           {jornada.zona && (
             <View style={s.infoRow}>
-              <Ionicons name="location-outline" size={16} color={COLORS.primary} />
+              <Ionicons name="location-outline" size={16} color={COLORS.mutedForeground} />
               <Text style={s.infoText}>Zona: {jornada.zona.nombre}</Text>
             </View>
           )}
@@ -247,7 +247,7 @@ const s = StyleSheet.create({
     paddingTop: 36,
     paddingBottom: 32,
     paddingHorizontal: 24,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.dark,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
@@ -271,7 +271,7 @@ const s = StyleSheet.create({
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
 
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 10, paddingVertical: 14, marginTop: 18 },
-  btnIniciar: { backgroundColor: COLORS.primary },
+  btnIniciar: { backgroundColor: COLORS.dark },
   btnFinalizar: { backgroundColor: COLORS.error },
   btnText: { color: COLORS.white, fontWeight: '800', fontSize: 14 },
 
@@ -290,6 +290,6 @@ const s = StyleSheet.create({
   modalRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   modalCancelBtn: { flex: 1, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   modalCancelText: { color: COLORS.mutedForeground, fontWeight: '700', fontSize: 13 },
-  modalSubmitBtn: { flex: 1, backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  modalSubmitBtn: { flex: 1, backgroundColor: COLORS.dark, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   modalSubmitText: { color: COLORS.white, fontWeight: '800', fontSize: 13 },
 });

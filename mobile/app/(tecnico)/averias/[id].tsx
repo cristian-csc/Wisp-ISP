@@ -85,7 +85,7 @@ export default function AveriaDetalleScreen() {
     }
   }
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
   if (!averia) return null;
 
   return (
@@ -139,7 +139,7 @@ export default function AveriaDetalleScreen() {
             <Switch
               value={cambiarOnu}
               onValueChange={setCambiarOnu}
-              trackColor={{ true: COLORS.primary, false: COLORS.border }}
+              trackColor={{ true: COLORS.success, false: COLORS.border }}
               thumbColor={COLORS.white}
             />
           </View>
@@ -179,7 +179,7 @@ export default function AveriaDetalleScreen() {
               </View>
             ))}
             <TouchableOpacity style={s.fotoAgregar} onPress={tomarFotoSolucion}>
-              <Ionicons name="camera-outline" size={22} color={COLORS.primary} />
+              <Ionicons name="camera-outline" size={22} color={COLORS.mutedForeground} />
             </TouchableOpacity>
           </View>
 
@@ -202,18 +202,18 @@ const s = StyleSheet.create({
   card: { backgroundColor: COLORS.card, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 14, marginBottom: 14 },
   cardTitle: { fontSize: 10, fontWeight: '700', color: COLORS.mutedForeground, letterSpacing: 2, marginBottom: 8 },
   motivo: { fontSize: 14, color: COLORS.dark, lineHeight: 20 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.primary, letterSpacing: 1.5, marginBottom: 10 },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.dark, letterSpacing: 1.5, marginBottom: 10 },
   input: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: COLORS.dark, marginBottom: 14 },
   textArea: { minHeight: 90, paddingTop: 12 },
   label: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground, marginBottom: 6 },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   switchLabel: { fontSize: 14, fontWeight: '600', color: COLORS.dark },
   chip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginRight: 10, backgroundColor: COLORS.card },
-  chipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.lightprimary },
+  chipActive: { borderColor: COLORS.dark, backgroundColor: COLORS.muted },
   chipText: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground },
-  chipTextActive: { color: COLORS.primaryEmphasis, fontWeight: '700' },
+  chipTextActive: { color: COLORS.dark, fontWeight: '700' },
   emptyText: { fontSize: 12, color: COLORS.mutedForeground, paddingVertical: 10 },
-  confirmarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
+  confirmarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.dark, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
   confirmarText: { color: COLORS.white, fontWeight: '900', fontSize: 15 },
   fotosRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
   fotoWrap: { position: 'relative' },

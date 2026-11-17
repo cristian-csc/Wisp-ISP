@@ -61,7 +61,7 @@ export function alerta(
 }
 
 const TONOS: Record<string, { color: string; fondo: string; icono: keyof typeof Ionicons.glyphMap }> = {
-  default: { color: COLORS.info, fondo: COLORS.lightinfo, icono: 'information-circle' },
+  default: { color: COLORS.dark, fondo: COLORS.muted, icono: 'information-circle' },
   destructive: { color: COLORS.error, fondo: COLORS.lighterror, icono: 'alert-circle' },
 };
 
@@ -171,7 +171,7 @@ const a = StyleSheet.create({
   },
   botones: { marginTop: 18, gap: 9 },
   boton: {
-    backgroundColor: COLORS.primary, borderRadius: 13,
+    backgroundColor: COLORS.dark, borderRadius: 13,
     paddingVertical: 14, alignItems: 'center',
   },
   botonCancelar: { backgroundColor: 'transparent' },

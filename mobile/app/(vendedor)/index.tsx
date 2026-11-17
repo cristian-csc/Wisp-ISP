@@ -17,7 +17,7 @@ const ESTADO_LABEL: Record<EstadoCliente, string> = {
 };
 const ESTADO_COLOR: Record<EstadoCliente, string> = {
   pendiente_aprobacion: COLORS.warning,
-  aprobado: COLORS.info,
+  aprobado: COLORS.dark,
   rechazado: COLORS.error,
   activo: COLORS.success,
   no_instalado: COLORS.error,
@@ -35,7 +35,7 @@ function ClienteCard({ item, onPress }: { item: ClienteListItem; onPress: () => 
           <Text style={st.sub}>DNI {item.dni ?? '—'} · {item.telefono ?? 'sin teléfono'}</Text>
           {item.zona && (
             <View style={st.zonaTagRow}>
-              <Ionicons name="location-outline" size={12} color={COLORS.info} />
+              <Ionicons name="location-outline" size={12} color={COLORS.mutedForeground} />
               <Text style={st.zonaTag}>{item.zona?.nombre ?? 'Sin zona'}</Text>
             </View>
           )}
@@ -68,7 +68,7 @@ export default function VendedorClientesScreen() {
   const pendientes = clientes.filter(c => c.estado === 'pendiente_aprobacion').length;
   const activos = clientes.filter(c => c.estado === 'activo').length;
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
@@ -79,11 +79,11 @@ export default function VendedorClientesScreen() {
           <ClienteCard item={item} onPress={() => router.push(`/(vendedor)/cliente/${item.id}` as any)} />
         )}
         contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.dark} />}
         ListHeaderComponent={
           <View style={st.statsRow}>
-            <View style={[st.statCard, { borderTopColor: COLORS.info }]}>
-              <Text style={[st.statValue, { color: COLORS.info }]}>{clientes.length}</Text>
+            <View style={[st.statCard, { borderTopColor: COLORS.dark }]}>
+              <Text style={[st.statValue, { color: COLORS.mutedForeground }]}>{clientes.length}</Text>
               <Text style={st.statLabel}>Total</Text>
             </View>
             <View style={[st.statCard, { borderTopColor: COLORS.warning }]}>
@@ -118,7 +118,7 @@ const st = StyleSheet.create({
   nombre: { fontSize: 15, fontWeight: '700', color: COLORS.dark },
   sub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 2 },
   zonaTagRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
-  zonaTag: { fontSize: 11, color: COLORS.info, fontWeight: '600' },
+  zonaTag: { fontSize: 11, color: COLORS.mutedForeground, fontWeight: '600' },
   badge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4, maxWidth: 140 },
   badgeText: { fontSize: 10, fontWeight: '700', textAlign: 'right' },
   planText: { fontSize: 13, color: COLORS.mutedForeground, fontWeight: '600' },

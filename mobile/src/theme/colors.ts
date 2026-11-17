@@ -23,7 +23,7 @@ export const COLORS = {
   // ── Naranja WISP: marca y elemento activo ──────────────────────────────
   brand: '#ff842a',
   /** Sobre el naranja va tinta oscura: el blanco daría 2,45:1 y no se leería */
-  brandForeground: '#0f172a',
+  brandForeground: '#111827',
   /** Naranja para TEXTO sobre fondo claro, donde el de relleno no contrasta */
   brandStrong: '#b23b0b',
 
@@ -40,7 +40,7 @@ export const COLORS = {
   errorText: '#b91c1c',
   infoText: '#6d28d9',
 
-  dark: '#0f172a',
+  dark: '#111827',
   sidebarText: '#2a3547',
   white: '#ffffff',
 
@@ -49,17 +49,17 @@ export const COLORS = {
   // resalta de verdad; sobre blanco se apaga y hay que recurrir al tono
   // fuerte para que se lea.
   /** Fondo de la barra inferior y de las cabeceras */
-  surfaceDark: '#0f172a',
+  surfaceDark: '#111827',
   /** Un escalon mas claro, para lo que se apoya encima del oscuro */
-  surfaceDarkSoft: '#1e293b',
+  surfaceDarkSoft: '#1f2937',
   /** Texto principal sobre oscuro */
   onDark: '#f8fafc',
   /** Texto secundario sobre oscuro. Da 7:1 contra #0f172a. */
   onDarkMuted: '#94a3b8',
   /** Lineas y separadores sobre oscuro */
-  borderDark: '#1e293b',
+  borderDark: '#1f2937',
 
-  background: '#f8fafc',
+  background: '#f6f7f9',
   card: '#ffffff',
   border: '#e2e8f0',
   muted: '#eef2f9',

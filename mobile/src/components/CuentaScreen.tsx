@@ -28,7 +28,7 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap;
   return (
     <View style={s.infoRow}>
       <View style={s.infoIcon}>
-        <Ionicons name={icon} size={16} color={COLORS.primary} />
+        <Ionicons name={icon} size={16} color={COLORS.mutedForeground} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={s.infoLabel}>{label}</Text>
@@ -41,7 +41,7 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap;
 function AccionRow({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={s.accionRow} onPress={onPress} activeOpacity={0.7}>
-      <Ionicons name={icon} size={18} color={COLORS.primary} />
+      <Ionicons name={icon} size={18} color={COLORS.mutedForeground} />
       <Text style={s.accionText}>{label}</Text>
       <Ionicons name="chevron-forward" size={16} color={COLORS.mutedForeground} style={{ marginLeft: 'auto' }} />
     </TouchableOpacity>
@@ -144,7 +144,7 @@ export function CuentaScreen({
       </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 24 }} color={COLORS.primary} />
+        <ActivityIndicator style={{ marginTop: 24 }} color={COLORS.mutedForeground} />
       ) : (
         <>
           <View style={s.infoCard}>
@@ -249,7 +249,7 @@ const s = StyleSheet.create({
     paddingTop: 36,
     paddingBottom: 28,
     paddingHorizontal: 20,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.dark,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
@@ -261,7 +261,7 @@ const s = StyleSheet.create({
 
   infoCard: { backgroundColor: COLORS.card, borderRadius: 16, marginHorizontal: 20, marginTop: -16, padding: 6, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, elevation: 3 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 10 },
-  infoIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.lightprimary, alignItems: 'center', justifyContent: 'center' },
+  infoIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.muted, alignItems: 'center', justifyContent: 'center' },
   infoLabel: { fontSize: 11, color: COLORS.mutedForeground, fontWeight: '600' },
   infoValue: { fontSize: 14, color: COLORS.dark, fontWeight: '700', marginTop: 1 },
   divider: { height: 1, backgroundColor: COLORS.border, marginHorizontal: 10 },
@@ -270,7 +270,9 @@ const s = StyleSheet.create({
   accionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 13, paddingHorizontal: 10 },
   accionText: { fontSize: 14, color: COLORS.dark, fontWeight: '700' },
 
-  logoutBtn: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(239,68,68,0.25)', backgroundColor: COLORS.lighterror, borderRadius: 12, paddingVertical: 14, marginHorizontal: 20, marginTop: 20 },
+  // Secundaria: borde rojo sobre fondo claro. Rellena de rojo competiria
+  // con las acciones de la pantalla y se pulsa sin querer.
+  logoutBtn: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: COLORS.error, backgroundColor: COLORS.card, borderRadius: 14, paddingVertical: 15, marginHorizontal: 20, marginTop: 20, marginBottom: 8 },
   logoutText: { color: COLORS.error, fontWeight: '800', fontSize: 14 },
   footer: { alignItems: 'center', gap: 6, paddingBottom: 20, paddingTop: 20 },
   footerText: { fontSize: 11, color: COLORS.mutedForeground, fontWeight: '600' },
@@ -283,6 +285,6 @@ const s = StyleSheet.create({
   modalRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   modalCancelBtn: { flex: 1, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   modalCancelText: { color: COLORS.mutedForeground, fontWeight: '700', fontSize: 13 },
-  modalSubmitBtn: { flex: 1, backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  modalSubmitBtn: { flex: 1, backgroundColor: COLORS.dark, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   modalSubmitText: { color: COLORS.white, fontWeight: '800', fontSize: 13 },
 });

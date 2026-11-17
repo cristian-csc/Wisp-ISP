@@ -15,8 +15,8 @@ const ESTADO_LABEL: Record<Averia['estado'], string> = {
 };
 const ESTADO_COLOR: Record<Averia['estado'], string> = {
   pendiente: COLORS.warning,
-  asignada: COLORS.info,
-  en_proceso: COLORS.primary,
+  asignada: COLORS.warning,
+  en_proceso: COLORS.dark,
   resuelta: COLORS.success,
 };
 
@@ -40,7 +40,7 @@ function AveriaCard({ item, onIniciar, onPress }: { item: Averia; onIniciar: () 
       {item.estado === 'en_proceso' && (
         <View style={st.enProcesoRow}>
           <Text style={st.enProcesoHint}>Toca para registrar la solución</Text>
-          <Ionicons name="arrow-forward" size={13} color={COLORS.primary} />
+          <Ionicons name="arrow-forward" size={13} color={COLORS.mutedForeground} />
         </View>
       )}
     </TouchableOpacity>
@@ -77,7 +77,7 @@ export default function AveriasScreen() {
         headerLeft: () => null,
         headerRight: () => (
           <TouchableOpacity onPress={() => router.push('/(tecnico)/averias/nueva')} style={{ paddingHorizontal: 4 }}>
-            <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
+            <Ionicons name="add-circle-outline" size={24} color={COLORS.mutedForeground} />
           </TouchableOpacity>
         ),
       }}
@@ -87,7 +87,7 @@ export default function AveriasScreen() {
   if (loading) return (
     <>
       {header}
-      <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.primary} size="large" />
+      <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />
     </>
   );
 
@@ -105,7 +105,7 @@ export default function AveriasScreen() {
           />
         )}
         contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.dark} />}
         ListHeaderComponent={<Text style={st.listaHeader}>{averias.length} avería{averias.length !== 1 ? 's' : ''} en atención</Text>}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 80 }}>
@@ -127,8 +127,8 @@ const st = StyleSheet.create({
   badge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   motivo: { fontSize: 13, color: COLORS.mutedForeground },
-  iniciarBtn: { flexDirection: 'row', gap: 6, marginTop: 10, backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 9, alignItems: 'center', justifyContent: 'center' },
+  iniciarBtn: { flexDirection: 'row', gap: 6, marginTop: 10, backgroundColor: COLORS.dark, borderRadius: 8, paddingVertical: 9, alignItems: 'center', justifyContent: 'center' },
   iniciarText: { color: COLORS.white, fontWeight: '800', fontSize: 12 },
   enProcesoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  enProcesoHint: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
+  enProcesoHint: { fontSize: 11, color: COLORS.dark, fontWeight: '600' },
 });

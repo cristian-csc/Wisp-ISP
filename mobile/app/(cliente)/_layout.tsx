@@ -6,8 +6,10 @@ export default function ClienteLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: COLORS.card },
-        headerTintColor: COLORS.dark,
+        // Azul marino en todas: antes unas pantallas tenian cabecera clara
+        // y otras la oscura propia, y se notaba el salto al navegar.
+        headerStyle: { backgroundColor: COLORS.surfaceDark },
+        headerTintColor: COLORS.onDark,
         headerTitleStyle: { fontWeight: '800' },
         headerShadowVisible: true,
         tabBarStyle: {
@@ -18,7 +20,7 @@ export default function ClienteLayout() {
           paddingTop: 8,
           paddingBottom: 10,
         },
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarActiveTintColor: COLORS.brandStrong,
         tabBarInactiveTintColor: COLORS.placeholder,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
       }}

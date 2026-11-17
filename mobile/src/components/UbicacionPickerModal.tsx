@@ -131,7 +131,7 @@ export function UbicacionPickerModal({ visible, coordsIniciales, onCancel, onCon
         </View>
 
         <TouchableOpacity style={s.gpsBtn} onPress={centrarEnMiGps}>
-          <Ionicons name="locate" size={20} color={COLORS.primary} />
+          <Ionicons name="locate" size={20} color={COLORS.dark} />
         </TouchableOpacity>
 
         <View style={s.bottomBar}>
@@ -173,7 +173,7 @@ const s = StyleSheet.create({
   cancelText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   confirmBtn: {
     flex: 2, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center',
-    borderRadius: 12, paddingVertical: 14, backgroundColor: COLORS.primary,
+    borderRadius: 12, paddingVertical: 14, backgroundColor: COLORS.dark,
   },
   confirmText: { color: COLORS.white, fontWeight: '800', fontSize: 14 },
 });

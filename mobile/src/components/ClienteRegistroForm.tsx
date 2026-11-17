@@ -44,7 +44,7 @@ function Section({ title, icon, children }: { title: string; icon: keyof typeof 
   return (
     <View style={f.section}>
       <View style={f.sectionHeader}>
-        <Ionicons name={icon} size={16} color={COLORS.primary} />
+        <Ionicons name={icon} size={16} color={COLORS.mutedForeground} />
         <Text style={f.sectionTitle}>{title}</Text>
       </View>
       {children}
@@ -57,7 +57,7 @@ function PlanChip({ plan, selected, onSelect }: { plan: Opcion; selected: boolea
     <TouchableOpacity style={[f.planChip, selected && f.planChipActive]} onPress={onSelect}>
       <Text style={[f.planNombre, selected && f.planNombreActive]}>{plan.nombre}</Text>
       {plan.precio !== undefined && (
-        <Text style={[f.planPrecio, selected && { color: COLORS.primaryEmphasis }]}>S/ {plan.precio.toFixed(0)}/mes</Text>
+        <Text style={[f.planPrecio, selected && { color: COLORS.dark }]}>S/ {plan.precio.toFixed(0)}/mes</Text>
       )}
     </TouchableOpacity>
   );
@@ -242,7 +242,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
                 <Ionicons
                   name={op.icono}
                   size={16}
-                  color={tipoDoc === op.v ? COLORS.white : COLORS.primary}
+                  color={tipoDoc === op.v ? COLORS.brandStrong : COLORS.mutedForeground}
                 />
                 <Text style={[f.tipoChipText, tipoDoc === op.v && f.tipoChipTextActive]}>
                   {op.etiqueta}
@@ -308,7 +308,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
         </View>
         <Input label="Dirección" value={direccion} onChange={setDireccion} />
         <View style={f.pinHint}>
-          <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} style={{ marginRight: 6, marginTop: 1 }} />
+          <Ionicons name="information-circle-outline" size={16} color={COLORS.mutedForeground} style={{ marginRight: 6, marginTop: 1 }} />
           <Text style={f.pinHintText}>
             {tipoDoc === 'ruc'
               ? 'El usuario y contraseña PPPoE se generan con el DNI del responsable, no con el RUC. El cliente queda pendiente de aprobación por un administrador.'
@@ -320,19 +320,19 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
       <Section title="UBICACIÓN Y FACHADA" icon="location-outline">
         {!fotoObligatoria && (
           <View style={f.pinHint}>
-            <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} style={{ marginRight: 6, marginTop: 1 }} />
+            <Ionicons name="information-circle-outline" size={16} color={COLORS.mutedForeground} style={{ marginRight: 6, marginTop: 1 }} />
             <Text style={f.pinHintText}>Como registras por teléfono, la foto es opcional — el técnico la tomará al ir a instalar si todavía falta.</Text>
           </View>
         )}
         <TouchableOpacity style={[f.captureBtn, coords && f.captureBtnDone, !fotoObligatoria && { marginTop: 10 }]} onPress={() => setMapaAbierto(true)}>
-          <Ionicons name={coords ? 'checkmark-circle' : 'map-outline'} size={19} color={coords ? COLORS.success : COLORS.primary} />
+          <Ionicons name={coords ? 'checkmark-circle' : 'map-outline'} size={19} color={coords ? COLORS.success : COLORS.mutedForeground} />
           <Text style={[f.captureBtnText, coords && { color: COLORS.success }]}>
             {coords ? `Ubicación marcada (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}) — tocar para ajustar` : 'Marcar ubicación en el mapa'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[f.captureBtn, fotoUri && f.captureBtnDone, { marginTop: 10 }]} onPress={tomarFoto}>
-          <Ionicons name={fotoUri ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoUri ? COLORS.success : COLORS.primary} />
+          <Ionicons name={fotoUri ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoUri ? COLORS.success : COLORS.mutedForeground} />
           <Text style={[f.captureBtnText, fotoUri && { color: COLORS.success }]}>
             {fotoUri ? 'Foto de la fachada tomada — tocar para repetir' : `Tomar foto de la fachada${fotoObligatoria ? ' *' : ' (opcional)'}`}
           </Text>
@@ -364,7 +364,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
           <Switch
             value={tieneTV}
             onValueChange={setTieneTV}
-            trackColor={{ true: COLORS.primary, false: COLORS.border }}
+            trackColor={{ true: COLORS.success, false: COLORS.border }}
             thumbColor={COLORS.white}
           />
         </View>
@@ -409,7 +409,7 @@ const f = StyleSheet.create({
 
   section: { backgroundColor: COLORS.card, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, padding: 16, marginBottom: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: COLORS.muted },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.primary, letterSpacing: 1.5 },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.dark, letterSpacing: 1.5 },
 
   campo: { marginBottom: 12 },
   row: { flexDirection: 'row', marginBottom: 4 },
@@ -419,7 +419,7 @@ const f = StyleSheet.create({
 
   captureBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: COLORS.border, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 13, paddingHorizontal: 14, backgroundColor: COLORS.background },
   captureBtnDone: { borderStyle: 'solid', borderColor: COLORS.success, backgroundColor: COLORS.lightsuccess },
-  captureBtnText: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  captureBtnText: { flex: 1, fontSize: 13, fontWeight: '700', color: COLORS.dark },
   fotoPreview: { width: '100%', height: 160, borderRadius: 12, marginTop: 10, backgroundColor: COLORS.muted },
 
   avisoConsulta: {
@@ -432,43 +432,48 @@ const f = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  // El elegido va en naranja suave y no en azul marino lleno: es una
+  // eleccion entre dos, no una accion, y el relleno oscuro lo hacia parecer
+  // un boton que ejecuta algo.
   tipoChip: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
   },
   tipoChipActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.lightbrand,
+    borderColor: COLORS.brand,
   },
   tipoChipText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
+    fontWeight: '700',
+    color: COLORS.mutedForeground,
   },
   tipoChipTextActive: {
-    color: COLORS.white,
+    color: COLORS.brandStrong,
   },
 
   planChip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10, marginRight: 10, minWidth: 100, backgroundColor: COLORS.background, alignItems: 'center' },
-  planChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.lightprimary },
+  planChipActive: { borderColor: COLORS.dark, backgroundColor: COLORS.muted },
   planNombre: { fontSize: 13, fontWeight: '700', color: COLORS.mutedForeground },
-  planNombreActive: { color: COLORS.primaryEmphasis },
+  planNombreActive: { color: COLORS.dark },
   planPrecio: { fontSize: 12, color: COLORS.placeholder, marginTop: 2 },
 
-  pinHint: { flexDirection: 'row', backgroundColor: COLORS.lightprimary, borderWidth: 1, borderColor: 'rgba(93,135,255,0.25)', borderRadius: 10, padding: 12, marginTop: 4 },
+  pinHint: { flexDirection: 'row', backgroundColor: COLORS.muted, borderWidth: 1, borderColor: 'rgba(93,135,255,0.25)', borderRadius: 10, padding: 12, marginTop: 4 },
   pinHintText: { flex: 1, fontSize: 12, color: COLORS.mutedForeground, lineHeight: 18 },
 
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   switchLabel: { fontSize: 14, fontWeight: '600', color: COLORS.dark },
   switchSub: { fontSize: 12, color: COLORS.placeholder, marginTop: 2 },
 
-  guardarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  guardarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.dark, borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   guardarDisabled: { opacity: 0.7 },
   guardarText: { fontSize: 15, fontWeight: '900', color: COLORS.white, letterSpacing: 0.5 },
 });

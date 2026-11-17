@@ -76,7 +76,7 @@ export default function MapaInfraestructura({
     return (
       <ActivityIndicator
         style={{ flex: 1, backgroundColor: COLORS.background }}
-        color={COLORS.primary}
+        color={COLORS.mutedForeground}
         size="large"
       />
     );
@@ -89,7 +89,7 @@ export default function MapaInfraestructura({
         style={s.centrarBtn}
         onPress={() => webViewRef.current?.injectJavaScript('centrarEnMi(); true;')}
       >
-        <Ionicons name="locate" size={20} color={COLORS.primary} />
+        <Ionicons name="locate" size={20} color={COLORS.mutedForeground} />
       </TouchableOpacity>
     </View>
   );

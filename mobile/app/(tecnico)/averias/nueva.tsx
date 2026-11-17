@@ -114,14 +114,14 @@ export default function NuevaAveriaScreen() {
             style={[s.tipoBtn, tipo === 'cliente' && s.tipoBtnActive]}
             onPress={() => setTipo('cliente')}
           >
-            <Ionicons name="person-outline" size={16} color={tipo === 'cliente' ? COLORS.white : COLORS.primary} />
+            <Ionicons name="person-outline" size={16} color={tipo === 'cliente' ? COLORS.white : COLORS.mutedForeground} />
             <Text style={[s.tipoText, tipo === 'cliente' && s.tipoTextActive]}>Cliente</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.tipoBtn, tipo === 'planta' && s.tipoBtnActive]}
             onPress={() => setTipo('planta')}
           >
-            <Ionicons name="git-network-outline" size={16} color={tipo === 'planta' ? COLORS.white : COLORS.primary} />
+            <Ionicons name="git-network-outline" size={16} color={tipo === 'planta' ? COLORS.white : COLORS.mutedForeground} />
             <Text style={[s.tipoText, tipo === 'planta' && s.tipoTextActive]}>Planta externa</Text>
           </TouchableOpacity>
         </View>
@@ -148,7 +148,7 @@ export default function NuevaAveriaScreen() {
                   placeholder="Buscar por nombre o DNI…"
                   placeholderTextColor={COLORS.placeholder}
                 />
-                {buscando && <ActivityIndicator style={{ marginTop: 8 }} color={COLORS.primary} />}
+                {buscando && <ActivityIndicator style={{ marginTop: 8 }} color={COLORS.mutedForeground} />}
                 {!buscando && resultados.map((c) => (
                   <TouchableOpacity key={c.id} style={s.resultado} onPress={() => setClienteSel(c)}>
                     <Text style={s.resultadoNombre}>{c.nombre}</Text>
@@ -227,7 +227,7 @@ export default function NuevaAveriaScreen() {
             </View>
           ))}
           <TouchableOpacity style={s.fotoAgregar} onPress={tomarFoto}>
-            <Ionicons name="camera-outline" size={22} color={COLORS.primary} />
+            <Ionicons name="camera-outline" size={22} color={COLORS.mutedForeground} />
           </TouchableOpacity>
         </View>
 
@@ -246,12 +246,12 @@ export default function NuevaAveriaScreen() {
 
 const s = StyleSheet.create({
   tipoRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  tipoBtn: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 12, paddingVertical: 12 },
-  tipoBtnActive: { backgroundColor: COLORS.primary },
-  tipoText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  tipoBtn: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: COLORS.dark, borderRadius: 12, paddingVertical: 12 },
+  tipoBtnActive: { backgroundColor: COLORS.dark },
+  tipoText: { fontSize: 13, fontWeight: '700', color: COLORS.dark },
   tipoTextActive: { color: COLORS.white },
 
-  label: { fontSize: 11, fontWeight: '800', color: COLORS.primary, letterSpacing: 1.2, marginBottom: 8, marginTop: 4 },
+  label: { fontSize: 11, fontWeight: '800', color: COLORS.dark, letterSpacing: 1.2, marginBottom: 8, marginTop: 4 },
   input: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: COLORS.dark },
   textArea: { minHeight: 80, paddingTop: 12, marginBottom: 20 },
 
@@ -264,9 +264,9 @@ const s = StyleSheet.create({
   resultadoSub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 2 },
 
   chip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginRight: 10, backgroundColor: COLORS.card },
-  chipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.lightprimary },
+  chipActive: { borderColor: COLORS.dark, backgroundColor: COLORS.muted },
   chipText: { fontSize: 13, fontWeight: '600', color: COLORS.mutedForeground },
-  chipTextActive: { color: COLORS.primaryEmphasis, fontWeight: '700' },
+  chipTextActive: { color: COLORS.dark, fontWeight: '700' },
   emptyText: { fontSize: 12, color: COLORS.mutedForeground, paddingVertical: 10 },
 
   motivoChip: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, marginRight: 8, backgroundColor: COLORS.card },
@@ -278,6 +278,6 @@ const s = StyleSheet.create({
   fotoQuitar: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.error, alignItems: 'center', justifyContent: 'center' },
   fotoAgregar: { width: 72, height: 72, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.card },
 
-  guardarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
+  guardarBtn: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.dark, borderRadius: 12, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
   guardarText: { color: COLORS.white, fontWeight: '900', fontSize: 15 },
 });
