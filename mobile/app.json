@@ -16,8 +16,8 @@
       "softwareKeyboardLayoutMode": "pan",
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/icon-adaptativo.png",
+        "backgroundColor": "#f8871f"
       }
     },
     "ios": {
