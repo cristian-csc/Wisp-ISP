@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { Label } from 'src/components/ui/label';
 import { Input } from 'src/components/ui/input';
+import { Button } from 'src/components/ui/button';
 import { Textarea } from 'src/components/ui/textarea';
 import {
   FieldIcon,
@@ -23,6 +24,10 @@ import {
   SelectValue,
 } from 'src/components/ui/select';
 import { consultarDocumento, type ConsultaDocumento, createCliente, listZonas, listPlanes, type Zona, type Plan } from 'src/lib/clientes';
+import { listCajasNap, type CajaNap } from 'src/lib/cajasnap';
+import CampoCoordenadas from 'src/components/shared/mapa/CampoCoordenadas';
+import SelectorUbicacion from 'src/components/shared/mapa/SelectorUbicacion';
+import { masCercano, metrosEnTexto, type Coordenadas } from 'src/lib/coordenadas';
 
 interface Props {
   open: boolean;
@@ -54,6 +59,12 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
   const [responsableAuto, setResponsableAuto] = useState(false);
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
+  /** Dónde está la casa. El backend ya guardaba lat/lng y el móvil de las
+   *  vendedoras de campo ya las mandaba; faltaba poder ponerlas desde la web. */
+  const [coords, setCoords] = useState<Coordenadas | null>(null);
+  const [mapaAbierto, setMapaAbierto] = useState(false);
+  /** Las cajas NAP de la zona elegida, para decir cuál queda más cerca. */
+  const [cajasZona, setCajasZona] = useState<CajaNap[]>([]);
   const [zonaId, setZonaId] = useState<string>('');
   const [planId, setPlanId] = useState<string>('');
   const [cantidadTv, setCantidadTv] = useState('0');
@@ -175,6 +186,38 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
     return <p className="mt-1.5 text-xs text-muted-foreground">{r.motivo}</p>;
   }
 
+  // Las cajas de la zona elegida. Si la zona cambia, las de antes ya no
+  // sirven para medir nada.
+  useEffect(() => {
+    if (!zonaId) {
+      setCajasZona([]);
+      return;
+    }
+    let vigente = true;
+    listCajasNap(Number(zonaId))
+      .then((c) => {
+        if (vigente) setCajasZona(c);
+      })
+      .catch(() => {
+        if (vigente) setCajasZona([]);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [zonaId]);
+
+  /** La caja NAP más cercana a la casa, con sus bornes libres.
+   *
+   *  Es la respuesta a "¿acá hay cobertura?" en el momento de registrar, en
+   *  vez de mandar al técnico a mirarlo. La distancia es en línea recta: el
+   *  drop da vueltas por los postes, así que dice qué caja es la candidata,
+   *  no cuánto cable hace falta. */
+  const zonaSeleccionada = zonas.find((z) => String(z.id) === zonaId) ?? null;
+  const cercana = coords ? masCercano(coords, cajasZona) : null;
+  const libresCercana = cercana
+    ? cercana.punto.bornes.filter((b) => b.estado === 'libre').length
+    : 0;
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -202,6 +245,8 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
         responsable_nombre: esEmpresa ? responsableNombre.trim() : undefined,
         telefono: telefono || undefined,
         direccion: direccion || undefined,
+        lat: coords?.lat,
+        lng: coords?.lng,
         zona_id: Number(zonaId),
         plan_id: Number(planId),
         cantidad_tv: Number(cantidadTv) || 0,
@@ -222,6 +267,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
   }
 
   return (
+    <>
     <FormDialog
       open={open}
       onOpenChange={(o) => {
@@ -405,6 +451,68 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                 />
               </FieldIcon>
             </FormField>
+
+            {/* La ubicación de la casa. Dos formas de poner lo mismo: pegar lo
+                copiado de Google Maps, o marcarlo en el mapa. La primera es
+                más exacta cuando ya se midió en otra parte; la segunda, para
+                cuando no. Es opcional: el técnico puede corregirla al
+                instalar. */}
+            <div className="md:col-span-2 rounded-xl border border-ld bg-surface-2 p-3.5">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-[230px] flex-1">
+                  <CampoCoordenadas
+                    label="Ubicación de la casa (opcional)"
+                    valor={coords}
+                    onChange={setCoords}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMapaAbierto(true)}
+                  className="gap-1.5"
+                >
+                  <Icon icon="tabler:map-pin" height={17} />
+                  {coords ? 'Ajustar en el mapa' : 'Marcar en el mapa'}
+                </Button>
+              </div>
+
+              {/* La caja más cercana, en cuanto hay ubicación y zona. */}
+              {coords && cercana && (
+                <div
+                  className={`mt-3 flex items-start gap-2 rounded-lg px-3 py-2 text-xs ${
+                    cercana.metros <= 150 && libresCercana > 0
+                      ? 'bg-lightsuccess text-success-text'
+                      : 'bg-lightwarning text-warning-text'
+                  }`}
+                >
+                  <Icon
+                    icon={
+                      cercana.metros <= 150 && libresCercana > 0
+                        ? 'tabler:circle-check'
+                        : 'tabler:alert-triangle'
+                    }
+                    height={15}
+                    className="mt-px shrink-0"
+                  />
+                  <span>
+                    Caja más cercana: <b>{cercana.punto.codigo}</b>, a{' '}
+                    <b>{metrosEnTexto(cercana.metros)}</b> en línea recta ·{' '}
+                    {libresCercana === 0
+                      ? 'sin bornes libres'
+                      : `${libresCercana} borne${libresCercana === 1 ? '' : 's'} libre${libresCercana === 1 ? '' : 's'}`}
+                    {cercana.metros > 150 && ' — queda lejos, habrá que tender más cable'}
+                  </span>
+                </div>
+              )}
+
+              {coords && zonaId && cajasZona.length > 0 && !cercana && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Ninguna caja NAP de esta zona tiene ubicación en el mapa
+                  todavía, así que no se puede decir cuál queda más cerca.
+                </p>
+              )}
+            </div>
           </FormSection>
 
           <FormSection title="Datos del servicio" icon="tabler:router">
@@ -488,6 +596,45 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
         )}
       </form>
     </FormDialog>
+
+      {/* El mapa, en su propia ventana: dentro del formulario robaría la mitad
+          del alto y dejaría el resto de los campos sin sitio. */}
+      <FormDialog
+        open={mapaAbierto}
+        onOpenChange={setMapaAbierto}
+        title="¿Dónde está la casa?"
+        subtitle={
+          zonaSeleccionada
+            ? `Zona ${zonaSeleccionada.nombre} — las cajas NAP y su alcance salen en el mapa`
+            : 'Elige la zona antes, y el mapa te mostrará sus cajas NAP'
+        }
+        icon="tabler:map-pin"
+        size="xl"
+        footer={
+          <FormActions
+            onCancel={() => setMapaAbierto(false)}
+            cancelLabel="Cerrar"
+            submitLabel="Usar esta ubicación"
+            submitIcon="tabler:check"
+            onSubmit={() => setMapaAbierto(false)}
+            disabled={!coords}
+          />
+        }
+      >
+        <SelectorUbicacion
+          valor={coords}
+          onChange={setCoords}
+          cajas={cajasZona.map((c) => ({
+            id: c.id,
+            codigo: c.codigo,
+            lat: c.lat,
+            lng: c.lng,
+            libres: c.bornes.filter((b) => b.estado === 'libre').length,
+          }))}
+          alto={440}
+        />
+      </FormDialog>
+    </>
   );
 };
 

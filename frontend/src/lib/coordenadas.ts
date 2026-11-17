@@ -102,6 +102,37 @@ export function metrosDeTrazado(puntos: Coordenadas[]): number | null {
   return Math.round(total * 10) / 10;
 }
 
+/**
+ * Distancia en metros entre dos puntos, en línea recta.
+ *
+ * Sirve para saber qué caja NAP queda más cerca de una casa. Es la distancia
+ * del pájaro, no la del cable: el drop da vueltas por los postes, así que lo
+ * que dice es "esta caja es la candidata", no "hacen falta exactamente estos
+ * metros de cable".
+ */
+export function distanciaEnMetros(a: Coordenadas, b: Coordenadas): number {
+  return metrosDeTrazado([a, b]) ?? 0;
+}
+
+/**
+ * De una lista de puntos con ubicación, el más cercano a `desde`.
+ *
+ * Devuelve null si ninguno tiene coordenadas: media red todavía está sin
+ * ubicar en el mapa y eso no es un error, solo que aún no se puede responder.
+ */
+export function masCercano<T extends { lat?: number | null; lng?: number | null }>(
+  desde: Coordenadas,
+  puntos: T[],
+): { punto: T; metros: number } | null {
+  let mejor: { punto: T; metros: number } | null = null;
+  for (const p of puntos) {
+    if (p.lat == null || p.lng == null) continue;
+    const metros = distanciaEnMetros(desde, { lat: p.lat, lng: p.lng });
+    if (!mejor || metros < mejor.metros) mejor = { punto: p, metros };
+  }
+  return mejor;
+}
+
 /** Metros en algo legible: 480 m, 1.5 km. */
 export function metrosEnTexto(metros: number): string {
   if (metros < 1000) return `${Math.round(metros)} m`;

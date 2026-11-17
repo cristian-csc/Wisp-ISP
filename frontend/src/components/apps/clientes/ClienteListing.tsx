@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from 'src/components/ui/select';
 import ClienteCreateDialog from './ClienteCreateDialog';
+import ClienteVistaRapida from './ClienteVistaRapida';
 import AprobarClienteDialog from './AprobarClienteDialog';
 import {
   listClientes,
@@ -106,6 +107,9 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
   const [pausando, setPausando] = useState<ClienteListItem | null>(null);
   const [mesesPausa, setMesesPausa] = useState('1');
   const [crearOpen, setCrearOpen] = useState(false);
+  /** El cliente que se está mirando por encima. Tocar el nombre abre esto y
+   *  no la ficha: así no se pierden el filtro, la búsqueda ni la página. */
+  const [vistaRapida, setVistaRapida] = useState<ClienteListItem | null>(null);
   const [zonas, setZonas] = useState<Zona[]>([]);
   const [zonaFiltro, setZonaFiltro] = useState('todas');
   const [tipoFiltro, setTipoFiltro] = useState<'todos' | 'fibra_optica' | 'inalambrico'>('todos');
@@ -308,7 +312,8 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
                       <div className="flex items-center gap-2">
                         <h6
                           className="text-base truncate cursor-pointer hover:text-primary"
-                          onClick={() => navigate(`/clientes/${c.id}`)}
+                          onClick={() => setVistaRapida(c)}
+                          title="Ver un resumen sin salir de la lista"
                         >
                           {c.nombre}
                         </h6>
@@ -510,6 +515,13 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
           />
         </FormField>
       </FormDialog>
+
+      <ClienteVistaRapida
+        cliente={vistaRapida}
+        onOpenChange={(abierto) => !abierto && setVistaRapida(null)}
+        estadoLabel={vistaRapida ? ESTADO_LABEL[vistaRapida.estado] : ''}
+        estadoBadge={vistaRapida ? ESTADO_BADGE[vistaRapida.estado] : ''}
+      />
 
       <ClienteCreateDialog
         open={crearOpen}
