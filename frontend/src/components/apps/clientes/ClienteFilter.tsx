@@ -11,63 +11,74 @@ interface Props {
   resumen: ResumenEstados | null;
 }
 
-/** Las cuatro de siempre, las que se miran a diario. Los otros cuatro estados
- *  no desaparecen: están en el desplegable de la barra, con su cuenta. */
-const DESTACADOS: EstadoCliente[] = [
-  'activo',
-  'pendiente_aprobacion',
-  'suspendido',
-  'no_instalado',
-];
-
 const TONO_TARJETA: Record<string, { caja: string; texto: string }> = {
-  success: { caja: 'bg-lightsuccess dark:bg-lightsuccess', texto: 'text-success' },
-  warning: { caja: 'bg-lightwarning dark:bg-lightwarning', texto: 'text-warning' },
-  error: { caja: 'bg-lighterror dark:bg-lighterror', texto: 'text-error' },
-  primary: { caja: 'bg-lightprimary dark:bg-lightprimary', texto: 'text-primary' },
+  success: { caja: 'bg-lightsuccess', texto: 'text-success' },
+  warning: { caja: 'bg-lightwarning', texto: 'text-warning' },
+  error: { caja: 'bg-lighterror', texto: 'text-error' },
+  primary: { caja: 'bg-lightprimary', texto: 'text-primary' },
   muted: { caja: 'bg-muted', texto: 'text-muted-foreground' },
 };
 
+/**
+ * Los estados del cliente, cada uno con su cuenta, y el único sitio donde se
+ * filtra por estado.
+ *
+ * Están los ocho más «Todos», todos del mismo tamaño y en la misma cuadrícula:
+ * antes cuatro iban en tarjetas grandes y los otros cuatro en una fila de
+ * pastillas debajo, que parecía un apéndice y no parte del filtro.
+ *
+ * El número va arriba y la etiqueta debajo, con sitio reservado para dos
+ * líneas: así «Pendientes de aprobación» no empuja su tarjeta ni desalinea los
+ * números de las vecinas.
+ *
+ * El borde está siempre puesto, transparente cuando la tarjeta no es la
+ * elegida. Si solo apareciera al elegirla, la tarjeta crecería 2 px y la
+ * cuadrícula entera daría un salto al pulsar.
+ */
 const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
   const n = (e: EstadoCliente) => resumen?.por_estado[e] ?? 0;
 
-  return (
-    <div className="mb-6">
-      <div className="grid grid-cols-12 gap-6">
-        <div className="lg:col-span-2 md:col-span-4 col-span-12">
-          <button
-            type="button"
-            onClick={() => setFilter('todos')}
-            className={`w-full rounded-md p-[30px] text-center transition-shadow ${
-              TONO_TARJETA.primary.caja
-            } ${filter === 'todos' ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}
-          >
-            <h3 className={`text-2xl ${TONO_TARJETA.primary.texto}`}>
-              {resumen?.total ?? 0}
-            </h3>
-            <h6 className={`text-base ${TONO_TARJETA.primary.texto}`}>Todos</h6>
-          </button>
-        </div>
+  const tarjetas: {
+    valor: EstadoCliente | 'todos';
+    etiqueta: string;
+    tono: keyof typeof TONO_TARJETA;
+    cuenta: number;
+  }[] = [
+    { valor: 'todos', etiqueta: 'Todos', tono: 'primary', cuenta: resumen?.total ?? 0 },
+    ...ESTADOS_CLIENTE.map((e) => ({
+      valor: e.valor,
+      etiqueta: e.etiqueta,
+      tono: e.tono,
+      cuenta: n(e.valor),
+    })),
+  ];
 
-        {DESTACADOS.map((valor) => {
-          const def = ESTADOS_CLIENTE.find((e) => e.valor === valor)!;
-          const tono = TONO_TARJETA[def.tono];
-          return (
-            <div key={valor} className="lg:col-span-2 md:col-span-4 col-span-12">
-              <button
-                type="button"
-                onClick={() => setFilter(valor)}
-                className={`w-full rounded-md p-[30px] text-center transition-shadow ${
-                  tono.caja
-                } ${filter === valor ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}
-              >
-                <h3 className={`text-2xl ${tono.texto}`}>{n(valor)}</h3>
-                <h6 className={`text-base ${tono.texto}`}>{def.etiqueta}</h6>
-              </button>
-            </div>
-          );
-        })}
-      </div>
+  return (
+    <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {tarjetas.map((t) => {
+        const tono = TONO_TARJETA[t.tono];
+        const elegida = filter === t.valor;
+        return (
+          <button
+            key={t.valor}
+            type="button"
+            onClick={() => setFilter(t.valor)}
+            aria-pressed={elegida}
+            className={`transition-ui flex flex-col items-center rounded-xl border-2 px-2 py-3 text-center ${
+              tono.caja
+            } ${elegida ? 'border-primary shadow-sm' : 'border-transparent hover:shadow-md'}`}
+          >
+            <span className={`text-2xl font-bold leading-none ${tono.texto}`}>
+              {t.cuenta}
+            </span>
+            <span
+              className={`mt-1.5 flex min-h-[2.1rem] items-start justify-center text-[11px] font-semibold leading-tight ${tono.texto}`}
+            >
+              {t.etiqueta}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 };

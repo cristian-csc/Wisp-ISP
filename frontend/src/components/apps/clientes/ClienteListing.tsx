@@ -42,10 +42,8 @@ import {
   cortarCliente,
   reactivarCliente,
   pausarCliente,
-  ESTADOS_CLIENTE,
   type ClienteListItem,
   type EstadoCliente,
-  type ResumenEstados,
   type Zona,
 } from 'src/lib/clientes';
 import type { Usuario } from 'src/lib/api';
@@ -74,9 +72,6 @@ const ESTADO_BADGE: Record<EstadoCliente, string> = {
 
 interface Props {
   filter: EstadoCliente | 'todos';
-  setFilter: (f: EstadoCliente | 'todos') => void;
-  /** Cuentas por estado, para poder decirlas en el desplegable */
-  resumen: ResumenEstados | null;
   currentUser: Usuario | null;
   /** Fija el tipo de conexión: la sección ya es de un solo tipo y el
    *  selector de tipo deja de tener sentido. */
@@ -85,7 +80,7 @@ interface Props {
 
 const puedeAprobar = (rol?: string) => rol === 'admin';
 
-const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props) => {
+const ClienteListing = ({ filter, currentUser, tipo }: Props) => {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<ClienteListItem[]>([]);
@@ -188,37 +183,17 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
   }
 
   return (
-    <div className="my-6">
-      {/* Top bar */}
-      <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
+    <div>
+      {/* Registrar a la izquierda; zona y buscador a la derecha. En pantalla
+          chica se reparten en varias filas en vez de desbordarse. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <Button onClick={() => setCrearOpen(true)} className="rounded-md whitespace-nowrap">
           Registrar cliente
         </Button>
 
         <div className="flex gap-3 flex-wrap w-full sm:w-auto sm:ml-auto">
-          {/* El estado se filtra aquí, en la misma línea que la zona y el
-              buscador. Las tarjetas de arriba hacen lo mismo con un clic para
-              los cuatro de diario; acá están los ocho, con su cuenta. */}
-          <Select
-            value={filter}
-            onValueChange={(v) => setFilter(v as EstadoCliente | 'todos')}
-          >
-            <SelectTrigger className="w-full sm:w-52">
-              <SelectValue placeholder="Todos los estados" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">
-                Todos los estados{resumen ? ` (${resumen.total})` : ''}
-              </SelectItem>
-              {ESTADOS_CLIENTE.map((e) => (
-                <SelectItem key={e.valor} value={e.valor}>
-                  {e.etiqueta}
-                  {resumen ? ` (${resumen.por_estado[e.valor] ?? 0})` : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
+          {/* El estado se filtra en las tarjetas de arriba, que son el único
+              control de estado. Acá quedan la zona y el buscador. */}
           {/* La sección ya es de un solo tipo: el selector sobra */}
           {!tipo && (
             <Select value={tipoFiltro} onValueChange={(v) => setTipoFiltro(v as typeof tipoFiltro)}>

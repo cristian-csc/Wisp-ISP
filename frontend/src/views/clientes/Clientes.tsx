@@ -52,13 +52,7 @@ const Clientes = ({ initialFilter = 'todos', tipo }: Props) => {
 
       <CardBox>
         <ClienteFilter filter={filter} setFilter={setFilter} resumen={resumen} />
-        <ClienteListing
-          filter={filter}
-          setFilter={setFilter}
-          resumen={resumen}
-          currentUser={currentUser}
-          tipo={tipo}
-        />
+        <ClienteListing filter={filter} currentUser={currentUser} tipo={tipo} />
       </CardBox>
     </div>
   );
