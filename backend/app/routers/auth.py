@@ -339,6 +339,77 @@ def get_me(current_user: models.Usuario = Depends(get_current_user)):
     return current_user
 
 
+@router.get("/me/actividad")
+def mi_actividad(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user),
+):
+    """Lo que hizo quien pregunta, en este mes y desde siempre. Solo sus
+    propios números: nunca los de otra persona."""
+    from sqlalchemy import func
+
+    hoy = datetime.utcnow().date()
+    inicio_mes = hoy.replace(day=1)
+    uid = current_user.id
+    C, P = models.Cliente, models.Pago
+
+    def contar(consulta) -> int:
+        return consulta.scalar() or 0
+
+    registrados = db.query(func.count(C.id)).filter(C.vendedor_id == uid)
+    instalados = db.query(func.count(C.id)).filter(C.tecnico_instalador_id == uid)
+    aprobados = db.query(func.count(C.id)).filter(C.aprobado_por_id == uid)
+    pagos = db.query(func.count(P.id), func.coalesce(func.sum(P.monto), 0)).filter(P.registrado_por == uid)
+    pagos_mes = pagos.filter(P.fecha_pago >= inicio_mes).one()
+    pagos_total = pagos.one()
+
+    recientes = (
+        db.query(models.Historial, C.nombre)
+        .join(C, C.id == models.Historial.cliente_id)
+        .filter(models.Historial.usuario_id == uid)
+        .order_by(models.Historial.creado_en.desc())
+        .limit(6)
+        .all()
+    )
+    return {
+        "este_mes": {
+            "clientes_registrados": contar(registrados.filter(C.creado_en >= inicio_mes)),
+            "instalaciones": contar(instalados.filter(C.fecha_instalacion >= inicio_mes)),
+            "pagos_cobrados": pagos_mes[0],
+            "monto_cobrado": round(float(pagos_mes[1]), 2),
+        },
+        "total": {
+            "clientes_registrados": contar(registrados),
+            "instalaciones": contar(instalados),
+            "aprobaciones": contar(aprobados),
+            "pagos_cobrados": pagos_total[0],
+            "monto_cobrado": round(float(pagos_total[1]), 2),
+            "averias_resueltas": contar(
+                db.query(func.count(models.Averia.id)).filter(
+                    models.Averia.tecnico_asignado_id == uid,
+                    models.Averia.estado == models.EstadoAveria.resuelta,
+                )
+            ),
+            "retiros_completados": contar(
+                db.query(func.count(models.OrdenRetiro.id)).filter(
+                    models.OrdenRetiro.tecnico_asignado_id == uid,
+                    models.OrdenRetiro.estado == models.EstadoOrdenRetiro.completado,
+                )
+            ),
+        },
+        "recientes": [
+            {
+                "tipo": h.tipo.value,
+                "descripcion": h.descripcion,
+                "cliente_id": h.cliente_id,
+                "cliente_nombre": nombre,
+                "creado_en": h.creado_en.isoformat() if h.creado_en else None,
+            }
+            for h, nombre in recientes
+        ],
+    }
+
+
 @router.put("/me", response_model=schemas.UsuarioOut)
 def update_me(
     data: schemas.UsuarioSelfUpdate,

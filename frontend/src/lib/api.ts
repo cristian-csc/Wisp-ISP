@@ -75,6 +75,26 @@ export async function updateMiPerfil(data: { telefono?: string; direccion?: stri
   return out;
 }
 
+export type MiActividad = {
+  este_mes: { clientes_registrados: number; instalaciones: number; pagos_cobrados: number; monto_cobrado: number };
+  total: {
+    clientes_registrados: number;
+    instalaciones: number;
+    aprobaciones: number;
+    pagos_cobrados: number;
+    monto_cobrado: number;
+    averias_resueltas: number;
+    retiros_completados: number;
+  };
+  recientes: { tipo: string; descripcion: string; cliente_id: number; cliente_nombre: string; creado_en: string | null }[];
+};
+
+/** Lo que hizo quien tiene la sesión: solo sus propios números. */
+export async function getMiActividad(): Promise<MiActividad> {
+  const { data } = await api.get<MiActividad>('/auth/me/actividad');
+  return data;
+}
+
 export async function cambiarPassword(passwordActual: string, passwordNueva: string): Promise<void> {
   await api.put('/auth/password', { password_actual: passwordActual, password_nueva: passwordNueva });
 }
