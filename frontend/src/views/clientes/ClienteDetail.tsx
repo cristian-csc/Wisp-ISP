@@ -59,7 +59,7 @@ import {
 } from 'src/lib/pagos';
 import BotonDescargarReporte from 'src/components/shared/BotonDescargarReporte';
 import { listOnus, type Onu } from 'src/lib/onus';
-import { listEvidenciasCliente, getEvidenciaBlobUrl, type Evidencia } from 'src/lib/evidencias';
+import { listEvidenciasCliente, getEvidenciaBlobUrl, eliminarEvidencia, type Evidencia } from 'src/lib/evidencias';
 import { listZonas, type Zona } from 'src/lib/zonas';
 import { listPlanes, type Plan as PlanOpcion } from 'src/lib/planes';
 import ReciboDialog from 'src/components/apps/pagos/ReciboDialog';
@@ -157,7 +157,7 @@ const ClienteDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [cliente, setCliente] = useState<ClienteOut | null>(null);
-  const [pestana, setPestana] = useState<'resumen' | 'pagos' | 'equipos' | 'documentos' | 'historial'>('resumen');
+  const [pestana, setPestana] = useState<'resumen' | 'pagos' | 'equipos' | 'evidencias' | 'historial'>('resumen');
   const [historial, setHistorial] = useState<HistorialItem[]>([]);
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const [aprobarOpen, setAprobarOpen] = useState(false);
@@ -202,6 +202,7 @@ const ClienteDetail = () => {
   const [editMigrado, setEditMigrado] = useState(false);
   const [borrarOpen, setBorrarOpen] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  const [borrandoFoto, setBorrandoFoto] = useState(false);
   /** Las fechas mueven el dinero: cuando se cobra y cuando se corta. Solo un
    *  administrador las ve y las toca, y el servidor lo vuelve a comprobar. */
   const [editFechaInstalacion, setEditFechaInstalacion] = useState('');
@@ -330,6 +331,32 @@ const ClienteDetail = () => {
       setBorrarOpen(false);
     } finally {
       setBorrando(false);
+    }
+  }
+
+  /** Quitar una foto de la ficha.
+   *
+   *  Hace falta por lo de siempre: el tecnico saca una de relleno para poder
+   *  cerrar la instalacion, o se le cuela una movida. Sin esto, esa foto se
+   *  quedaba ahi para siempre y la ficha mentia sobre lo que hay documentado.
+   *
+   *  Borra tambien el archivo del disco, asi que no hay papelera. */
+  async function handleBorrarFoto() {
+    if (!fotoAbierta) return;
+    setBorrandoFoto(true);
+    try {
+      await eliminarEvidencia(fotoAbierta.id);
+      URL.revokeObjectURL(fotoAbierta.blobUrl);
+      setFotos((prev) => prev.filter((f) => f.id !== fotoAbierta.id));
+      setFotoAbierta(null);
+      toast.success('Foto eliminada');
+      reload();
+    } catch (err: any) {
+      toast.error('No se pudo eliminar la foto', {
+        description: err?.response?.data?.detail ?? 'Inténtalo de nuevo.',
+      });
+    } finally {
+      setBorrandoFoto(false);
     }
   }
 
@@ -490,7 +517,7 @@ const ClienteDetail = () => {
     { id: 'resumen' as const, etiqueta: 'Resumen', icono: 'tabler:layout-dashboard', disponible: true },
     { id: 'pagos' as const, etiqueta: 'Pagos', icono: 'tabler:receipt-2', disponible: !!cliente.fecha_instalacion },
     { id: 'equipos' as const, etiqueta: 'Equipos', icono: 'tabler:router', disponible: tieneInfraestructura },
-    { id: 'documentos' as const, etiqueta: 'Documentos', icono: 'tabler:photo', disponible: fotos.length > 0 },
+    { id: 'evidencias' as const, etiqueta: 'Evidencias', icono: 'tabler:camera', disponible: fotos.length > 0 },
     { id: 'historial' as const, etiqueta: 'Historial', icono: 'tabler:history', disponible: historial.length > 0 },
   ];
 
@@ -1033,8 +1060,8 @@ const ClienteDetail = () => {
             </SectionCard>
           )}
 
-          {pestana === 'documentos' && (
-            <SectionCard titulo="Fotos y evidencias" icono="tabler:photo">
+          {pestana === 'evidencias' && (
+            <SectionCard titulo="Evidencias" icono="tabler:camera">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {fotos.map((f) => (
                   <button
@@ -1727,6 +1754,26 @@ const ClienteDetail = () => {
         icon="tabler:photo"
         tone="primary"
         size="xl"
+        footer={
+          // Solo el admin: el servidor no se lo permite a nadie mas, y un
+          // boton que siempre falla es peor que no tenerlo.
+          puedeAprobar ? (
+            <div className="flex w-full items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Al eliminarla se borra también el archivo. No se puede deshacer.
+              </p>
+              <Button
+                variant="lighterror"
+                className="shrink-0 rounded-md"
+                onClick={handleBorrarFoto}
+                disabled={borrandoFoto}
+              >
+                <Icon icon="tabler:trash" height={16} className="mr-1" />
+                {borrandoFoto ? 'Eliminando…' : 'Eliminar foto'}
+              </Button>
+            </div>
+          ) : undefined
+        }
       >
         {fotoAbierta && (
           <img
