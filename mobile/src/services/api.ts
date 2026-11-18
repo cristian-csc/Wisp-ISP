@@ -203,6 +203,16 @@ export type ClienteListItem = {
   fecha_vencimiento: string | null;
   monto_mensual: number | null;
   meses_pago?: MesPago[];
+  /** Venia conectado desde antes del sistema: de el no hay caja, borne,
+   *  equipo ni fotos, y por eso su instalacion no los exige. No se apaga
+   *  nunca — es de donde salio el cliente. */
+  migrado?: boolean;
+  /** Ya instalado, de fibra, y todavia sin borne o sin equipo registrado.
+   *  Lo calcula el servidor; se apaga solo cuando alguien lo completa. */
+  faltan_datos?: boolean;
+  /** Instalado y sin una sola foto. Avisa, no bloquea: un cliente de hace
+   *  tres anos sin fotos no es culpa de nadie. */
+  sin_fotos?: boolean;
 };
 
 export async function getClientes(params?: {
@@ -238,6 +248,29 @@ export type ClienteDetalle = ClienteListItem & {
 
 export async function getCliente(id: number): Promise<ClienteDetalle> {
   return request(`/clientes/${id}`);
+}
+
+/** Registrar la caja, el borne y el equipo de un cliente YA instalado.
+ *
+ *  Es la otra mitad del cliente migrado: entra sin planta porque nadie la
+ *  anoto hace anos, y esto es donde se apunta el dia que el tecnico por fin
+ *  la ve. Se manda solo lo que se sepa; lo que no venga se queda como
+ *  estaba. */
+export async function completarDatosInstalacion(
+  clienteId: number,
+  data: {
+    caja_nap_id?: number | null;
+    numero_borne?: number | null;
+    onu_id?: number | null;
+    codigo_precinto?: string | null;
+    potencia_optica_dbm?: number | null;
+    metros_cable?: number | null;
+  },
+): Promise<{ ok: boolean; faltan_datos: boolean; sin_fotos: boolean }> {
+  return request(`/clientes/${clienteId}/datos-de-instalacion`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 }
 
 /** Registro de captación (vendedor/técnico en campo). El usuario/clave PPPoE
@@ -406,6 +439,9 @@ export type CajaNap = {
   codigo: string;
   zona_id: number;
   mufa_id: number | null;
+  /** El codigo de la mufa de la que cuelga la caja. El id solo no sirve en
+   *  campo: una zona puede tener varias mufas y hay que saber cual es. */
+  mufa_codigo: string | null;
   lat: number | null;
   lng: number | null;
   capacidad_bornes: number;

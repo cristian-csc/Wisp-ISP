@@ -33,6 +33,9 @@ export type CajaNap = {
   codigo: string;
   zona_id: number;
   mufa_id: number | null;
+  /** El código de la mufa de la que cuelga. El id solo no identifica nada
+   *  para quien lee: una zona puede tener varias mufas. */
+  mufa_codigo: string | null;
   lat: number | null;
   lng: number | null;
   capacidad_bornes: number;

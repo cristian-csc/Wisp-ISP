@@ -215,6 +215,10 @@ class ClienteCreate(BaseModel):
     cantidad_tv: int = 0
     tipo_conexion: TipoConexion = TipoConexion.fibra_optica
     notas: Optional[str] = None
+    # El cliente ya estaba conectado antes de que existiera este sistema. Lo
+    # marca quien lo registra desde el panel, y con eso la instalacion acepta
+    # cerrarse sin caja, borne ni equipo, que de el no hay.
+    migrado: bool = False
 
     @field_validator('dni')
     @classmethod
@@ -278,6 +282,10 @@ class ClienteUpdate(BaseModel):
     fecha_instalacion: Optional[date] = None
     fecha_ultima_activacion: Optional[date] = None
     tipo_conexion: Optional[TipoConexion] = None
+    # Se puede marcar despues de registrarlo: los clientes que ya estaban en
+    # el sistema antes de que existiera la marca tambien vienen del mundo
+    # viejo y hay que poder reconocerlos.
+    migrado: Optional[bool] = None
     notas: Optional[str] = None
     cuenta_starlink_email: Optional[str] = None
     estado_equipo: Optional[EstadoEquipo] = None
@@ -329,12 +337,15 @@ class CompromisoPagoRequest(BaseModel):
     fecha_limite: date
 
 class ClienteInstalarRequest(BaseModel):
-    # Opcionales porque un cliente inalambrico no tiene nada de esto: va por
-    # antena y PPPoE, sin fibra, sin caja NAP y sin ONU. Para los de fibra
-    # siguen siendo obligatorios, y eso lo exige el endpoint segun el tipo de
-    # conexion del cliente, que es quien sabe cual es cual. Dejarlos
-    # obligatorios aqui impedia dar de alta a los inalambricos: no habia
-    # ningun numero valido que poner.
+    # Opcionales por dos razones distintas. Un cliente inalambrico va por
+    # antena y PPPoE: no tiene fibra, ni caja NAP, ni ONU, y no hay ningun
+    # numero valido que ponerle. Un cliente migrado si la tiene, pero nadie
+    # la anoto cuando se instalo hace anos, y exigirsela al tecnico seria
+    # pedirle que invente el dato.
+    #
+    # Para todos los demas siguen siendo obligatorios, y eso lo decide el
+    # endpoint mirando la ficha del cliente, que es quien sabe cual es cual.
+    # Opcional tampoco es prohibido: lo que el tecnico si traiga se guarda.
     caja_nap_id: Optional[int] = None
     numero_borne: Optional[int] = None
     onu_id: Optional[int] = None
@@ -346,6 +357,27 @@ class ClienteInstalarRequest(BaseModel):
     # jueves. De esta fecha sale el dia de pago del cliente, asi que la pone
     # quien estuvo ahi. Si no viene, es hoy.
     fecha_activacion: Optional[date] = None
+
+
+class ClienteDatosInstalacionRequest(BaseModel):
+    """Completar o corregir la planta de un cliente que ya esta instalado.
+
+    Es lo que le faltaba al sistema para que la migracion no fuera un callejon
+    sin salida: el flujo de instalacion solo corre sobre clientes "aprobados",
+    y uno migrado ya quedo activo. Sin esto, el dia que el tecnico por fin ve
+    de que caja cuelga, no habia donde apuntarlo.
+
+    Todo opcional: se manda lo que se sepa. Lo que no venga se queda como
+    estaba, no se borra.
+    """
+    # La caja y el borne van juntos: un borne sin su caja no identifica nada,
+    # el numero 3 existe en todas.
+    caja_nap_id: Optional[int] = None
+    numero_borne: Optional[int] = None
+    onu_id: Optional[int] = None
+    codigo_precinto: Optional[str] = None
+    potencia_optica_dbm: Optional[float] = None
+    metros_cable: Optional[float] = None
 
 
 class ClienteActivarSatelitalRequest(BaseModel):
@@ -427,6 +459,11 @@ class ClienteOut(BaseModel):
     borne: Optional[ClienteBorneOut] = None
     monto_mensual: Optional[float] = None
     monto_mensual_detalle: Optional[List[DetalleMontoItem]] = None
+    migrado: bool = False
+    # Los calcula el endpoint, no salen de una columna. Ver _marcas_de_ficha
+    # en routers/clientes.py: por que son dos y no uno.
+    faltan_datos: bool = False
+    sin_fotos: bool = False
     class Config:
         from_attributes = True
 
@@ -452,6 +489,9 @@ class ClienteListItem(BaseModel):
     monto_mensual: Optional[float] = None
     monto_mensual_detalle: Optional[List[DetalleMontoItem]] = None
     cuenta_starlink_email: Optional[str] = None
+    migrado: bool = False
+    faltan_datos: bool = False
+    sin_fotos: bool = False
     class Config:
         from_attributes = True
 
@@ -576,6 +616,9 @@ class CajaNapOut(BaseModel):
     codigo: str
     zona_id: int
     mufa_id: Optional[int] = None
+    # El codigo de la mufa viaja junto a la caja: quien la lea sabe de cual
+    # cuelga sin tener que pedir la lista de mufas y cruzarla a mano.
+    mufa_codigo: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     capacidad_bornes: int

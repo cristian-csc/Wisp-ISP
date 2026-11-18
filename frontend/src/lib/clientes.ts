@@ -58,6 +58,17 @@ export type ClienteListItem = {
   monto_mensual: number | null;
   monto_mensual_detalle: DetalleMontoItem[] | null;
   cuenta_starlink_email: string | null;
+  /** Venía conectado desde antes del sistema. No se apaga nunca: es de dónde
+   *  salió el cliente, y eso no cambia. */
+  migrado: boolean;
+  /** Ya instalado, de fibra, y todavía sin borne o sin equipo registrado. Lo
+   *  calcula el servidor mirando la ficha, así que se apaga solo en cuanto
+   *  alguien los completa — una marca que hay que acordarse de bajar termina
+   *  siempre encendida. */
+  faltan_datos: boolean;
+  /** Instalado y sin una sola foto. Avisa, no bloquea: un cliente de hace
+   *  tres años sin fotos no es culpa de nadie, es como entró. */
+  sin_fotos: boolean;
 };
 
 export type ClienteOut = ClienteListItem & {
@@ -109,6 +120,10 @@ export async function listClientes(params?: {
   zona_id?: number;
   estado?: EstadoCliente;
   tipo_conexion?: string;
+  /** Solo los que vienen del sistema anterior. */
+  migrado?: boolean;
+  /** Solo los que todavía no tienen caja, borne o equipo registrado. */
+  faltan_datos?: boolean;
 }): Promise<ClientesPage> {
   const { data } = await api.get<ClientesPage>('/clientes', { params });
   return data;
@@ -128,6 +143,10 @@ export async function updateCliente(id: number, data: {
   plan_id?: number;
   cantidad_tv?: number;
   tipo_conexion?: TipoConexion;
+  /** Marcar (o desmarcar) que el cliente viene del sistema anterior. Hace
+   *  falta para los que ya estaban registrados antes de que existiera la
+   *  marca. */
+  migrado?: boolean;
   notas?: string | null;
   /** Solo un administrador puede mandarlas; el servidor lo comprueba y deja
    *  escrito el cambio en el historial del cliente. En formato AAAA-MM-DD. */
@@ -167,12 +186,36 @@ export type ClienteCreateInput = {
   plan_id: number;
   cantidad_tv?: number;
   tipo_conexion?: TipoConexion;
+  /** El cliente ya estaba conectado antes de que existiera este sistema. Lo
+   *  marca quien lo registra desde el panel, nunca el técnico desde la app:
+   *  si el técnico pudiera, en un mes todas las instalaciones serían
+   *  migradas y nos quedaríamos sin fotos ni datos de planta. Con la marca,
+   *  su instalación se deja cerrar sin caja, borne ni equipo. */
+  migrado?: boolean;
   notas?: string;
 };
 
 export async function createCliente(data: ClienteCreateInput) {
   const res = await api.post<{ cliente: ClienteOut }>('/clientes', data);
   return res.data.cliente;
+}
+
+/** Registrar la caja, el borne y el equipo de un cliente YA instalado.
+ *
+ *  Es la otra mitad del cliente migrado: entró sin planta porque nadie la
+ *  anotó hace años, y el flujo de instalación no sirve para arreglarlo —solo
+ *  corre sobre clientes que esperan al técnico, y éste ya quedó activo—.
+ *  Se manda solo lo que se sepa; lo que no venga se queda como estaba. */
+export async function completarDatosInstalacion(id: number, data: {
+  caja_nap_id?: number | null;
+  numero_borne?: number | null;
+  onu_id?: number | null;
+  codigo_precinto?: string | null;
+  potencia_optica_dbm?: number | null;
+  metros_cable?: number | null;
+}): Promise<{ ok: boolean; faltan_datos: boolean; sin_fotos: boolean }> {
+  const { data: out } = await api.put(`/clientes/${id}/datos-de-instalacion`, data);
+  return out;
 }
 
 export async function activarSatelital(id: number, data: {

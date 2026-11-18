@@ -33,6 +33,7 @@ import {
   FormSection,
 } from 'src/components/shared/form';
 import AprobarClienteDialog from 'src/components/apps/clientes/AprobarClienteDialog';
+import CompletarDatosDialog from 'src/components/apps/clientes/CompletarDatosDialog';
 import { Textarea } from 'src/components/ui/textarea';
 import { api, getMe, type Usuario } from 'src/lib/api';
 import {
@@ -157,6 +158,7 @@ const ClienteDetail = () => {
   const [historial, setHistorial] = useState<HistorialItem[]>([]);
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const [aprobarOpen, setAprobarOpen] = useState(false);
+  const [completarOpen, setCompletarOpen] = useState(false);
   const [rechazarOpen, setRechazarOpen] = useState(false);
   const [pausarOpen, setPausarOpen] = useState(false);
   const [mesesPausa, setMesesPausa] = useState('1');
@@ -897,6 +899,29 @@ const ClienteDetail = () => {
 
           {pestana === 'equipos' && (
             <SectionCard titulo="Infraestructura y equipo" icono="tabler:router">
+              {/* Lo primero de la pestaña cuando falta: es la razón por la
+                  que alguien la abre. Ámbar y no rojo —una ficha a medias es
+                  trabajo pendiente, no una avería—. */}
+              {cliente.faltan_datos && (
+                <div className="mb-5 flex flex-col gap-3 rounded-xl border border-warning/40 bg-lightwarning p-4 sm:flex-row sm:items-center">
+                  <Icon icon="tabler:clipboard-x" height={22} className="text-warning-text" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-warning-text">
+                      Ficha incompleta
+                    </p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      Este cliente está conectado pero no tiene caja, borne o equipo
+                      registrados. Mientras falten, el mapa de la zona muestra
+                      libre un puerto que en realidad está ocupado.
+                    </p>
+                  </div>
+                  <Button onClick={() => setCompletarOpen(true)} className="shrink-0">
+                    <Icon icon="tabler:clipboard-check" height={17} className="me-1.5" />
+                    Completar datos
+                  </Button>
+                </div>
+              )}
+
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="rounded-xl border border-ld p-4">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
@@ -1169,6 +1194,13 @@ const ClienteDetail = () => {
         cliente={aprobarOpen ? cliente : null}
         onClose={() => setAprobarOpen(false)}
         onAprobado={reload}
+      />
+
+      <CompletarDatosDialog
+        cliente={cliente}
+        open={completarOpen}
+        onOpenChange={setCompletarOpen}
+        onListo={reload}
       />
 
       <FormDialog

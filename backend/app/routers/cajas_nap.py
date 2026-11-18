@@ -13,10 +13,13 @@ router = APIRouter()
 
 
 def _caja_con_bornes(query):
+    # La mufa se trae en el mismo viaje: sin esto, leer caja.mufa_codigo
+    # dispara una consulta por caja y una zona con 48 cajas haria 48.
     return query.options(
+        joinedload(models.CajaNap.mufa),
         joinedload(models.CajaNap.bornes)
         .joinedload(models.Borne.cliente)
-        .joinedload(models.Cliente.plan)
+        .joinedload(models.Cliente.plan),
     )
 
 

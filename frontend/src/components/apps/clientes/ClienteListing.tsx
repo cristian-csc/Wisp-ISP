@@ -113,6 +113,11 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
   const [zonas, setZonas] = useState<Zona[]>([]);
   const [zonaFiltro, setZonaFiltro] = useState('todas');
   const [tipoFiltro, setTipoFiltro] = useState<'todos' | 'fibra_optica' | 'inalambrico'>('todos');
+  /** El pendiente de la migracion: clientes ya instalados a los que todavia
+   *  les falta la caja, el borne o el equipo. No es un estado mas --no
+   *  cuelga del filtro de estados-- porque es ortogonal: los hay activos,
+   *  suspendidos y pausados. */
+  const [soloIncompletos, setSoloIncompletos] = useState(false);
 
   async function reload() {
     setLoading(true);
@@ -123,6 +128,7 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
         estado: filter === 'todos' ? undefined : filter,
         zona_id: zonaFiltro === 'todas' ? undefined : Number(zonaFiltro),
         tipo_conexion: tipo ?? (tipoFiltro === 'todos' ? 'fibra_optica,inalambrico' : tipoFiltro),
+        faltan_datos: soloIncompletos || undefined,
       });
       setItems(data.items);
       setPages(data.pages);
@@ -139,12 +145,12 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, zonaFiltro, tipoFiltro, tipo, page]);
+  }, [filter, zonaFiltro, tipoFiltro, soloIncompletos, tipo, page]);
 
   useEffect(() => {
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, zonaFiltro, tipoFiltro, tipo]);
+  }, [filter, zonaFiltro, tipoFiltro, soloIncompletos, tipo]);
 
   // Aprobar abre la ventana de la IP: antes aprobaba directamente y el
   // cliente se quedaba sin IP fija, lo que hace que el corte por morosidad no
@@ -243,6 +249,21 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
             </Select>
           )}
 
+          {/* Un interruptor y no una opción más del selector de estados:
+              esto es perpendicular a estar activo o suspendido —hay fichas
+              incompletas en los tres estados— y meterlo ahí obligaría a
+              elegir entre una cosa y la otra. */}
+          <Button
+            type="button"
+            variant={soloIncompletos ? 'default' : 'outline'}
+            className="w-full sm:w-auto"
+            onClick={() => setSoloIncompletos((v) => !v)}
+            title="Clientes ya instalados a los que todavía les falta registrar la caja, el borne o el equipo"
+          >
+            <Icon icon="tabler:clipboard-x" height={17} className="me-1.5" />
+            Faltan datos
+          </Button>
+
           <Select value={zonaFiltro} onValueChange={setZonaFiltro}>
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Todas las zonas" />
@@ -320,6 +341,25 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
                         {!tipo && (
                           <Badge className={`rounded-md text-[10px] ${c.tipo_conexion === 'fibra_optica' ? 'bg-lightprimary text-primary' : 'bg-lightinfo text-info'}`}>
                             {c.tipo_conexion === 'fibra_optica' ? 'Fibra' : 'Inalámbrico'}
+                          </Badge>
+                        )}
+                        {/* Ambar y no rojo: una ficha a medias es trabajo
+                            pendiente, no una avería. El rojo se gasta si se
+                            usa para cosas que no son culpa de nadie. */}
+                        {c.faltan_datos && (
+                          <Badge
+                            className="rounded-md bg-lightwarning text-warning text-[10px]"
+                            title="Ya instalado pero sin caja, borne o equipo registrado"
+                          >
+                            Faltan datos
+                          </Badge>
+                        )}
+                        {c.sin_fotos && !c.faltan_datos && (
+                          <Badge
+                            className="rounded-md bg-muted text-muted-foreground text-[10px]"
+                            title="No tiene ninguna foto cargada"
+                          >
+                            Sin fotos
                           </Badge>
                         )}
                       </div>

@@ -9,6 +9,8 @@ import {
 import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
 import { alerta } from '@/components/Aviso';
+import { SelectorOnu } from '@/components/SelectorOnu';
+import { CompletarFicha } from '@/components/CompletarFicha';
 
 export default function AveriaDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -90,6 +92,13 @@ export default function AveriaDetalleScreen() {
 
   return (
     <ScrollView style={s.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+      {/* Arriba del todo y no al final: si sale despues del boton de
+          resolver, el tecnico ya cerro y se fue. El momento de pedirle el
+          dato es cuando todavia esta en la casa. */}
+      {averia.cliente_id != null && (
+        <CompletarFicha clienteId={averia.cliente_id} />
+      )}
+
       <View style={s.card}>
         <Text style={s.cardTitle}>MOTIVO REPORTADO</Text>
         <Text style={s.motivo}>{averia.motivo_reportado}</Text>
@@ -147,24 +156,23 @@ export default function AveriaDetalleScreen() {
           {cambiarOnu && (
             <>
               <Text style={s.label}>ONU retirada (dañada)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-                {onuInstaladaEnCliente.map(o => (
-                  <TouchableOpacity key={o.id} style={[s.chip, onuViejaId === o.id && s.chipActive]} onPress={() => setOnuViejaId(o.id)}>
-                    <Text style={[s.chipText, onuViejaId === o.id && s.chipTextActive]}>{o.numero_serie}</Text>
-                  </TouchableOpacity>
-                ))}
-                {onuInstaladaEnCliente.length === 0 && <Text style={s.emptyText}>No hay ONU instalada registrada para este cliente</Text>}
-              </ScrollView>
+              <SelectorOnu
+                onus={onuInstaladaEnCliente}
+                valor={onuViejaId}
+                onChange={setOnuViejaId}
+                placeholder="Elegir el equipo que se retira"
+                vacio={'Este cliente no tiene ningún equipo registrado. Si es del ' +
+                       'sistema anterior, regístralo arriba en “Completar datos”.'}
+              />
 
               <Text style={s.label}>ONU nueva (de tu inventario)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-                {onusDisponibles.map(o => (
-                  <TouchableOpacity key={o.id} style={[s.chip, onuNuevaId === o.id && s.chipActive]} onPress={() => setOnuNuevaId(o.id)}>
-                    <Text style={[s.chipText, onuNuevaId === o.id && s.chipTextActive]}>{o.numero_serie}</Text>
-                  </TouchableOpacity>
-                ))}
-                {onusDisponibles.length === 0 && <Text style={s.emptyText}>No tienes ONUs disponibles en tu inventario</Text>}
-              </ScrollView>
+              <SelectorOnu
+                onus={onusDisponibles}
+                valor={onuNuevaId}
+                onChange={setOnuNuevaId}
+                placeholder="Elegir el equipo que se instala"
+                vacio="No tienes equipos disponibles. Escanea el que traes desde Órdenes → Escanear."
+              />
             </>
           )}
 

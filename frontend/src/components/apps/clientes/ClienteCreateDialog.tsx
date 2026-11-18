@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from 'src/components/ui/select';
+import { Switch } from 'src/components/ui/switch';
 import { consultarDocumento, type ConsultaDocumento, createCliente, listZonas, listPlanes, type Zona, type Plan } from 'src/lib/clientes';
 import { listCajasNap, type CajaNap } from 'src/lib/cajasnap';
 import CampoCoordenadas from 'src/components/shared/mapa/CampoCoordenadas';
@@ -69,6 +70,11 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
   const [planId, setPlanId] = useState<string>('');
   const [cantidadTv, setCantidadTv] = useState('0');
   const [notas, setNotas] = useState('');
+  // Lo marca quien registra, nunca el tecnico desde la app: si el tecnico
+  // pudiera, en un mes todas las instalaciones serian migradas y el
+  // sistema se quedaria sin fotos ni datos de planta. La excepcion tiene
+  // que tener dueno.
+  const [migrado, setMigrado] = useState(false);
   const [tipoConexion, setTipoConexion] = useState<'fibra_optica' | 'inalambrico'>(
     tipoInicial ?? 'fibra_optica',
   );
@@ -251,6 +257,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
         plan_id: Number(planId),
         cantidad_tv: Number(cantidadTv) || 0,
         tipo_conexion: tipoConexion,
+        migrado,
         notas: notas || undefined,
       });
       resetForm();
@@ -576,6 +583,27 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                 value={cantidadTv}
                 onChange={(e) => setCantidadTv(e.target.value)}
               />
+            </FormField>
+
+            <FormField
+              label="¿Viene del sistema anterior?"
+              icon="tabler:history"
+              htmlFor="migrado"
+              wide
+            >
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-3">
+                <Switch id="migrado" checked={migrado} onCheckedChange={setMigrado} />
+                <div className="min-w-0 text-sm">
+                  <p className="font-medium text-foreground">
+                    {migrado ? 'Cliente migrado' : 'Cliente nuevo'}
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {migrado
+                      ? 'El técnico podrá cerrar la instalación sin caja NAP, borne, equipo ni fotos — de un cliente que ya estaba conectado no existen esos datos. Quedará marcado como pendiente hasta que alguien los registre.'
+                      : 'La instalación exigirá caja NAP, borne, equipo y fotos, como debe ser para todo cliente nuevo.'}
+                  </p>
+                </div>
+              </div>
             </FormField>
 
             <FormField label="Notas" icon="tabler:notes" htmlFor="notas" wide>

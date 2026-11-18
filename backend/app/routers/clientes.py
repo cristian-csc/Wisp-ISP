@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_, func
+from sqlalchemy import or_, and_, exists, func
 from typing import Optional, List
 from datetime import date, datetime, timedelta
 import calendar
@@ -336,6 +336,75 @@ def _crear_secreto_pppoe(db: Session, cliente: "models.Cliente") -> dict:
     return {**result, "ya_existia": False}
 
 
+# ── Qué le falta a una ficha ──────────────────────────────────────────────────
+# Dos huecos distintos, separados a proposito.
+#
+# Los datos de planta --caja, borne y equipo-- se pueden llenar desde la
+# oficina cuando estan apuntados en papel, que es el caso de casi toda la
+# migracion. Una foto no: exige que alguien este parado en la casa del
+# cliente. Si los juntaramos en un solo pendiente, la lista se llenaria de
+# cosas que la oficina no puede resolver, nunca bajaria, y se dejaria de
+# mirar.
+#
+# Por eso tampoco "sin fotos" bloquea: un cliente de hace tres anos sin fotos
+# no es el error de nadie, es como entro. Es un aviso en su ficha y nada mas.
+
+
+def _datos_de_ficha(db: Session, cliente_ids: list[int]) -> dict[int, tuple[bool, bool, bool]]:
+    """Para cada cliente: (tiene borne, tiene ONU, tiene alguna foto).
+
+    Tres consultas en total, no tres por cliente: la pagina entera de una vez.
+    """
+    if not cliente_ids:
+        return {}
+    con_borne = {
+        r[0] for r in db.query(models.Borne.cliente_id)
+        .filter(models.Borne.cliente_id.in_(cliente_ids)).all()
+    }
+    con_onu = {
+        r[0] for r in db.query(models.Onu.cliente_id)
+        .filter(models.Onu.cliente_id.in_(cliente_ids)).all()
+    }
+    con_foto = {
+        r[0] for r in db.query(models.Evidencia.cliente_id)
+        .filter(models.Evidencia.cliente_id.in_(cliente_ids)).all()
+    }
+    return {
+        cid: (cid in con_borne, cid in con_onu, cid in con_foto)
+        for cid in cliente_ids
+    }
+
+
+def _marcas_de_ficha(cliente: models.Cliente, datos: tuple[bool, bool, bool]) -> tuple[bool, bool]:
+    """(le faltan datos de planta, no tiene fotos).
+
+    Solo cuentan una vez instalado: a un cliente que todavia espera al tecnico
+    no le falta nada, le falta el tecnico. Y solo la fibra tiene planta que
+    registrar --un inalambrico va por antena y un satelital ni pasa por la
+    red--, asi que para los demas nunca falta nada.
+    """
+    tiene_borne, tiene_onu, tiene_foto = datos
+    instalado = cliente.fecha_instalacion is not None
+    por_fibra = cliente.tipo_conexion == models.TipoConexion.fibra_optica
+    faltan = bool(instalado and por_fibra and (not tiene_borne or not tiene_onu))
+    return faltan, bool(instalado and not tiene_foto)
+
+
+def _sin_planta_sql():
+    """Clientes de fibra ya instalados a los que les falta el borne o la ONU.
+
+    Se filtra en la consulta y no despues de paginar: si se descartaran filas
+    ya traidas, la pagina 1 vendria con tres clientes y el total mentiria.
+    """
+    sin_borne = ~exists().where(models.Borne.cliente_id == models.Cliente.id)
+    sin_onu = ~exists().where(models.Onu.cliente_id == models.Cliente.id)
+    return and_(
+        models.Cliente.tipo_conexion == models.TipoConexion.fibra_optica,
+        models.Cliente.fecha_instalacion.isnot(None),
+        or_(sin_borne, sin_onu),
+    )
+
+
 # ── Listado ───────────────────────────────────────────────────────────────────
 
 @router.get("", response_model=dict)
@@ -348,6 +417,10 @@ def list_clientes(
     tipo_conexion: Optional[str] = None,
     solo_mis_instalaciones: bool = False,
     solo_mis_registros: bool = False,
+    # Los dos de la migracion: ver quienes vienen del sistema viejo, y ver a
+    # cuales les falta todavia la caja, el borne o el equipo.
+    migrado: Optional[bool] = None,
+    faltan_datos: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(get_current_user),
 ):
@@ -381,6 +454,10 @@ def list_clientes(
         query = query.filter(models.Cliente.zona_id == zona_id)
     if estado:
         query = query.filter(models.Cliente.estado == estado)
+    if migrado is not None:
+        query = query.filter(models.Cliente.migrado == migrado)
+    if faltan_datos:
+        query = query.filter(_sin_planta_sql())
 
     total = query.count()
     clientes = query.offset((page - 1) * per_page).limit(per_page).all()
@@ -400,11 +477,16 @@ def list_clientes(
     for p in pagos_batch:
         pagos_por_cliente.setdefault(p.cliente_id, {})[p.mes_pagado] = str(p.estado)
 
+    marcas = _datos_de_ficha(db, cliente_ids)
+
     items = []
     for c in clientes:
         item = schemas.ClienteListItem.model_validate(c).model_dump(mode="json")
         item["monto_mensual"] = monto_mensual(c, c.plan)
         item["monto_mensual_detalle"] = detalle_monto(c, c.plan)
+        item["faltan_datos"], item["sin_fotos"] = _marcas_de_ficha(
+            c, marcas.get(c.id, (False, False, False))
+        )
         c_pagos = pagos_por_cliente.get(c.id, {})
         meses_status = []
         for mes in meses_6:
@@ -770,22 +852,37 @@ def instalar_cliente(
                    "desde la ficha del cliente.",
         )
 
+    # Quien no lleva planta que registrar, y por que, son dos casos distintos.
+    #
     # Un cliente inalambrico llega por antena y PPPoE: no tiene fibra, ni caja
     # NAP, ni borne, ni ONU. Pedirselos no era un requisito mal puesto, era un
-    # callejon sin salida: no existe ningun numero valido que darle, asi que
-    # no habia forma de dejarlo activo.
+    # callejon sin salida: no existe ningun numero valido que darle.
+    #
+    # Un cliente migrado si la tiene, pero nadie la anoto cuando se instalo
+    # hace anos. Exigirsela al tecnico ahora seria pedirle que invente el
+    # dato, y un dato inventado es peor que uno vacio: un borne marcado al
+    # azar deja el mapa mintiendo dos veces --dice ocupado uno que esta libre
+    # y libre el que de verdad esta ocupado-- y manda al proximo tecnico a un
+    # viaje perdido.
+    #
+    # Opcional no es prohibido: si el tecnico esta delante de la caja y sabe
+    # el borne, lo pone y se guarda igual. Lo que falte queda pendiente y se
+    # ve en la ficha del cliente.
     por_fibra = cliente.tipo_conexion == models.TipoConexion.fibra_optica
+    exige_planta = por_fibra and not cliente.migrado
     caja = None
     borne = None
     onu = None
 
-    if por_fibra:
-        if data.caja_nap_id is None or data.numero_borne is None or data.onu_id is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Una instalación de fibra necesita caja NAP, borne y ONU.",
-            )
+    if exige_planta and (
+        data.caja_nap_id is None or data.numero_borne is None or data.onu_id is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Una instalación de fibra necesita caja NAP, borne y ONU.",
+        )
 
+    if por_fibra and data.caja_nap_id is not None and data.numero_borne is not None:
         caja = db.query(models.CajaNap).filter(models.CajaNap.id == data.caja_nap_id).first()
         if not caja:
             raise HTTPException(status_code=404, detail="Caja NAP no encontrada")
@@ -798,6 +895,7 @@ def instalar_cliente(
         if borne.estado != models.EstadoBorne.libre:
             raise HTTPException(status_code=400, detail="El borne no está libre")
 
+    if por_fibra and data.onu_id is not None:
         onu = db.query(models.Onu).filter(models.Onu.id == data.onu_id).first()
         if not onu:
             raise HTTPException(status_code=404, detail="ONU no encontrada")
@@ -827,10 +925,20 @@ def instalar_cliente(
         onu.cliente_id = cliente.id
         onu.fecha_instalacion = hoy
 
-    if caja is not None and borne is not None and onu is not None:
+    partes = []
+    if caja is not None and borne is not None:
+        partes.append(f"Caja {caja.codigo}, borne {borne.numero}")
+    if onu is not None:
+        partes.append(f"ONU {onu.numero_serie}")
+
+    if partes:
+        detalle = f"Instalado por {current_user.nombre} — " + ", ".join(partes) + "."
+    elif por_fibra:
+        # Un migrado sin nada que anotar. Queda dicho en el historial para que
+        # dentro de un ano se sepa por que esta ficha esta a medias.
         detalle = (
-            f"Instalado por {current_user.nombre} — Caja {caja.codigo}, "
-            f"borne {borne.numero}, ONU {onu.numero_serie}."
+            f"Instalado por {current_user.nombre} — cliente migrado, "
+            f"sin datos de planta registrados."
         )
     else:
         detalle = f"Instalado por {current_user.nombre} — enlace inalámbrico."
@@ -891,6 +999,161 @@ def no_instalar_cliente(
     db.add(historial)
     db.commit()
     return {"ok": True, "estado": "no_instalado"}
+
+
+@router.put("/{cliente_id}/datos-de-instalacion")
+def completar_datos_de_instalacion(
+    cliente_id: int,
+    data: schemas.ClienteDatosInstalacionRequest,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(
+        require_roles(models.RolUsuario.admin, models.RolUsuario.tecnico)
+    ),
+):
+    """Registrar la caja, el borne y el equipo de un cliente ya instalado.
+
+    Para eso se hizo: los clientes migrados quedaron activos sin planta
+    porque nadie la anoto hace anos, y el flujo de instalacion no sirve para
+    arreglarlo --solo corre sobre clientes "aprobados"--. Aqui se apunta lo
+    que el tecnico ve el dia que por fin pasa por la casa.
+
+    Tambien corrige: si se habia puesto un borne equivocado, el viejo se
+    libera. Lo que no se vale es usarlo para cambiar un equipo averiado, que
+    eso tiene su propio camino por averias y deja el rastro del cambio.
+    """
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    _check_zona_access(db, current_user, cliente.zona_id)
+
+    if cliente.fecha_instalacion is None:
+        raise HTTPException(
+            status_code=400,
+            detail="El cliente todavía no está instalado — estos datos se registran al instalarlo.",
+        )
+    if cliente.tipo_conexion != models.TipoConexion.fibra_optica:
+        raise HTTPException(
+            status_code=400,
+            detail="Solo los clientes de fibra tienen caja NAP, borne y ONU.",
+        )
+    if (data.caja_nap_id is None) != (data.numero_borne is None):
+        raise HTTPException(
+            status_code=400,
+            detail="La caja y el borne van juntos: el número de borne solo identifica algo dentro de su caja.",
+        )
+
+    cambios = []
+
+    if data.caja_nap_id is not None:
+        caja = db.query(models.CajaNap).filter(models.CajaNap.id == data.caja_nap_id).first()
+        if not caja:
+            raise HTTPException(status_code=404, detail="Caja NAP no encontrada")
+        nuevo_borne = db.query(models.Borne).filter(
+            models.Borne.caja_nap_id == caja.id,
+            models.Borne.numero == data.numero_borne,
+        ).first()
+        if not nuevo_borne:
+            raise HTTPException(status_code=404, detail="Borne no encontrado en esa caja")
+        # Libre, o ya suyo: reenviar el mismo dato no puede fallar.
+        if nuevo_borne.cliente_id not in (None, cliente.id):
+            raise HTTPException(
+                status_code=400,
+                detail="Ese borne ya está ocupado por otro cliente.",
+            )
+        if nuevo_borne.estado == models.EstadoBorne.danado:
+            raise HTTPException(status_code=400, detail="Ese borne está marcado como dañado.")
+
+        anterior = db.query(models.Borne).filter(
+            models.Borne.cliente_id == cliente.id,
+            models.Borne.id != nuevo_borne.id,
+        ).first()
+        if anterior is not None:
+            codigo_anterior = anterior.caja_nap.codigo if anterior.caja_nap else "?"
+            anterior.cliente_id = None
+            anterior.estado = models.EstadoBorne.libre
+            anterior.codigo_precinto = None
+            cambios.append(f"borne liberado {codigo_anterior} #{anterior.numero}")
+
+        nuevo_borne.cliente_id = cliente.id
+        nuevo_borne.estado = models.EstadoBorne.ocupado
+        if data.codigo_precinto is not None:
+            nuevo_borne.codigo_precinto = data.codigo_precinto
+        if data.potencia_optica_dbm is not None:
+            nuevo_borne.potencia_optica_dbm = data.potencia_optica_dbm
+        cambios.append(f"caja {caja.codigo}, borne {nuevo_borne.numero}")
+
+    if data.onu_id is not None:
+        onu = db.query(models.Onu).filter(models.Onu.id == data.onu_id).first()
+        if not onu:
+            raise HTTPException(status_code=404, detail="ONU no encontrada")
+        if onu.cliente_id not in (None, cliente.id):
+            raise HTTPException(
+                status_code=400,
+                detail="Ese equipo ya figura instalado en otro cliente.",
+            )
+        if onu.cliente_id is None:
+            # El tecnico solo puede usar lo que lleva encima. El admin
+            # tambien el almacen: esta en la oficina completando fichas con
+            # los papeles del sistema viejo delante, y el equipo de un
+            # cliente migrado acaba de darse de alta ahi --nunca estuvo
+            # asignado a nadie--. Exigirle que se lo asigne antes a un
+            # tecnico que no va a ir a ningun lado seria un tramite inventado.
+            if current_user.rol == models.RolUsuario.tecnico:
+                disponible = (
+                    onu.estado == models.EstadoOnu.asignado_tecnico
+                    and onu.tecnico_id == current_user.id
+                )
+                problema = "La ONU no está disponible en el inventario de este técnico"
+            else:
+                disponible = onu.estado in (
+                    models.EstadoOnu.en_almacen,
+                    models.EstadoOnu.asignado_tecnico,
+                )
+                problema = (
+                    "Ese equipo no está disponible: figura como "
+                    f"{onu.estado.value.replace('_', ' ')}."
+                )
+            if not disponible:
+                raise HTTPException(status_code=400, detail=problema)
+
+        vieja = db.query(models.Onu).filter(
+            models.Onu.cliente_id == cliente.id,
+            models.Onu.id != onu.id,
+        ).first()
+        if vieja is not None:
+            # Vuelve al almacen, no se borra: aunque fuera un dato puesto a
+            # ojo, que existio tiene que quedar en el historial.
+            vieja.cliente_id = None
+            vieja.tecnico_id = None
+            vieja.estado = models.EstadoOnu.en_almacen
+            cambios.append(f"equipo anterior {vieja.numero_serie} devuelto al almacén")
+
+        onu.cliente_id = cliente.id
+        onu.estado = models.EstadoOnu.instalado
+        if onu.fecha_instalacion is None:
+            onu.fecha_instalacion = cliente.fecha_instalacion or date.today()
+        cambios.append(f"equipo {onu.numero_serie}")
+
+    if data.metros_cable is not None:
+        cliente.metros_cable = data.metros_cable
+        cambios.append(f"{data.metros_cable:g} m de cable")
+
+    if not cambios:
+        raise HTTPException(status_code=400, detail="No se envió ningún dato que registrar.")
+
+    db.add(models.Historial(
+        cliente_id=cliente.id,
+        tipo=models.TipoHistorial.nota,
+        descripcion=f"Datos de instalación registrados por {current_user.nombre} — "
+                    + ", ".join(cambios) + ".",
+        usuario_id=current_user.id,
+    ))
+    db.commit()
+
+    faltan, sin_fotos = _marcas_de_ficha(
+        cliente, _datos_de_ficha(db, [cliente.id]).get(cliente.id, (False, False, False))
+    )
+    return {"ok": True, "faltan_datos": faltan, "sin_fotos": sin_fotos}
 
 
 # ── Notificaciones ────────────────────────────────────────────────────────────
@@ -1103,6 +1366,9 @@ def get_cliente(
     out = schemas.ClienteOut.model_validate(cliente).model_dump(mode="json")
     out["monto_mensual"] = monto_mensual(cliente, cliente.plan)
     out["monto_mensual_detalle"] = detalle_monto(cliente, cliente.plan)
+    out["faltan_datos"], out["sin_fotos"] = _marcas_de_ficha(
+        cliente, _datos_de_ficha(db, [cliente.id]).get(cliente.id, (False, False, False))
+    )
     return out
 
 

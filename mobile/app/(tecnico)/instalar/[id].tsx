@@ -10,6 +10,8 @@ import {
 import { elegirFoto } from '@/services/fotos';
 import { COLORS } from '@/theme/colors';
 import { alerta } from '@/components/Aviso';
+import { SelectorCajaNap } from '@/components/SelectorCajaNap';
+import { SelectorOnu } from '@/components/SelectorOnu';
 
 /** La fecha de hace `dias` dias, a medianoche local. */
 function haceDias(dias: number): Date {
@@ -99,19 +101,40 @@ export default function InstalarScreen() {
   // podia dejar activo.
   const porFibra = cliente?.tipo_conexion !== 'inalambrico';
 
+  // Un cliente migrado venia conectado desde antes del sistema: nadie anoto
+  // su caja, su borne ni su equipo, y nadie le saco fotos. Exigirselo al
+  // tecnico ahora seria pedirle que invente los datos, y un dato inventado
+  // es peor que uno vacio -- un borne marcado al azar deja el mapa mintiendo
+  // y manda al siguiente tecnico a un viaje perdido.
+  //
+  // Opcional no es prohibido: si esta delante de la caja y lo sabe, lo pone.
+  const esMigrado = cliente?.migrado === true;
+  const exigeTodo = porFibra && !esMigrado;
+
   const cajaSeleccionada = cajas.find(c => c.id === cajaId) ?? null;
   const bornesLibres: Borne[] = cajaSeleccionada?.bornes.filter(b => b.estado === 'libre') ?? [];
 
   async function confirmar() {
-    if (porFibra && (!cajaId || !borneNum || !onuId)) {
+    if (exigeTodo && (!cajaId || !borneNum || !onuId)) {
       alerta('Faltan datos', 'Selecciona caja NAP, borne y ONU.');
       return;
     }
-    if (!tieneFoto && !fotoUri) {
+    // La caja y el borne van juntos aunque sean opcionales: un borne suelto
+    // no identifica nada, el numero 3 existe en todas las cajas.
+    if (!!cajaId !== !!borneNum) {
+      alerta(
+        'Falta el borne',
+        cajaId
+          ? 'Elegiste la caja pero no el borne. Marca en cuál quedó conectado.'
+          : 'Elegiste un borne sin su caja. Indica de qué caja NAP es.',
+      );
+      return;
+    }
+    if (exigeTodo && !tieneFoto && !fotoUri) {
       alerta('Falta la foto de la fachada', 'Este cliente se registró sin foto — tómala ahora antes de confirmar la instalación.');
       return;
     }
-    if (!fotoPowerMeter) {
+    if (exigeTodo && !fotoPowerMeter) {
       alerta('Falta la foto del power meter', 'Toma una foto de la lectura del power meter antes de confirmar.');
       return;
     }
@@ -137,8 +160,14 @@ export default function InstalarScreen() {
         }
       }
       try {
-        await subirEvidenciaInstalacion(Number(id), fotoPowerMeter, 'Power meter — lectura de potencia óptica');
-        await subirEvidenciaInstalacion(Number(id), fotoCajaNap, 'Caja NAP — precinto y puerto usado');
+        // Pueden faltar: en un cliente migrado las fotos no son obligatorias,
+        // asi que aqui hay que preguntar en vez de darlas por hechas.
+        if (fotoPowerMeter) {
+          await subirEvidenciaInstalacion(Number(id), fotoPowerMeter, 'Power meter — lectura de potencia óptica');
+        }
+        if (fotoCajaNap) {
+          await subirEvidenciaInstalacion(Number(id), fotoCajaNap, 'Caja NAP — precinto y puerto usado');
+        }
         if (fotoRouter) {
           await subirEvidenciaInstalacion(Number(id), fotoRouter, 'Router instalado');
         }
@@ -181,24 +210,37 @@ export default function InstalarScreen() {
       {/* Caja, borne y ONU son de la fibra. Un enlace inalambrico no
           tiene nada de eso, asi que estas tres secciones no se pintan:
           ensenar campos que no se pueden llenar es peor que no tenerlos. */}
+      {/* Sale antes que ningun campo: el tecnico tiene que saber POR QUE
+          esta pantalla le pide menos de lo normal antes de empezar a
+          llenarla, o va a pensar que la app se rompio. */}
+      {esMigrado && (
+        <View style={s.migradoAviso}>
+          <Ionicons name="time-outline" size={20} color={COLORS.brandStrong} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.migradoTitulo}>Cliente del sistema anterior</Text>
+            <Text style={s.migradoTexto}>
+              Ya estaba conectado antes, así que de él no hay caja, borne ni
+              equipo registrados. Llena lo que tengas delante y deja vacío lo
+              demás — queda pendiente y se completa otro día.
+            </Text>
+          </View>
+        </View>
+      )}
+
       {porFibra && (
         <>
-        <Text style={s.sectionTitle}>1. CAJA NAP</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          {cajas.map(c => (
-            <TouchableOpacity
-              key={c.id}
-              style={[s.chip, cajaId === c.id && s.chipActive]}
-              onPress={() => { setCajaId(c.id); setBorneNum(null); }}
-            >
-              <View style={s.chipRow}>
-                <Ionicons name="cube-outline" size={14} color={cajaId === c.id ? COLORS.dark : COLORS.mutedForeground} />
-                <Text style={[s.chipText, cajaId === c.id && s.chipTextActive]}>{c.codigo}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-          {cajas.length === 0 && <Text style={s.emptyText}>No hay cajas NAP registradas en tu zona</Text>}
-        </ScrollView>
+        <Text style={s.sectionTitle}>
+          1. CAJA NAP {esMigrado ? '(SI LA SABES)' : ''}
+        </Text>
+        {/* La lista va agrupada por mufa: una zona puede tener varias y el
+            tecnico esta parado delante de una concreta. La tira horizontal
+            de antes las mezclaba todas y no decia de cual colgaba cada
+            caja. */}
+        <SelectorCajaNap
+          cajas={cajas}
+          valor={cajaId}
+          onChange={id => { setCajaId(id); setBorneNum(null); }}
+        />
 
         {cajaSeleccionada && (
           <>
@@ -229,26 +271,22 @@ export default function InstalarScreen() {
           </>
         )}
 
-        <Text style={s.sectionTitle}>3. ONU (de tu inventario)</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          {onus.map(o => (
-            <TouchableOpacity
-              key={o.id}
-              style={[s.chip, onuId === o.id && s.chipActive]}
-              onPress={() => setOnuId(o.id)}
-            >
-              <View style={s.chipRow}>
-                <Ionicons name="hardware-chip-outline" size={14} color={onuId === o.id ? COLORS.dark : COLORS.mutedForeground} />
-                <Text style={[s.chipText, onuId === o.id && s.chipTextActive]}>{o.numero_serie}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-          {onus.length === 0 && <Text style={s.emptyText}>No tienes ONUs asignadas — pide al admin que te entregue una</Text>}
-        </ScrollView>
+        <Text style={s.sectionTitle}>
+          3. EQUIPO {esMigrado ? '(SI LO SABES)' : '(DE TU INVENTARIO)'}
+        </Text>
+        <SelectorOnu
+          onus={onus}
+          valor={onuId}
+          onChange={setOnuId}
+          placeholder={esMigrado ? 'Elegir equipo — opcional' : 'Elegir equipo'}
+          vacio="No tienes equipos asignados. Escanea el que te entregó almacén desde Órdenes → Escanear."
+        />
 
         {!tieneFoto && (
           <>
-            <Text style={s.sectionTitle}>FOTO DE LA FACHADA (FALTA)</Text>
+            <Text style={s.sectionTitle}>
+              FOTO DE LA FACHADA {esMigrado ? '(SI PUEDES)' : '(FALTA)'}
+            </Text>
             <TouchableOpacity style={[s.fotoBtn, fotoUri && s.fotoBtnDone]} onPress={tomarFoto}>
               <Ionicons name={fotoUri ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoUri ? COLORS.success : COLORS.mutedForeground} />
               <Text style={[s.fotoBtnText, fotoUri && { color: COLORS.success }]}>
@@ -299,7 +337,11 @@ export default function InstalarScreen() {
       <TouchableOpacity style={[s.fotoBtn, fotoPowerMeter && s.fotoBtnDone]} onPress={() => tomarFotoGenerica(setFotoPowerMeter)}>
         <Ionicons name={fotoPowerMeter ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoPowerMeter ? COLORS.success : COLORS.mutedForeground} />
         <Text style={[s.fotoBtnText, fotoPowerMeter && { color: COLORS.success }]}>
-          {fotoPowerMeter ? 'Power meter — tocar para repetir' : 'Foto del power meter (obligatoria)'}
+          {fotoPowerMeter
+          ? 'Power meter — tocar para repetir'
+          : esMigrado
+            ? 'Foto del power meter (opcional)'
+            : 'Foto del power meter (obligatoria)'}
         </Text>
       </TouchableOpacity>
       {fotoPowerMeter && <Image source={{ uri: fotoPowerMeter }} style={s.fotoPreview} />}
@@ -307,7 +349,11 @@ export default function InstalarScreen() {
       <TouchableOpacity style={[s.fotoBtn, fotoCajaNap && s.fotoBtnDone]} onPress={() => tomarFotoGenerica(setFotoCajaNap)}>
         <Ionicons name={fotoCajaNap ? 'checkmark-circle' : 'camera-outline'} size={19} color={fotoCajaNap ? COLORS.success : COLORS.mutedForeground} />
         <Text style={[s.fotoBtnText, fotoCajaNap && { color: COLORS.success }]}>
-          {fotoCajaNap ? 'Caja NAP — tocar para repetir' : 'Foto de la caja NAP con precinto y puerto usado (obligatoria)'}
+          {fotoCajaNap
+          ? 'Caja NAP — tocar para repetir'
+          : esMigrado
+            ? 'Foto de la caja NAP con precinto y puerto usado (opcional)'
+            : 'Foto de la caja NAP con precinto y puerto usado (obligatoria)'}
         </Text>
       </TouchableOpacity>
       {fotoCajaNap && <Image source={{ uri: fotoCajaNap }} style={s.fotoPreview} />}
@@ -400,6 +446,17 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 14, marginBottom: 18,
   },
   inalambricoTexto: { flex: 1, fontSize: 13, color: COLORS.dark, lineHeight: 18 },
+
+  migradoAviso: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 11,
+    backgroundColor: COLORS.lightbrand,
+    borderWidth: 1, borderColor: COLORS.brandStrong,
+    borderRadius: 14, padding: 14, marginBottom: 18,
+  },
+  migradoTitulo: {
+    fontSize: 14, fontWeight: '800', color: COLORS.dark, marginBottom: 3,
+  },
+  migradoTexto: { fontSize: 13, color: COLORS.dark, lineHeight: 18 },
   fechasCaja: {
     borderWidth: 1, borderColor: COLORS.border, borderRadius: 12,
     backgroundColor: COLORS.background, marginBottom: 10,

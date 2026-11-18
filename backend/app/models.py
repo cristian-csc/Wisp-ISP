@@ -259,6 +259,15 @@ class CajaNap(Base):
     mufa = relationship("Mufa", back_populates="cajas_nap")
     bornes = relationship("Borne", back_populates="caja_nap", order_by="Borne.numero")
 
+    @property
+    def mufa_codigo(self):
+        """El codigo de la mufa, para quien lee la caja y no la base.
+
+        Una zona puede tener varias mufas y cada mufa hasta 16 cajas. Con
+        solo el mufa_id, en campo no hay forma de saber de cual cuelga la
+        caja que uno tiene delante."""
+        return self.mufa.codigo if self.mufa else None
+
 
 class Borne(Base):
     __tablename__ = "bornes"
@@ -339,6 +348,22 @@ class Cliente(Base):
     estado = Column(SAEnum(EstadoCliente), default=EstadoCliente.pendiente_aprobacion, nullable=False, index=True)
     motivo_rechazo = Column(Text)
     motivo_no_instalado = Column(Text)
+
+    # El cliente venia conectado desde antes de que existiera este sistema, asi
+    # que de el no hay caja, borne, equipo ni fotos: nadie los anoto en su
+    # momento. Con la marca puesta, la instalacion se deja cerrar con esos
+    # datos en blanco en vez de obligar al tecnico a inventarlos.
+    #
+    # La pone quien registra al cliente desde el panel, nunca el tecnico desde
+    # la app: si el tecnico pudiera marcarla, en un mes todas las
+    # instalaciones serian migradas y el sistema se quedaria sin fotos ni
+    # datos de planta. La excepcion tiene que tener dueno.
+    #
+    # No se apaga nunca --es de donde salio el cliente, y eso no cambia--. Lo
+    # que cambia es si todavia le faltan datos, y eso no es una marca sino una
+    # cuenta: se mira la ficha. Una bandera que hay que acordarse de bajar
+    # termina siempre encendida.
+    migrado = Column(Boolean, default=False, nullable=False, index=True)
 
     # Captación / aprobación / instalación
     vendedor_id = Column(Integer, ForeignKey("usuarios.id"))
