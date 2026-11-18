@@ -77,11 +77,34 @@ let arrancando = false
 /** Borra la sesión guardada. Se usa solo cuando WhatsApp dice que la sesión
  *  ya no vale (cerraron sesión desde el celular, o caducó): conservarla
  *  dejaría al bot reintentando para siempre con credenciales muertas, sin
- *  llegar a mostrar un QR nuevo — que es justo lo que pasaba antes. */
+ *  llegar a mostrar un QR nuevo.
+ *
+ *  Se borra el CONTENIDO de la carpeta, nunca la carpeta.
+ *
+ *  SESSION_PATH es el punto de montaje de un volumen de Docker: un sistema de
+ *  archivos distinto, montado ahí dentro. Un punto de montaje no se puede
+ *  borrar desde dentro del contenedor — el sistema responde EBUSY, haga lo
+ *  que haga el código. Antes esta función intentaba borrar la carpeta entera
+ *  y por eso fallaba SIEMPRE, no en algún caso raro.
+ *
+ *  Y el fallo no era inofensivo: las credenciales muertas se quedaban en su
+ *  sitio, al reintentar WhatsApp volvía a rechazarlas, se intentaba borrar
+ *  otra vez, y el servicio giraba en ese bucle sin llegar nunca a mostrar un
+ *  QR. Así se quedó sin WhatsApp el servidor de producción. */
 function borrarSesion() {
   try {
-    fs.rmSync(SESSION_PATH, { recursive: true, force: true })
-    console.log('Sesión borrada: hay que volver a escanear el QR')
+    const dentro = fs.readdirSync(SESSION_PATH)
+    for (const nombre of dentro) {
+      fs.rmSync(path.join(SESSION_PATH, nombre), { recursive: true, force: true })
+    }
+    const quedan = fs.readdirSync(SESSION_PATH).length
+    if (quedan) {
+      // Si algo sobrevive, decirlo: callarlo es lo que escondió el problema
+      // la vez anterior.
+      console.error(`Sesión borrada a medias: quedan ${quedan} archivo(s) en ${SESSION_PATH}`)
+    } else {
+      console.log(`Sesión borrada (${dentro.length} archivo(s)): hay que volver a escanear el QR`)
+    }
   } catch (e) {
     console.error('No se pudo borrar la sesión:', e.message)
   }
