@@ -96,7 +96,7 @@ export function AvisoHost() {
   const soloUno = actual.botones.length === 1;
 
   return (
-    <Modal transparent animationType="fade" visible onRequestClose={() => cerrar()}>
+    <Modal transparent statusBarTranslucent navigationBarTranslucent animationType="fade" visible onRequestClose={() => cerrar()}>
       <Pressable style={a.fondo} onPress={() => cerrar()}>
         {/* El toque dentro de la tarjeta no cierra: solo el de fuera. */}
         <Pressable style={a.tarjeta} onPress={() => {}}>
@@ -148,7 +148,7 @@ export function AvisoHost() {
 
 const a = StyleSheet.create({
   fondo: {
-    flex: 1, backgroundColor: 'rgba(15,23,42,0.55)',
+    flex: 1, backgroundColor: COLORS.overlay,
     alignItems: 'center', justifyContent: 'center', padding: 28,
   },
   tarjeta: {

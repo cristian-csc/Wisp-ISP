@@ -69,9 +69,25 @@ const storage = {
   },
 };
 
+/** El onboarding se recuerda por rol y por teléfono, y sobrevive al cierre de
+ * sesión: quien ya lo vio no vuelve a verlo cada vez que entra. */
+const claveOnboarding = (role: SessionRole) => `onboarding_v1_${role}`;
+
+async function faltaOnboarding(role: SessionRole): Promise<boolean> {
+  if (!role) return false;
+  try {
+    return (await storage.get(claveOnboarding(role))) !== '1';
+  } catch {
+    // Sin acceso al almacenamiento no se bloquea la entrada a la app.
+    return false;
+  }
+}
+
 type SessionCtx = {
   session: Session | null;
   loading: boolean;
+  onboardingPendiente: boolean;
+  completarOnboarding: () => Promise<void>;
   signIn: (s: Session) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -81,6 +97,7 @@ const SessionContext = createContext<SessionCtx | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [onboardingPendiente, setOnboardingPendiente] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -90,6 +107,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const nombre = await storage.get('nombre');
         const clienteId = await storage.get('clienteId');
         if (token && role) {
+          setOnboardingPendiente(await faltaOnboarding(role as SessionRole));
           setSession({ token, role: role as SessionRole, nombre: nombre ?? '', clienteId: clienteId ? Number(clienteId) : undefined });
         }
       } finally {
@@ -103,8 +121,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await storage.set('role', s.role ?? '');
     await storage.set('nombre', s.nombre);
     if (s.clienteId) await storage.set('clienteId', String(s.clienteId));
+    // Antes de fijar la sesión, para que la app no alcance a pintar el inicio.
+    setOnboardingPendiente(await faltaOnboarding(s.role));
     setSession(s);
   }, []);
+
+  const completarOnboarding = useCallback(async () => {
+    if (session?.role) {
+      try {
+        await storage.set(claveOnboarding(session.role), '1');
+      } catch {
+        // Si no se pudo guardar, se mostrará otra vez la próxima vez que entre.
+      }
+    }
+    setOnboardingPendiente(false);
+  }, [session?.role]);
 
   const signOut = useCallback(async () => {
     clearInactivityTimer();
@@ -112,11 +143,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await storage.del('role');
     await storage.del('nombre');
     await storage.del('clienteId');
+    setOnboardingPendiente(false);
     setSession(null);
   }, []);
 
   return (
-    <SessionContext.Provider value={{ session, loading, signIn, signOut }}>
+    <SessionContext.Provider value={{ session, loading, onboardingPendiente, completarOnboarding, signIn, signOut }}>
       {children}
     </SessionContext.Provider>
   );

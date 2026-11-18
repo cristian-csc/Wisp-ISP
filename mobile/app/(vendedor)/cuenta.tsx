@@ -4,7 +4,6 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getClientes } from '@/services/api';
 import { CuentaScreen } from '@/components/CuentaScreen';
-import { VendedorNav } from '@/components/VendedorNav';
 import { COLORS } from '@/theme/colors';
 
 export default function VendedorCuentaScreen() {
@@ -22,7 +21,7 @@ export default function VendedorCuentaScreen() {
   return (
     <View style={{ flex: 1 }}>
       <CuentaScreen rolLabel="Vendedor de campo" rolIcon="people-outline">
-        <TouchableOpacity style={s.statCard} onPress={() => router.push('/(vendedor)' as any)} activeOpacity={0.8}>
+        <TouchableOpacity style={s.statCard} onPress={() => router.replace('/(vendedor)' as any)} activeOpacity={0.8}>
           <View style={s.statIcon}>
             <Ionicons name="person-add-outline" size={20} color={COLORS.mutedForeground} />
           </View>
@@ -33,7 +32,6 @@ export default function VendedorCuentaScreen() {
           <Ionicons name="chevron-forward" size={18} color={COLORS.mutedForeground} />
         </TouchableOpacity>
       </CuentaScreen>
-      <VendedorNav />
     </View>
   );
 }

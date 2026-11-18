@@ -1,7 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapaInfraestructura, { RADIO_COBERTURA_M } from '@/components/MapaInfraestructura';
-import { VendedorNav } from '@/components/VendedorNav';
 import { COLORS } from '@/theme/colors';
 
 /**
@@ -20,7 +19,6 @@ export default function VendedorMapaScreen() {
         </Text>
       </View>
       <MapaInfraestructura cobertura />
-      <VendedorNav />
     </View>
   );
 }

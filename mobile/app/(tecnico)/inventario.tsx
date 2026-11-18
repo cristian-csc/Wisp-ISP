@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getOnus, marcarOnu, Onu } from '@/services/api';
 import { TecnicoNav } from '@/components/TecnicoNav';
+import { ESPACIO_BARRA } from '@/components/BarraInferior';
 import { COLORS } from '@/theme/colors';
 import { alerta } from '@/components/Aviso';
 
@@ -94,7 +95,7 @@ export default function InventarioScreen() {
         data={onus}
         keyExtractor={i => String(i.id)}
         renderItem={({ item }) => <OnuCard item={item} onMarcar={(estado) => marcar(item, estado)} />}
-        contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: ESPACIO_BARRA }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.dark} />}
         ListHeaderComponent={
           <View>
@@ -143,6 +144,6 @@ const st = StyleSheet.create({
   badge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   btnRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  btnDanger: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', backgroundColor: COLORS.lighterror, borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)' },
+  btnDanger: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', backgroundColor: COLORS.lighterror, borderWidth: 1, borderColor: COLORS.lighterror },
   btnDangerText: { color: COLORS.error, fontWeight: '700', fontSize: 12 },
 });

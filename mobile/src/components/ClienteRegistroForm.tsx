@@ -432,7 +432,7 @@ const f = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  // El elegido va en naranja suave y no en azul marino lleno: es una
+  // El elegido va en naranja suave y no en negro lleno: es una
   // eleccion entre dos, no una accion, y el relleno oscuro lo hacia parecer
   // un boton que ejecuta algo.
   tipoChip: {
@@ -466,7 +466,7 @@ const f = StyleSheet.create({
   planNombreActive: { color: COLORS.dark },
   planPrecio: { fontSize: 12, color: COLORS.placeholder, marginTop: 2 },
 
-  pinHint: { flexDirection: 'row', backgroundColor: COLORS.muted, borderWidth: 1, borderColor: 'rgba(93,135,255,0.25)', borderRadius: 10, padding: 12, marginTop: 4 },
+  pinHint: { flexDirection: 'row', backgroundColor: COLORS.muted, borderWidth: 1, borderColor: COLORS.lightprimary, borderRadius: 10, padding: 12, marginTop: 4 },
   pinHintText: { flex: 1, fontSize: 12, color: COLORS.mutedForeground, lineHeight: 18 },
 
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },

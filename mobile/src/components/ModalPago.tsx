@@ -107,7 +107,7 @@ export function ModalPago({ visible, onClose, onSuccess, clienteId, clienteNombr
                 onChangeText={setMonto}
                 keyboardType="numeric"
                 placeholder="0.00"
-                placeholderTextColor="#CBD5E1"
+                placeholderTextColor={COLORS.placeholder}
               />
             </View>
 
@@ -118,7 +118,7 @@ export function ModalPago({ visible, onClose, onSuccess, clienteId, clienteNombr
               value={fecha}
               onChangeText={setFecha}
               placeholder="AAAA-MM-DD"
-              placeholderTextColor="#CBD5E1"
+              placeholderTextColor={COLORS.placeholder}
               keyboardType="numeric"
             />
 
@@ -138,13 +138,13 @@ export function ModalPago({ visible, onClose, onSuccess, clienteId, clienteNombr
             </View>
 
             {/* Número de operación */}
-            <Text style={s.label}>NÚMERO DE OPERACIÓN <Text style={{ color: '#CBD5E1' }}>(opcional)</Text></Text>
+            <Text style={s.label}>NÚMERO DE OPERACIÓN <Text style={{ color: COLORS.placeholder }}>(opcional)</Text></Text>
             <TextInput
               style={s.input}
               value={numeroOperacion}
               onChangeText={(t) => setNumeroOperacion(t.toUpperCase())}
               autoCapitalize="characters"
-              placeholderTextColor="#CBD5E1"
+              placeholderTextColor={COLORS.placeholder}
             />
 
             {/* Botón */}
@@ -161,7 +161,7 @@ export function ModalPago({ visible, onClose, onSuccess, clienteId, clienteNombr
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
+  overlay: { flex: 1, backgroundColor: COLORS.overlay },
   sheet: {
     backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     paddingHorizontal: 20, paddingBottom: 40, paddingTop: 12, maxHeight: '85%',

@@ -1,17 +1,68 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet, KeyboardAvoidingView,
+  Platform, ActivityIndicator, ScrollView, Image, useWindowDimensions,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSession, ROLES_MOBILE_PERMITIDOS } from '@/hooks/useSession';
 import { loginAdmin, loginCliente, getMeWithToken } from '@/services/api';
 import { COLORS } from '@/theme/colors';
+import { FUENTES } from '@/theme/fonts';
 import { alerta } from '@/components/Aviso';
 import { useTopeSeguro } from '@/components/Pantalla';
 
-// El icono oficial de la app: la "W" sobre el cuadrado naranja. Es el
-// mismo archivo que se usa de icono en el telefono, asi que la app y su
-// pantalla de entrada dicen lo mismo.
-const ICONO = require('../../assets/icon.png');
+const LOGO = require('../../assets/logo-wisp.png');
+const TrazoAnimado = Animated.createAnimatedComponent(Path);
+const ALTO_HILO = 76;
+
+/** El borde del bloque de marca es un hilo de fibra que se enciende una sola
+ * vez al abrir la pantalla. */
+function HiloDeFibra() {
+  const { width } = useWindowDimensions();
+  const reducido = useReducedMotion();
+  const largo = width * 1.25;
+  const pendiente = useSharedValue(reducido ? 0 : largo);
+
+  useEffect(() => {
+    if (reducido) return;
+    pendiente.set(withTiming(0, { duration: 900, easing: Easing.bezier(0.23, 1, 0.32, 1) }));
+  }, [reducido]);
+
+  const trazo = useAnimatedProps(() => ({ strokeDashoffset: pendiente.get() }));
+  const curva = `M 0 16 C ${width * 0.3} 78, ${width * 0.62} -12, ${width} 44`;
+
+  return (
+    <Svg width={width} height={ALTO_HILO} style={s.hilo}>
+      <Path d={`${curva} L ${width} 0 L 0 0 Z`} fill={COLORS.surfaceDark} />
+      <TrazoAnimado
+        d={curva}
+        stroke={COLORS.brandSoft}
+        strokeOpacity={0.3}
+        strokeWidth={10}
+        strokeDasharray={[largo, largo]}
+        fill="none"
+        animatedProps={trazo}
+      />
+      <TrazoAnimado
+        d={curva}
+        stroke={COLORS.brand}
+        strokeWidth={3}
+        strokeDasharray={[largo, largo]}
+        fill="none"
+        animatedProps={trazo}
+      />
+    </Svg>
+  );
+}
 
 export default function LoginScreen() {
   const { signIn } = useSession();
@@ -19,6 +70,9 @@ export default function LoginScreen() {
   const [clave, setClave] = useState('');
   const [loading, setLoading] = useState(false);
   const [mostrarClave, setMostrarClave] = useState(false);
+  const [campoActivo, setCampoActivo] = useState<'usuario' | 'clave' | null>(null);
+  const campoClave = useRef<TextInput>(null);
+  const reducido = useReducedMotion();
   const tope = useTopeSeguro();
 
   // El DNI del cliente siempre es solo dígitos; cualquier otra cosa (email
@@ -59,81 +113,101 @@ export default function LoginScreen() {
       style={s.bg}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Clara: el bloque de arriba es azul marino. */}
       <StatusBar style="light" />
-
-      {/* Bloque de marca. Va fuera del scroll para que no se mueva, pero el
-          formulario si sube cuando aparece el teclado. */}
-      <View style={[s.marca, { paddingTop: tope + 26 }]}>
-        <Image source={ICONO} style={s.icono} resizeMode="contain" />
-        <Text style={s.marcaNombre}>WISP</Text>
-        <Text style={s.marcaLema}>Internet para todos</Text>
-      </View>
 
       <ScrollView
         contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        <View style={s.card}>
-          <Text style={s.cardTitulo}>Inicia sesión</Text>
+        <View style={[s.marca, { paddingTop: tope + 40 }]}>
+          <Image source={LOGO} style={s.logo} resizeMode="contain" accessibilityLabel="WISP" />
+          <Text style={s.lema}>Internet para todos</Text>
+        </View>
+        <HiloDeFibra />
 
-          <Text style={s.inputLabel}>USUARIO</Text>
-          <View style={s.inputWrap}>
-            <Ionicons name="person-outline" size={19} color={COLORS.mutedForeground} style={s.leadingIcon} />
+        <View style={s.formulario}>
+          <Text style={s.titulo}>Inicia sesión</Text>
+
+          <Text style={s.etiqueta}>Usuario</Text>
+          <View style={[s.campo, campoActivo === 'usuario' && s.campoActivo]}>
+            <Ionicons name="person-outline" size={20} color={COLORS.mutedForeground} style={s.iconoCampo} />
             <TextInput
-              style={[s.input, { flex: 1 }]}
+              style={s.input}
               value={usuario}
               onChangeText={setUsuario}
+              onFocus={() => setCampoActivo('usuario')}
+              onBlur={() => setCampoActivo(null)}
+              onSubmitEditing={() => campoClave.current?.focus()}
               placeholder="DNI o correo electrónico"
               placeholderTextColor={COLORS.placeholder}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="next"
+              submitBehavior="submit"
+              accessibilityLabel="Usuario"
             />
           </View>
 
-          <Text style={[s.inputLabel, { marginTop: 16 }]}>CONTRASEÑA</Text>
-          <View style={s.inputWrap}>
-            <Ionicons name="lock-closed-outline" size={19} color={COLORS.mutedForeground} style={s.leadingIcon} />
+          <Text style={[s.etiqueta, s.etiquetaSegunda]}>Contraseña</Text>
+          <View style={[s.campo, campoActivo === 'clave' && s.campoActivo]}>
+            <Ionicons name="lock-closed-outline" size={20} color={COLORS.mutedForeground} style={s.iconoCampo} />
             <TextInput
-              style={[s.input, { flex: 1 }]}
+              ref={campoClave}
+              style={s.input}
               value={clave}
               onChangeText={setClave}
+              onFocus={() => setCampoActivo('clave')}
+              onBlur={() => setCampoActivo(null)}
+              onSubmitEditing={handleLogin}
+              placeholder="Tu contraseña"
               placeholderTextColor={COLORS.placeholder}
               secureTextEntry={!mostrarClave}
               keyboardType="default"
+              autoCapitalize="none"
               autoComplete="off"
               autoCorrect={false}
+              returnKeyType="go"
               maxLength={100}
+              accessibilityLabel="Contraseña"
             />
-            <TouchableOpacity style={s.eyeBtn} onPress={() => setMostrarClave(v => !v)} hitSlop={10}>
-              <Ionicons name={mostrarClave ? 'eye-off-outline' : 'eye-outline'} size={19} color={COLORS.mutedForeground} />
+            <TouchableOpacity
+              style={s.ojo}
+              onPress={() => setMostrarClave(v => !v)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={mostrarClave ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              <Ionicons name={mostrarClave ? 'eye-off-outline' : 'eye-outline'} size={21} color={COLORS.mutedForeground} />
             </TouchableOpacity>
           </View>
 
-          {/* Naranja de marca con tinta oscura encima: el blanco sobre este
-              naranja da 2,45:1 y no se lee. */}
-          <TouchableOpacity
-            style={[s.btn, loading && s.btnDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color={COLORS.brandForeground} />
-            ) : (
-              <Text style={s.btnText}>Ingresar</Text>
+          <Pressable onPress={handleLogin} disabled={loading} accessibilityRole="button" accessibilityLabel="Ingresar">
+            {({ pressed }) => (
+              <Animated.View
+                style={[
+                  s.boton,
+                  loading && s.botonOcupado,
+                  {
+                    transform: [{ scale: pressed && !reducido ? 0.97 : 1 }],
+                    transitionProperty: 'transform',
+                    transitionDuration: 120,
+                  },
+                ]}
+              >
+                {loading ? (
+                  <ActivityIndicator color={COLORS.brandForeground} />
+                ) : (
+                  <Text style={s.botonTexto}>Ingresar</Text>
+                )}
+              </Animated.View>
             )}
-          </TouchableOpacity>
+          </Pressable>
 
-          <View style={s.statusRow}>
-            <View style={s.greenDot} />
-            <Text style={s.statusText}>Sistema activo</Text>
-          </View>
+          <Text style={s.ayuda}>¿No puedes entrar? Contacta al administrador.</Text>
         </View>
-
-        <Text style={s.bottomText}>¿Problemas para ingresar? Contacta al administrador.</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -141,64 +215,34 @@ export default function LoginScreen() {
 
 const s = StyleSheet.create({
   bg: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { flexGrow: 1 },
 
-  // Bloque de marca, azul marino y a sangre.
-  marca: {
-    backgroundColor: COLORS.surfaceDark,
-    alignItems: 'center',
-    paddingBottom: 30,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-  },
-  // El icono oficial ya trae su cuadrado naranja: no hace falta ponerle
-  // fondo ni marco, solo dejarle aire.
-  icono: { width: 78, height: 78, borderRadius: 18 },
-  marcaNombre: {
-    color: COLORS.onDark, fontSize: 30, fontWeight: '900',
-    letterSpacing: 3, marginTop: 14,
-  },
-  marcaLema: { color: COLORS.onDarkMuted, fontSize: 13.5, fontWeight: '600', marginTop: 4 },
+  marca: { backgroundColor: COLORS.surfaceDark, paddingHorizontal: 28, paddingBottom: 12 },
+  logo: { width: 216, height: 88, marginLeft: -6 },
+  lema: { fontFamily: FUENTES.lema, fontSize: 21, color: COLORS.brandSoft, marginTop: 6 },
+  hilo: { marginTop: -1 },
 
-  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 26 },
+  formulario: { flex: 1, paddingHorizontal: 28, paddingTop: 10, paddingBottom: 28 },
+  titulo: { fontFamily: FUENTES.titulo, fontSize: 36, lineHeight: 44, color: COLORS.dark, marginBottom: 16 },
 
-  card: {
-    backgroundColor: COLORS.card, borderRadius: 20, padding: 22,
-    borderWidth: 1, borderColor: COLORS.border,
-    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 }, elevation: 5,
-  },
-  cardTitulo: { fontSize: 20, fontWeight: '900', color: COLORS.dark, marginBottom: 18 },
-
-  inputLabel: {
-    fontSize: 11, fontWeight: '800', color: COLORS.mutedForeground,
-    letterSpacing: 1.6, marginBottom: 7,
-  },
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border,
+  etiqueta: { fontSize: 15, fontWeight: '700', color: COLORS.sidebarText, marginBottom: 7 },
+  etiquetaSegunda: { marginTop: 18 },
+  campo: {
+    flexDirection: 'row', alignItems: 'center', minHeight: 56,
+    backgroundColor: COLORS.card, borderWidth: 2, borderColor: COLORS.border,
     borderRadius: 14, paddingLeft: 14,
   },
-  input: { paddingVertical: 14, paddingRight: 12, fontSize: 15, color: COLORS.dark },
-  leadingIcon: { marginRight: 10 },
-  eyeBtn: { paddingHorizontal: 14, paddingVertical: 13, justifyContent: 'center' },
+  campoActivo: { borderColor: COLORS.brand },
+  iconoCampo: { marginRight: 10 },
+  input: { flex: 1, paddingVertical: 14, paddingRight: 12, fontSize: 16, color: COLORS.dark },
+  ojo: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
 
-  btn: {
-    backgroundColor: COLORS.brand, borderRadius: 14,
-    paddingVertical: 16, alignItems: 'center', justifyContent: 'center',
-    marginTop: 22,
+  boton: {
+    backgroundColor: COLORS.brand, borderRadius: 16, minHeight: 58,
+    alignItems: 'center', justifyContent: 'center', marginTop: 26,
   },
-  btnDisabled: { opacity: 0.6 },
-  btnText: {
-    color: COLORS.brandForeground, fontWeight: '900',
-    fontSize: 16, letterSpacing: 0.3,
-  },
+  botonOcupado: { opacity: 0.7 },
+  botonTexto: { fontFamily: FUENTES.boton, fontSize: 20, color: COLORS.brandForeground },
 
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 7, justifyContent: 'center', marginTop: 16 },
-  greenDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.success },
-  statusText: { fontSize: 12, color: COLORS.mutedForeground, fontWeight: '600' },
-
-  bottomText: {
-    textAlign: 'center', color: COLORS.placeholder, fontSize: 12,
-    marginTop: 20, lineHeight: 17,
-  },
+  ayuda: { textAlign: 'center', color: COLORS.mutedForeground, fontSize: 14, lineHeight: 20, marginTop: 20 },
 });

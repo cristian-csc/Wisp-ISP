@@ -57,7 +57,7 @@ export function PromptModal({ visible, title, placeholder, onCancel, onSubmit, s
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(28,37,54,0.5)', justifyContent: 'center', padding: 24 },
+  overlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'center', padding: 24 },
   card: { backgroundColor: COLORS.card, borderRadius: 16, padding: 20 },
   title: { fontSize: 15, fontWeight: '700', color: COLORS.dark, marginBottom: 12 },
   input: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 12, fontSize: 14, color: COLORS.dark, minHeight: 80 },

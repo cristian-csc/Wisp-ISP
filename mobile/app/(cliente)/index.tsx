@@ -166,7 +166,7 @@ export default function MiCuentaScreen() {
         <View style={s.card}>
           <View style={s.cardHeader}>
             <Text style={s.cardTitle}>FACTURACIÓN</Text>
-            <View style={[s.cardBadge, { backgroundColor: activo ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)' }]}>
+            <View style={[s.cardBadge, { backgroundColor: activo ? COLORS.lightsuccess : COLORS.lighterror }]}>
               <Text style={[s.cardBadgeText, { color: activo ? COLORS.success : COLORS.error }]}>
                 {activo ? 'Al día' : 'Vencido'}
               </Text>
@@ -360,7 +360,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(37,211,102,0.15)', alignItems: 'center', justifyContent: 'center',
   },
   helpBadge: {
-    backgroundColor: 'rgba(73,190,255,0.15)', borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(73,190,255,0.3)',
+    backgroundColor: COLORS.lightbrand, borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 5, borderWidth: 1, borderColor: COLORS.border,
   },
 });
