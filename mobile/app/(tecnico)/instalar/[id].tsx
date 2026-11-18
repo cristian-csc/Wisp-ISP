@@ -138,7 +138,7 @@ export default function InstalarScreen() {
       alerta('Falta la foto del power meter', 'Toma una foto de la lectura del power meter antes de confirmar.');
       return;
     }
-    if (!fotoCajaNap) {
+    if (exigeTodo && !fotoCajaNap) {
       alerta('Falta la foto de la caja NAP', 'Toma una foto de la caja NAP con el precinto y el puerto usado antes de confirmar.');
       return;
     }
