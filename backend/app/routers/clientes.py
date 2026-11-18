@@ -445,6 +445,8 @@ def list_clientes(
         query = query.filter(
             or_(
                 models.Cliente.nombre.ilike(f"%{search}%"),
+                models.Cliente.dni.ilike(f"%{search}%"),
+                models.Cliente.ruc.ilike(f"%{search}%"),
                 models.Cliente.usuario_pppoe.ilike(f"%{search}%"),
                 models.Cliente.telefono.ilike(f"%{search}%"),
                 models.Cliente.ip_estatica.ilike(f"%{search}%"),

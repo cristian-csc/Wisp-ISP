@@ -118,7 +118,9 @@ class Usuario(Base):
     nombre = Column(String(100), nullable=False)
     email = Column(String(150), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
+    # Tipo de cuenta: decide las reglas de datos. Los módulos salen de rol_id.
     rol = Column(SAEnum(RolUsuario), nullable=False)
+    rol_id = Column(Integer, ForeignKey("roles.id", ondelete="RESTRICT"), index=True)
     activo = Column(Boolean, default=True)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -131,6 +133,11 @@ class Usuario(Base):
     fecha_ingreso = Column(Date)
 
     zonas_asignadas = relationship("TecnicoZona", back_populates="tecnico")
+    rol_asignado = relationship("Rol", foreign_keys=[rol_id])
+
+    @property
+    def rol_nombre(self):
+        return self.rol_asignado.nombre if self.rol_asignado else None
 
 
 class TecnicoZona(Base):
@@ -648,3 +655,61 @@ class ConsultaDocumentoMes(Base):
 
     __table_args__ = (UniqueConstraint('anio', 'mes', name='uq_consulta_mes'),)
 
+
+class Rol(Base):
+    """Un rol y lo que lo distingue. `clave` es la llave que usa el sistema;
+    `nombre` es lo que se lee en pantalla."""
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clave = Column(String(50), nullable=False, unique=True)
+    nombre = Column(String(80), nullable=False)
+    descripcion = Column(String(255))
+    es_superadmin = Column(Boolean, nullable=False, default=False)
+    es_sistema = Column(Boolean, nullable=False, default=False)
+    # Tipo de cuenta de sus usuarios. Vacío en el rol cliente.
+    perfil_base = Column(String(20))
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ModuloPadre(Base):
+    """Un grupo del menú: Clientes, Red, Finanzas. Cada módulo cuelga de uno."""
+    __tablename__ = "modulos_padre"
+    __table_args__ = (UniqueConstraint('plataforma', 'nombre', name='uq_modulos_padre_nombre'),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(60), nullable=False)
+    icono = Column(String(80))
+    plataforma = Column(String(10), nullable=False, default="panel")   # panel | movil
+    orden = Column(Integer, nullable=False, default=0)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+    modulos = relationship("Modulo", back_populates="padre")
+
+
+class Modulo(Base):
+    """Una opción del menú del panel o de la barra inferior de la app."""
+    __tablename__ = "modulos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clave = Column(String(60), nullable=False, unique=True)
+    nombre = Column(String(80), nullable=False)
+    modulo_padre_id = Column(Integer, ForeignKey("modulos_padre.id", ondelete="RESTRICT"), nullable=False, index=True)
+    plataforma = Column(String(10), nullable=False)   # panel | movil
+    audiencia = Column(String(10), nullable=False, default="personal")   # personal | cliente
+    ruta = Column(String(120))
+    icono = Column(String(80))
+    orden = Column(Integer, nullable=False, default=0)
+    activo = Column(Boolean, nullable=False, default=True)
+
+    padre = relationship("ModuloPadre", back_populates="modulos")
+
+
+class RolModulo(Base):
+    """Qué módulos tiene cada rol, y cómo se acomodan en su barra."""
+    __tablename__ = "rol_modulo"
+
+    rol_id = Column(Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True)
+    modulo_id = Column(Integer, ForeignKey("modulos.id", ondelete="CASCADE"), primary_key=True)
+    orden = Column(Integer, nullable=False, default=0)
+    es_central = Column(Boolean, nullable=False, default=False)
