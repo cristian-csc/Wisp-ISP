@@ -21,7 +21,8 @@ import {
   type MesFinanzas,
   type Movimiento,
 } from 'src/lib/api';
-import { puedeVerUrl, ROL_LABEL } from 'src/lib/permisos';
+import { nombreDeRol, puedeVerUrl } from 'src/lib/permisos';
+import { useMisModulos } from 'src/lib/modulos';
 
 function soles(n: number): string {
   return `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -69,6 +70,7 @@ const Dashboard = () => {
 
   // Lo que ve cada rol sale del menú: si a este rol se le esconde "Pagos", el
   // dashboard tampoco le muestra importes ni lo enlaza ahí.
+  useMisModulos();
   const rol = usuario?.rol;
   const vePagos = puedeVerUrl('/pagos', rol);
   const veGastos = puedeVerUrl('/gastos', rol);
@@ -146,7 +148,7 @@ const Dashboard = () => {
             {usuario && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-lightprimary px-2.5 py-1 text-xs font-semibold text-primary-text">
                 <Icon icon="tabler:shield-check" width={13} />
-                {ROL_LABEL[usuario.rol]}
+                {nombreDeRol(usuario)}
               </span>
             )}
             <p className="text-sm text-muted-foreground">
@@ -335,13 +337,13 @@ const Dashboard = () => {
                 to={a.a}
                 className={`transition-ui group flex items-center gap-3 rounded-xl border px-3.5 py-3 ${
                   a.destacado
-                    ? 'border-transparent bg-brand-strong text-brand-foreground hover:brightness-110'
+                    ? 'border-transparent bg-brand text-brand-foreground hover:brightness-105'
                     : 'border-ld hover:border-primary/40 hover:bg-lightprimary'
                 }`}
               >
                 <span
                   className={`grid size-9 shrink-0 place-items-center rounded-lg ${
-                    a.destacado ? 'bg-white/20' : 'bg-muted group-hover:bg-card'
+                    a.destacado ? 'bg-black/10' : 'bg-muted group-hover:bg-card'
                   }`}
                 >
                   <Icon icon={a.icono} width={18} />

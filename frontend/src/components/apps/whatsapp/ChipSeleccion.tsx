@@ -4,7 +4,7 @@ export type TonoChip = 'primary' | 'success' | 'info';
 
 const TONOS: Record<TonoChip, { activo: string; inactivo: string }> = {
   primary: {
-    activo: 'border-primary bg-lightprimary text-primary',
+    activo: 'border-primary bg-lightprimary text-primary-text',
     inactivo: 'border-ld text-muted-foreground hover:border-primary/40 hover:text-primary',
   },
   success: {

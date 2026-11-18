@@ -60,10 +60,10 @@ const ESTADO_LABEL: Record<Averia['estado'], string> = {
 };
 
 const ESTADO_BADGE: Record<Averia['estado'], string> = {
-  pendiente: 'bg-lightwarning text-warning',
-  asignada: 'bg-lightinfo text-info',
+  pendiente: 'bg-lightwarning text-warning-text',
+  asignada: 'bg-lightinfo text-info-text',
   en_proceso: 'bg-lightsecondary text-secondary',
-  resuelta: 'bg-lightsuccess text-success',
+  resuelta: 'bg-lightsuccess text-success-text',
 };
 
 const MOTIVOS_CLIENTE = ['Cambio de router', 'Conectores', 'Cable drop', 'Patchcord', 'Cambio de roseta'];
@@ -140,7 +140,7 @@ const AveriaZonaDetail = () => {
   useEffect(() => {
     getZona(zid).then(setZona);
     listCajasNap(zid).then(setCajas);
-    listUsuarios().then((all) => setTecnicos(all.filter((u) => u.rol === 'tecnico')));
+    listUsuarios().then((all) => setTecnicos(all.filter((u) => u.rol === 'tecnico'))).catch(() => setTecnicos([]));
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zid]);

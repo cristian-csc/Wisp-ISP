@@ -172,6 +172,20 @@ const SidebarContent: MenuItem[] = [
         url: '/configuracion/whatsapp',
         roles: ['admin'],
       },
+      {
+        name: 'Roles y módulos',
+        icon: 'solar:shield-user-linear',
+        id: uniqueId(),
+        url: '/configuracion/roles',
+        roles: ['admin'],
+      },
+      {
+        name: 'Módulos padre',
+        icon: 'solar:folder-with-files-linear',
+        id: uniqueId(),
+        url: '/configuracion/modulos-padre',
+        roles: ['admin'],
+      },
     ],
   },
 ];

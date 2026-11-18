@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
-import RingProgress, { type RingTone } from 'src/components/apps/cajasnap/RingProgress';
+import RingProgress from 'src/components/apps/cajasnap/RingProgress';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import {
@@ -77,13 +77,6 @@ const ESTADO_RED: Record<
     chipText: 'text-muted-foreground',
   },
 };
-
-/** El anillo mide qué parte de los clientes de la zona está activa. Acá mucho
- *  es bueno, al contrario que en las cajas NAP, donde el anillo lleno avisa de
- *  que ya no quedan bornes libres. */
-function toneForActivos(pct: number): RingTone {
-  return pct >= 80 ? 'success' : pct >= 50 ? 'warning' : 'error';
-}
 
 /** Hace cuánto fue el último handshake, en palabras. Un número de epoch no le
  *  dice nada a nadie; "hace 3 min" sí. */
@@ -328,7 +321,6 @@ const Zonas = () => {
               indice={1}
               valor={sinComprobar ? '—' : enLinea}
               icono="tabler:wifi"
-              color="text-success"
               nota={sinComprobar ? notaSinDatos : undefined}
             />
             <ResumenDato
@@ -336,7 +328,7 @@ const Zonas = () => {
               indice={2}
               valor={sinComprobar ? '—' : caidas}
               icono="tabler:alert-circle"
-              color="text-error"
+              color={!sinComprobar && caidas > 0 ? 'text-error-text' : undefined}
               nota={sinComprobar ? notaSinDatos : undefined}
             />
             {/* Ámbar y no gris: aquí no es el estado de una zona, es el trabajo
@@ -347,7 +339,6 @@ const Zonas = () => {
               indice={3}
               valor={sinComprobar ? '—' : sinTunel}
               icono="tabler:unlink"
-              color="text-warning"
               nota={sinComprobar ? notaSinDatos : undefined}
             />
           </div>
@@ -493,7 +484,7 @@ const Zonas = () => {
                   }
                 >
                   {z.total_clientes > 0 ? (
-                    <RingProgress pct={pct} tone={toneForActivos(pct)} size="sm" />
+                    <RingProgress pct={pct} tone="success" size="sm" />
                   ) : (
                     <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-ld">
                       <Icon icon="tabler:user-off" height={18} className="text-muted-foreground" />

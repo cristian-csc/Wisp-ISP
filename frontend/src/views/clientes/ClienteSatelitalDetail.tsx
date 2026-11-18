@@ -27,9 +27,9 @@ import { enviarAvisoCobro } from 'src/lib/whatsapp';
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 const MES_ESTADO_CLASS: Record<string, string> = {
-  pagado: 'bg-lightsuccess text-success border-success/20',
-  vencido: 'bg-lighterror text-error border-error/20',
-  pendiente: 'bg-lightwarning text-warning border-warning/20',
+  pagado: 'bg-lightsuccess text-success-text border-success/20',
+  vencido: 'bg-lighterror text-error-text border-error/20',
+  pendiente: 'bg-lightwarning text-warning-text border-warning/20',
   no_aplica: 'bg-muted text-muted-foreground border-transparent opacity-50',
   futuro: 'bg-muted text-muted-foreground border-transparent',
 };
@@ -46,14 +46,14 @@ const ESTADO_LABEL: Record<EstadoCliente, string> = {
 };
 
 const ESTADO_BADGE: Record<EstadoCliente, string> = {
-  pendiente_aprobacion: 'bg-lightwarning text-warning',
+  pendiente_aprobacion: 'bg-lightwarning text-warning-text',
   rechazado: 'bg-muted text-muted-foreground',
-  aprobado: 'bg-lightinfo text-info',
+  aprobado: 'bg-lightinfo text-info-text',
   no_instalado: 'bg-muted text-muted-foreground',
-  activo: 'bg-lightsuccess text-success',
+  activo: 'bg-lightsuccess text-success-text',
   anulado: 'bg-muted text-muted-foreground',
-  suspendido: 'bg-lighterror text-error',
-  pausado: 'bg-lightinfo text-info',
+  suspendido: 'bg-lighterror text-error-text',
+  pausado: 'bg-lightinfo text-info-text',
 };
 
 const ClienteSatelitalDetail = () => {

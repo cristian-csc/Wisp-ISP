@@ -46,8 +46,8 @@ const TIPO_LABEL: Record<TipoConexion, string> = {
 };
 
 const TIPO_BADGE: Record<TipoConexion, string> = {
-  fibra_optica: 'bg-lightprimary text-primary',
-  inalambrico: 'bg-lightinfo text-info',
+  fibra_optica: 'bg-lightprimary text-primary-text',
+  inalambrico: 'bg-lightinfo text-info-text',
   satelital: 'bg-lightsecondary text-secondary',
 };
 
@@ -56,9 +56,9 @@ const TIPO_BADGE: Record<TipoConexion, string> = {
  *  simplemente no se ofrece ahi. Pintarlos igual hacía que la pantalla pareciera
  *  llena de errores que no existían. */
 const ESTILO_ESTADO: Record<EstadoPlanEnZona['estado'], string> = {
-  ok: 'bg-lightsuccess text-success',
-  difiere: 'bg-lightwarning text-warning',
-  falta: 'bg-lighterror text-error',
+  ok: 'bg-lightsuccess text-success-text',
+  difiere: 'bg-lightwarning text-warning-text',
+  falta: 'bg-lighterror text-error-text',
   no_usado: 'bg-muted text-muted-foreground',
 };
 
@@ -313,7 +313,7 @@ const Planes = () => {
               </TableCell>
               <TableCell>
                 {p.incluye_tv ? (
-                  <Badge className="bg-lightsuccess text-success">{p.tv_incluidas} TV incluida(s)</Badge>
+                  <Badge className="bg-lightsuccess text-success-text">{p.tv_incluidas} TV incluida(s)</Badge>
                 ) : (
                   <Badge className="bg-muted text-muted-foreground">No</Badge>
                 )}
@@ -402,10 +402,10 @@ const Planes = () => {
                 <span
                   className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                     z.sin_contacto
-                      ? 'bg-lighterror text-error'
+                      ? 'bg-lighterror text-error-text'
                       : z.problemas === 0
-                      ? 'bg-lightsuccess text-success'
-                      : 'bg-lightwarning text-warning'
+                      ? 'bg-lightsuccess text-success-text'
+                      : 'bg-lightwarning text-warning-text'
                   }`}
                 >
                   {z.sin_contacto
@@ -563,7 +563,7 @@ const Planes = () => {
                               className={
                                 'transition-ui flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ' +
                                 (elegido
-                                  ? 'border-primary bg-primary text-white shadow-sm'
+                                  ? 'border-primary bg-primary text-primary-foreground shadow-sm'
                                   : 'border-ld bg-card hover:border-primary/60 hover:shadow-sm')
                               }
                             >
@@ -575,7 +575,7 @@ const Planes = () => {
                                 <span
                                   className={
                                     'rounded px-1.5 py-0.5 font-mono text-[11px] ' +
-                                    (elegido ? 'bg-white/20' : 'bg-lightsuccess text-success')
+                                    (elegido ? 'bg-white/20' : 'bg-lightsuccess text-success-text')
                                   }
                                 >
                                   {p.rate_limit}
@@ -584,7 +584,7 @@ const Planes = () => {
                                 <span
                                   className={
                                     'rounded px-1.5 py-0.5 text-[11px] ' +
-                                    (elegido ? 'bg-white/20' : 'bg-lightwarning text-warning')
+                                    (elegido ? 'bg-white/20' : 'bg-lightwarning text-warning-text')
                                   }
                                 >
                                   sin límite

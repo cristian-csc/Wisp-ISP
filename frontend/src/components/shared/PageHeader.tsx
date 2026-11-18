@@ -7,9 +7,9 @@ type TonoIcono = 'brand' | 'success' | 'warning' | 'info';
 
 const TONOS: Record<TonoIcono, string> = {
   brand: 'bg-lightbrand text-brand-strong dark:text-brand',
-  success: 'bg-lightsuccess text-success',
-  warning: 'bg-lightwarning text-warning',
-  info: 'bg-lightinfo text-info',
+  success: 'bg-lightsuccess text-success-text',
+  warning: 'bg-lightwarning text-warning-text',
+  info: 'bg-lightinfo text-info-text',
 };
 
 interface Props {

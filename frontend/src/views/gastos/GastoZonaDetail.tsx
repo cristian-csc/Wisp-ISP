@@ -181,7 +181,7 @@ const GastoZonaDetail = () => {
           {items.map((g) => (
             <TableRow key={g.id}>
               <TableCell className="max-w-xs truncate">{g.descripcion}</TableCell>
-              <TableCell><Badge className="bg-lightprimary text-primary rounded-md">{g.categoria}</Badge></TableCell>
+              <TableCell><Badge className="bg-lightprimary text-primary-text rounded-md">{g.categoria}</Badge></TableCell>
               <TableCell className="text-sm text-muted-foreground">{g.proveedor ?? '—'}</TableCell>
               <TableCell className="text-sm">{g.fecha}</TableCell>
               <TableCell className="font-medium">S/ {g.monto.toFixed(2)}</TableCell>

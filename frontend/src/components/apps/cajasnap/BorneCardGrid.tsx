@@ -21,15 +21,15 @@ const CARD_STYLE: Record<Borne['estado'], string> = {
 };
 
 const ESTADO_CHIP: Record<Borne['estado'], string> = {
-  libre: 'bg-lightprimary text-primary',
-  ocupado: 'bg-success text-white',
-  danado: 'bg-error text-white',
+  libre: 'bg-lightprimary text-primary-text',
+  ocupado: 'bg-success-solid text-on-solid',
+  danado: 'bg-error-solid text-on-solid',
 };
 
 const ESTADO_ICON_WRAP: Record<Borne['estado'], string> = {
-  libre: 'bg-lightprimary text-primary',
-  ocupado: 'bg-success/15 text-success',
-  danado: 'bg-error/15 text-error',
+  libre: 'bg-lightprimary text-primary-text',
+  ocupado: 'bg-success/15 text-success-text',
+  danado: 'bg-error/15 text-error-text',
 };
 
 interface Props {
@@ -57,7 +57,7 @@ const BorneCardGrid = ({ bornes, onClickBorne }: Props) => {
 
           {b.estado === 'ocupado' && b.cliente ? (
             <div className="flex items-start gap-2">
-              <Avatar className="h-7 w-7 shrink-0 bg-success/15 text-success">
+              <Avatar className="h-7 w-7 shrink-0 bg-success/15 text-success-text">
                 <AvatarFallback className="bg-transparent text-success text-xs font-bold">
                   {b.cliente.nombre.charAt(0).toUpperCase()}
                 </AvatarFallback>

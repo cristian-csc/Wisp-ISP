@@ -5,7 +5,7 @@ export type UsuarioCreateInput = {
   nombre: string;
   email: string;
   password: string;
-  rol: Usuario['rol'];
+  rol_id: number;
   telefono?: string;
   dni?: string;
   direccion?: string;
@@ -22,7 +22,7 @@ export async function createUsuario(input: UsuarioCreateInput): Promise<Usuario>
   return data;
 }
 
-export async function updateUsuario(id: number, patch: Partial<Pick<Usuario, 'nombre' | 'rol' | 'activo' | 'telefono' | 'dni' | 'direccion' | 'fecha_ingreso'>>): Promise<Usuario> {
+export async function updateUsuario(id: number, patch: Partial<Pick<Usuario, 'nombre' | 'rol_id' | 'activo' | 'telefono' | 'dni' | 'direccion' | 'fecha_ingreso'>>): Promise<Usuario> {
   const { data } = await api.put(`/auth/usuarios/${id}`, patch);
   return data;
 }

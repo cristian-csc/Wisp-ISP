@@ -76,15 +76,15 @@ const Averias = () => {
                   </div>
                   <h3 className="text-lg font-semibold truncate mb-3">{z.nombre}</h3>
                   <div className="flex items-center gap-2">
-                    <span className={`rounded-full p-1 flex items-center justify-center ${activas > 0 ? 'bg-warning/15' : 'bg-success/15'}`}>
-                      <Icon icon="tabler:tool" height={14} className={activas > 0 ? 'text-warning' : 'text-success'} />
+                    <span className={`rounded-full p-1 flex items-center justify-center ${activas > 0 ? 'bg-warning/15' : 'bg-muted'}`}>
+                      <Icon icon="tabler:tool" height={14} className={activas > 0 ? 'text-warning-text' : 'text-muted-foreground'} />
                     </span>
                     <p className="text-sm text-muted-foreground">
                       {activas} {activas === 1 ? 'avería activa' : 'averías activas'}
                     </p>
                   </div>
                 </div>
-                <div className={`h-14 w-14 shrink-0 rounded-full flex items-center justify-center text-lg font-bold ${activas > 0 ? 'bg-warning/15 text-warning' : 'bg-success/15 text-success'}`}>
+                <div className={`h-14 w-14 shrink-0 rounded-full flex items-center justify-center text-lg font-bold ${activas > 0 ? 'bg-warning/15 text-warning-text' : 'bg-muted text-muted-foreground'}`}>
                   {activas}
                 </div>
               </div>

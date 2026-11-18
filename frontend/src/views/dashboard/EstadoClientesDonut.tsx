@@ -23,7 +23,10 @@ const EstadoClientesDonut = ({ segmentos, total }: Props) => {
   let acumulado = 0;
 
   return (
-    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-6">
+    // Se acomoda al ancho de su tarjeta, no al de la pantalla: en escritorio la
+    // tarjeta puede ser angosta y la leyenda no cabría al lado de la dona.
+    <div className="@container">
+    <div className="flex flex-col items-center gap-5 @md:flex-row @md:gap-6">
       <div className="relative shrink-0">
         <svg
           width="140"
@@ -79,7 +82,7 @@ const EstadoClientesDonut = ({ segmentos, total }: Props) => {
               style={{ backgroundColor: s.color }}
               aria-hidden="true"
             />
-            <span className="flex-1 text-muted-foreground">{s.etiqueta}</span>
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">{s.etiqueta}</span>
             <span className="shrink-0 font-semibold tabular-nums">{s.valor}</span>
             <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
               {Math.round((s.valor / suma) * 100)}%
@@ -87,6 +90,7 @@ const EstadoClientesDonut = ({ segmentos, total }: Props) => {
           </li>
         ))}
       </ul>
+    </div>
     </div>
   );
 };

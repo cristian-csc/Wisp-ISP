@@ -8,13 +8,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-white hover:bg-primaryemphasis',
+        default: 'bg-primary text-primary-foreground hover:bg-primaryemphasis',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         outline:
-          'border border-primary text-primary bg-transparent hover:bg-primary hover:text-white',
+          'border border-primary text-primary bg-transparent hover:bg-primary hover:text-primary-foreground',
         outlinesecondary:
-          'border border-secondary text-secondary bg-transparent hover:bg-secondary hover:text-white',
+          'border border-secondary text-secondary bg-transparent hover:bg-secondary hover:text-secondary-foreground',
         outlinesuccess:
           'border border-success bg-transparent hover:bg-success text-success hover:text-white',
         outlinewarning:
@@ -23,11 +23,11 @@ const buttonVariants = cva(
           'border border-info bg-transparent hover:bg-info text-info hover:text-white',
         outlineerror:
           'border border-error bg-transparent hover:bg-error text-error hover:text-white',
-        secondary: 'bg-secondary text-white hover:bg-secondaryemphasis',
-        success: 'bg-success text-white hover:bg-successemphasis',
-        warning: 'bg-warning text-white hover:bg-warningemphasis',
-        info: 'bg-info text-white hover:bg-infoemphasis',
-        error: 'bg-error text-white hover:bg-erroremphasis',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondaryemphasis',
+        success: 'bg-success-solid text-on-solid hover:bg-success-solid/90',
+        warning: 'bg-warning-solid text-on-solid hover:bg-warning-solid/90',
+        info: 'bg-info-solid text-on-solid hover:bg-info-solid/90',
+        error: 'bg-error-solid text-on-solid hover:bg-error-solid/90',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         ghostprimary: 'hover:bg-lightprimary hover:text-primary text-primary',
         ghostsecondary:
@@ -38,15 +38,15 @@ const buttonVariants = cva(
         ghostinfo: 'hover:bg-lightinfo hover:text-info text-info',
         link: 'text-primary underline-offset-4 hover:underline',
         lightprimary:
-          'bg-lightprimary text-primary hover:bg-primary hover:text-white',
+          'bg-lightprimary text-primary-text hover:bg-primary hover:text-primary-foreground',
         lightsecondary:
-          'bg-lightsecondary text-secondary hover:bg-secondary hover:text-white',
+          'bg-lightsecondary text-secondary hover:bg-secondary hover:text-secondary-foreground',
         lightsuccess:
-          'bg-lightsuccess text-success hover:bg-success hover:text-white',
+          'bg-lightsuccess text-success-text hover:bg-success-solid hover:text-on-solid',
         lightwarning:
-          'bg-lightwarning text-warning hover:bg-warning hover:text-white',
-        lightinfo: 'bg-lightinfo text-info hover:bg-info hover:text-white',
-        lighterror: 'bg-lighterror text-error hover:bg-error hover:text-white',
+          'bg-lightwarning text-warning-text hover:bg-warning-solid hover:text-on-solid',
+        lightinfo: 'bg-lightinfo text-info-text hover:bg-info-solid hover:text-on-solid',
+        lighterror: 'bg-lighterror text-error-text hover:bg-error-solid hover:text-on-solid',
       },
       size: {
         default: 'h-10 px-5 py-2',

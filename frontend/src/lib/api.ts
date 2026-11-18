@@ -53,6 +53,8 @@ export type Usuario = {
   nombre: string;
   email: string;
   rol: 'admin' | 'tecnico' | 'vendedor_campo' | 'atencion_cliente';
+  rol_id: number | null;
+  rol_nombre: string | null;
   activo: boolean;
   telefono: string | null;
   dni: string | null;

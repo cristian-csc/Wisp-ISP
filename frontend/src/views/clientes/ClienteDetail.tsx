@@ -6,6 +6,7 @@ import CardBox from 'src/components/shared/CardBox';
 import SectionCard from 'src/components/shared/SectionCard';
 import StatCard from 'src/components/shared/StatCard';
 import EmptyState from 'src/components/shared/EmptyState';
+import ConfirmDialog from 'src/components/shared/ConfirmDialog';
 import { Badge } from 'src/components/ui/badge';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
@@ -64,7 +65,7 @@ import { listZonas, type Zona } from 'src/lib/zonas';
 import { listPlanes, type Plan as PlanOpcion } from 'src/lib/planes';
 import ReciboDialog from 'src/components/apps/pagos/ReciboDialog';
 import CarritoMeses from 'src/components/apps/pagos/CarritoMeses';
-import { ROL_LABEL } from 'src/lib/permisos';
+import { puedeVerUrl, ROL_LABEL } from 'src/lib/permisos';
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -78,12 +79,12 @@ const MES_ESTADO_LABEL: Record<string, string> = {
 };
 
 const MES_ESTADO_CLASS: Record<string, string> = {
-  pagado: 'bg-lightsuccess text-success border-success/20',
-  vencido: 'bg-lighterror text-error border-error/20',
-  pendiente: 'bg-lightwarning text-warning border-warning/20',
+  pagado: 'bg-lightsuccess text-success-text border-success/20',
+  vencido: 'bg-lighterror text-error-text border-error/20',
+  pendiente: 'bg-lightwarning text-warning-text border-warning/20',
   no_aplica: 'bg-muted text-muted-foreground border-transparent opacity-50',
   futuro: 'bg-muted text-muted-foreground border-transparent',
-  corte_temporal: 'bg-lighterror text-error border-error/20',
+  corte_temporal: 'bg-lighterror text-error-text border-error/20',
 };
 
 const PAGO_ESTADO_LABEL: Record<string, string> = {
@@ -94,10 +95,10 @@ const PAGO_ESTADO_LABEL: Record<string, string> = {
 };
 
 const PAGO_ESTADO_BADGE: Record<string, string> = {
-  pagado: 'bg-lightsuccess text-success',
-  pendiente: 'bg-lightwarning text-warning',
-  vencido: 'bg-lighterror text-error',
-  corte_temporal: 'bg-lighterror text-error',
+  pagado: 'bg-lightsuccess text-success-text',
+  pendiente: 'bg-lightwarning text-warning-text',
+  vencido: 'bg-lighterror text-error-text',
+  corte_temporal: 'bg-lighterror text-error-text',
 };
 
 const METODOS_PAGO = [
@@ -121,14 +122,14 @@ const ESTADO_LABEL: Record<string, string> = {
 };
 
 const ESTADO_BADGE: Record<string, string> = {
-  pendiente_aprobacion: 'bg-lightwarning text-warning',
+  pendiente_aprobacion: 'bg-lightwarning text-warning-text',
   rechazado: 'bg-muted text-muted-foreground',
-  aprobado: 'bg-lightinfo text-info',
+  aprobado: 'bg-lightinfo text-info-text',
   no_instalado: 'bg-muted text-muted-foreground',
-  activo: 'bg-lightsuccess text-success',
+  activo: 'bg-lightsuccess text-success-text',
   anulado: 'bg-muted text-muted-foreground',
-  suspendido: 'bg-lighterror text-error',
-  pausado: 'bg-lightinfo text-info',
+  suspendido: 'bg-lighterror text-error-text',
+  pausado: 'bg-lightinfo text-info-text',
 };
 
 type HistorialItem = { id: number; tipo: string; descripcion: string; creado_en: string };
@@ -164,6 +165,7 @@ const ClienteDetail = () => {
   const [completarOpen, setCompletarOpen] = useState(false);
   const [rechazarOpen, setRechazarOpen] = useState(false);
   const [pausarOpen, setPausarOpen] = useState(false);
+  const [cortarOpen, setCortarOpen] = useState(false);
   const [mesesPausa, setMesesPausa] = useState('1');
   const [motivo, setMotivo] = useState('');
   const [fotos, setFotos] = useState<FotoConUrl[]>([]);
@@ -277,7 +279,7 @@ const ClienteDetail = () => {
 
   if (!cliente) return <CardBox>Cargando…</CardBox>;
 
-  const puedeAprobar = currentUser?.rol === 'admin';
+  const puedeAprobar = puedeVerUrl('/clientes/pendientes', currentUser?.rol);
 
   // La IP fija se elige al aprobar, en su propia ventana: es lo que hace
   // que el corte por morosidad acierte.
@@ -292,14 +294,26 @@ const ClienteDetail = () => {
     reload();
   }
 
-  async function handleCortar() {
-    await cortarCliente(cliente!.id);
-    reload();
+  async function handleReactivar() {
+    try {
+      await reactivarCliente(cliente!.id);
+      reload();
+      toast.success(`${cliente!.nombre} reactivado`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo reactivar el servicio. Inténtalo otra vez.');
+    }
   }
 
-  async function handleReactivar() {
-    await reactivarCliente(cliente!.id);
-    reload();
+  async function handleCortar() {
+    try {
+      await cortarCliente(cliente!.id);
+      reload();
+      toast.success(`Servicio de ${cliente!.nombre} cortado`, {
+        action: { label: 'Reactivar', onClick: handleReactivar },
+      });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo cortar el servicio. Inténtalo otra vez.');
+    }
   }
 
   async function handlePausar() {
@@ -655,7 +669,7 @@ const ClienteDetail = () => {
               )}
               {cliente.estado === 'activo' && (
                 <>
-                  <Button variant="lighterror" className="rounded-md" onClick={handleCortar}>
+                  <Button variant="lighterror" className="rounded-md" onClick={() => setCortarOpen(true)}>
                     <Icon icon="tabler:plug-off" height={16} className="mr-1" />
                     Cortar servicio
                   </Button>
@@ -1122,7 +1136,7 @@ const ClienteDetail = () => {
         {/* ── Columna derecha ── */}
         <div className="flex flex-col gap-5">
           {cliente.plan && (
-            <div className="relative overflow-hidden rounded-xl p-5 text-white shadow-md" style={{ background: 'linear-gradient(145deg, #152238, #0b1422)' }}>
+            <div className="relative overflow-hidden rounded-xl p-5 text-white shadow-md" style={{ background: 'linear-gradient(145deg, #1f1f1f, #000000)' }}>
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full"
@@ -1572,6 +1586,18 @@ const ClienteDetail = () => {
       </FormDialog>
 
       {/* Pausa temporal */}
+      <ConfirmDialog
+        open={cortarOpen}
+        onOpenChange={setCortarOpen}
+        title="¿Cortar el servicio?"
+        description={`${cliente.nombre}${cliente.zona ? `, de ${cliente.zona.nombre},` : ''} se quedará sin internet hasta que reactives su servicio.`}
+        confirmText="Sí, cortar servicio"
+        loadingText="Cortando…"
+        cancelText="No, mantener activo"
+        icon="tabler:plug-off"
+        onConfirm={handleCortar}
+      />
+
       <FormDialog
         open={pausarOpen}
         onOpenChange={setPausarOpen}

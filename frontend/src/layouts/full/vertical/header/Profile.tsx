@@ -12,7 +12,7 @@ import {
 import { Button } from 'src/components/ui/button';
 import { logout } from 'src/lib/api';
 import { useCurrentUser } from 'src/lib/useCurrentUser';
-import { ROL_LABEL } from 'src/lib/permisos';
+import { nombreDeRol } from 'src/lib/permisos';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -43,7 +43,7 @@ const Profile = () => {
               {user?.nombre ?? '—'}
             </span>
             <span className="block truncate text-xs leading-tight text-muted-foreground">
-              {user ? ROL_LABEL[user.rol] : ''}
+              {user ? nombreDeRol(user) : ''}
             </span>
           </span>
           <Icon
@@ -61,7 +61,7 @@ const Profile = () => {
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{user?.nombre ?? '—'}</p>
             <p className="truncate text-xs text-muted-foreground">
-              {user ? ROL_LABEL[user.rol] : ''}
+              {user ? nombreDeRol(user) : ''}
             </p>
           </div>
         </div>

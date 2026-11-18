@@ -91,9 +91,9 @@ const ESTADO_LABEL: Record<EstadoPago, string> = {
 };
 
 const ESTADO_BADGE: Record<EstadoPago, string> = {
-  pagado: 'bg-lightsuccess text-success',
-  pendiente: 'bg-lightwarning text-warning',
-  vencido: 'bg-lighterror text-error',
+  pagado: 'bg-lightsuccess text-success-text',
+  pendiente: 'bg-lightwarning text-warning-text',
+  vencido: 'bg-lighterror text-error-text',
   corte_temporal: 'bg-muted text-muted-foreground',
 };
 
@@ -208,7 +208,8 @@ const Pagos = () => {
 
   async function reloadResumen() {
     const [resumen, morosos, cortadosData, pausasData] = await Promise.all([
-      getResumenMensual(),
+      // Las cifras globales son de gerencia: sin ese permiso el resto carga igual.
+      getResumenMensual().catch(() => []),
       getClientesSinPago(),
       getClientesCortados(),
       getPausasPorVencer(),
@@ -474,22 +475,22 @@ const Pagos = () => {
                     <TableCell>
                       <div className="flex flex-col gap-1 items-start">
                         {c.categoria === 'atrasado' && (
-                          <Badge className={`${(c.dias_atraso ?? 0) >= 5 ? 'bg-lighterror text-error' : 'bg-lightwarning text-warning'} rounded-md`}>
+                          <Badge className={`${(c.dias_atraso ?? 0) >= 5 ? 'bg-lighterror text-error-text' : 'bg-lightwarning text-warning-text'} rounded-md`}>
                             {labelAtraso(c.dias_atraso ?? 0)}
                           </Badge>
                         )}
                         {c.categoria === 'cortado' && (
-                          <Badge className="bg-lighterror text-error rounded-md">
+                          <Badge className="bg-lighterror text-error-text rounded-md">
                             Cortado {tiempoDesde(c.cortado_en ?? null)}
                           </Badge>
                         )}
                         {c.categoria === 'pausado' && (
-                          <Badge className="bg-lightinfo text-info rounded-md">
+                          <Badge className="bg-lightinfo text-info-text rounded-md">
                             Pausado hasta {c.pausa_hasta ?? '—'}
                           </Badge>
                         )}
                         {c.compromiso_pago_hasta && (
-                          <Badge className="bg-lightprimary text-primary rounded-md">
+                          <Badge className="bg-lightprimary text-primary-text rounded-md">
                             <Icon icon="tabler:handshake" height={12} className="mr-1" />
                             Compromiso hasta {c.compromiso_pago_hasta}
                           </Badge>

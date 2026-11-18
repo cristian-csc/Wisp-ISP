@@ -49,8 +49,8 @@ const ESTADO_LABEL: Record<EstadoOrdenRetiro, string> = {
 };
 
 const ESTADO_BADGE: Record<EstadoOrdenRetiro, string> = {
-  pendiente: 'bg-lightwarning text-warning',
-  completado: 'bg-lightsuccess text-success',
+  pendiente: 'bg-lightwarning text-warning-text',
+  completado: 'bg-lightsuccess text-success-text',
 };
 
 type EvidenciaConUrl = Evidencia & { blobUrl: string };

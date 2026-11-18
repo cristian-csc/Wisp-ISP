@@ -27,7 +27,9 @@ const VACIO: ResumenZonaGastos = { zona_id: null, fijo: 0, variable: 0, total_ga
 function TarjetaZona({ titulo, sub, icono, dashed, resumen, onClick }: {
   titulo: string; sub: string; icono: string; dashed?: boolean; resumen: ResumenZonaGastos; onClick: () => void;
 }) {
-  const margenPositivo = resumen.margen >= 0;
+  // Sin movimientos el margen es neutro: un S/ 0.00 en verde parecía una ganancia.
+  const colorMargen = resumen.margen > 0 ? 'text-success-text' : resumen.margen < 0 ? 'text-error-text' : 'text-muted-foreground';
+  const iconoMargen = resumen.margen > 0 ? 'tabler:trending-up' : resumen.margen < 0 ? 'tabler:trending-down' : 'tabler:minus';
   return (
     <CardBox
       className={`p-5 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all ${dashed ? 'border-dashed' : ''}`}
@@ -43,16 +45,16 @@ function TarjetaZona({ titulo, sub, icono, dashed, resumen, onClick }: {
           <p className="text-2xl font-bold">S/ {resumen.total_gastos.toFixed(2)}</p>
           <p className="text-xs text-muted-foreground">gastado este mes</p>
         </div>
-        <div className={`flex flex-col items-end gap-0.5 shrink-0 ${margenPositivo ? 'text-success' : 'text-error'}`}>
-          <Icon icon={margenPositivo ? 'tabler:trending-up' : 'tabler:trending-down'} height={26} />
+        <div className={`flex flex-col items-end gap-0.5 shrink-0 ${colorMargen}`}>
+          <Icon icon={iconoMargen} height={26} />
           <span className="text-sm font-semibold whitespace-nowrap">S/ {resumen.margen.toFixed(2)}</span>
           <span className="text-[11px] text-muted-foreground">margen</span>
         </div>
       </div>
 
       <div className="flex justify-between mt-4 pt-4 border-t border-ld text-xs">
-        <span className="text-info font-medium">Fijo: S/ {resumen.fijo.toFixed(2)}</span>
-        <span className="text-warning font-medium">Variable: S/ {resumen.variable.toFixed(2)}</span>
+        <span className="text-foreground font-medium">Fijo: S/ {resumen.fijo.toFixed(2)}</span>
+        <span className="text-foreground font-medium">Variable: S/ {resumen.variable.toFixed(2)}</span>
         <span className="text-muted-foreground">Ingresos: S/ {resumen.ingresos.toFixed(2)}</span>
       </div>
     </CardBox>

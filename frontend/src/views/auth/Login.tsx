@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
+import { Icon } from '@iconify/react';
 import Logo from 'src/assets/logo-wisp.png';
 import { toast } from 'sonner';
 import { login, isAuthenticated, getMe } from 'src/lib/api';
-import { ROL_LABEL } from 'src/lib/permisos';
+import { nombreDeRol } from 'src/lib/permisos';
 
 /**
  * Login administrativo, portado desde el modal de la web pública
@@ -42,7 +43,7 @@ const Login = () => {
       // trabaje toda la tarde con la sesión de otra persona.
       try {
         const yo = await getMe();
-        toast.success(`Bienvenido, ${yo.nombre}`, { description: ROL_LABEL[yo.rol] });
+        toast.success(`Bienvenido, ${yo.nombre}`, { description: nombreDeRol(yo) });
       } catch {
         // Si no se pudo leer el perfil, igual se entra: el saludo no es crítico
       }
@@ -61,7 +62,7 @@ const Login = () => {
   return (
     <div
       className="grid min-h-dvh place-items-center overflow-x-hidden p-[18px]"
-      style={{ background: 'rgba(3, 6, 12, 0.98)' }}
+      style={{ background: '#000000' }}
     >
       {/* La animación de entrada y el relleno en móvil replican el original */}
       <style>{`
@@ -83,7 +84,7 @@ const Login = () => {
       <section
         className="login-card relative max-h-[calc(100dvh-36px)] w-[min(100%,470px)] overflow-x-hidden overflow-y-auto rounded-[28px] border border-[#ffffff25] px-[39px] pb-[30px] pt-[34px] text-white"
         style={{
-          background: 'linear-gradient(145deg, #1b2230, #0b101a 70%)',
+          background: 'linear-gradient(145deg, #1c1c1c, #0a0a0a 70%)',
           boxShadow: '0 35px 100px #000b, 0 0 60px #ff760019',
         }}
         aria-labelledby="loginTitle"
@@ -94,9 +95,9 @@ const Login = () => {
           onClick={() => window.location.replace('/')}
           aria-label="Volver al sitio web"
           title="Volver al sitio web"
-          className="absolute right-[18px] top-[15px] z-[2] size-[37px] cursor-pointer rounded-full border border-[#ffffff25] bg-[#ffffff12] text-[26px] leading-none text-white transition-[background-color] duration-[180ms] hover:bg-[#ffffff22]"
+          className="absolute right-[14px] top-[12px] z-[2] grid size-11 cursor-pointer place-items-center rounded-full border border-[#ffffff25] bg-[#ffffff12] text-white transition-[background-color] duration-[180ms] hover:bg-[#ffffff22]"
         >
-          ×
+          <Icon icon="tabler:x" width={20} aria-hidden="true" />
         </button>
 
         {/* Resplandor naranja de la esquina */}
@@ -131,21 +132,19 @@ const Login = () => {
           Bienvenido <em className="not-italic text-[#ff891d]">de nuevo.</em>
         </h2>
 
-        <p className="relative mb-[28px] text-center text-[13px] leading-[1.5] text-[#aab5c5]">
+        <p className="relative mb-[28px] text-center text-[13px] leading-[1.5] text-[#b8b8b8]">
           Portal de colaboradores · Administración y atención al cliente
         </p>
 
         <form onSubmit={alEnviar} autoComplete="on" className="relative">
           <label
             htmlFor="staffUser"
-            className="mb-2 mt-4 block text-[12px] font-[750] text-[#dce2ec]"
+            className="mb-2 mt-4 block text-[12px] font-[750] text-[#e5e5e5]"
           >
             Usuario o correo institucional
           </label>
-          <div className="flex items-center gap-[10px] rounded-[13px] border border-[#ffffff22] bg-[#0a0f19] px-[14px] transition-[border-color,box-shadow] duration-200 focus-within:border-[#ff8518] focus-within:shadow-[0_0_0_3px_#ff851822]">
-            <span aria-hidden="true" className="text-[21px] text-[#ff922d]">
-              ♙
-            </span>
+          <div className="flex items-center gap-[10px] rounded-[13px] border border-[#ffffff22] bg-[#000000] px-[14px] transition-[border-color,box-shadow] duration-200 focus-within:border-[#ff8518] focus-within:shadow-[0_0_0_3px_#ff851822]">
+            <Icon icon="tabler:user" width={20} className="shrink-0 text-[#ff922d]" aria-hidden="true" />
             {/* type="text": la columna `usuarios.email` guarda nombres de
                 usuario como `admin`, no correos — validar formato de email
                 impediría entrar. */}
@@ -159,20 +158,18 @@ const Login = () => {
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
               placeholder="Tu usuario de WISP"
-              className="min-w-0 flex-1 border-0 bg-transparent py-[15px] text-[14px] text-white outline-0 placeholder:text-[#6b7686]"
+              className="min-w-0 flex-1 border-0 bg-transparent py-[15px] text-[14px] text-white outline-0 placeholder:text-[#8f8f8f]"
             />
           </div>
 
           <label
             htmlFor="staffPassword"
-            className="mb-2 mt-4 block text-[12px] font-[750] text-[#dce2ec]"
+            className="mb-2 mt-4 block text-[12px] font-[750] text-[#e5e5e5]"
           >
             Contraseña
           </label>
-          <div className="flex items-center gap-[10px] rounded-[13px] border border-[#ffffff22] bg-[#0a0f19] px-[14px] transition-[border-color,box-shadow] duration-200 focus-within:border-[#ff8518] focus-within:shadow-[0_0_0_3px_#ff851822]">
-            <span aria-hidden="true" className="text-[21px] text-[#ff922d]">
-              ⌑
-            </span>
+          <div className="flex items-center gap-[10px] rounded-[13px] border border-[#ffffff22] bg-[#000000] px-[14px] transition-[border-color,box-shadow] duration-200 focus-within:border-[#ff8518] focus-within:shadow-[0_0_0_3px_#ff851822]">
+            <Icon icon="tabler:lock" width={20} className="shrink-0 text-[#ff922d]" aria-hidden="true" />
             <input
               id="staffPassword"
               name="password"
@@ -182,15 +179,15 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Introduce tu contraseña"
-              className="min-w-0 flex-1 border-0 bg-transparent py-[15px] text-[14px] text-white outline-0 placeholder:text-[#6b7686]"
+              className="min-w-0 flex-1 border-0 bg-transparent py-[15px] text-[14px] text-white outline-0 placeholder:text-[#8f8f8f]"
             />
             <button
               type="button"
               onClick={() => setVerPassword((v) => !v)}
               aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              className="cursor-pointer border-0 bg-none text-[20px] text-[#c5cad3] hover:text-white"
+              className="grid size-11 shrink-0 cursor-pointer place-items-center border-0 bg-transparent text-[#c9c9c9] hover:text-white"
             >
-              ◉
+              <Icon icon={verPassword ? 'tabler:eye-off' : 'tabler:eye'} width={20} aria-hidden="true" />
             </button>
           </div>
 
@@ -205,17 +202,17 @@ const Login = () => {
           <button
             type="submit"
             disabled={enviando}
-            className="mt-[19px] flex w-full cursor-pointer items-center justify-center gap-5 rounded-[13px] border-0 p-[17px] text-[15px] font-[850] text-white transition-[filter] duration-[180ms] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-[19px] flex w-full cursor-pointer items-center justify-center gap-5 rounded-[13px] border-0 p-[17px] text-[15px] font-[850] text-black transition-[filter] duration-[180ms] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
             style={{
-              background: 'linear-gradient(110deg, #ff9b20, #ff5606)',
+              background: '#ff842a',
               boxShadow: '0 12px 35px #ff630036',
             }}
           >
-            Acceder al sistema <span aria-hidden="true">→</span>
+            Acceder al sistema
           </button>
         </form>
 
-        <div className="relative mt-[25px] border-t border-[#ffffff15] pt-[18px] text-center text-[11px] text-[#8c99a9]">
+        <div className="relative mt-[25px] border-t border-[#ffffff15] pt-[18px] text-center text-[11px] text-[#a3a3a3]">
           Acceso exclusivo para personal autorizado de WISP
         </div>
       </section>

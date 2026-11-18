@@ -2,9 +2,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from 'src/co
 import type { Borne } from 'src/lib/cajasnap';
 
 const COLOR: Record<Borne['estado'], string> = {
-  libre: 'bg-info',
-  ocupado: 'bg-success',
-  danado: 'bg-error',
+  libre: 'bg-info-solid',
+  ocupado: 'bg-success-solid',
+  danado: 'bg-error-solid',
 };
 
 const LABEL: Record<Borne['estado'], string> = {
@@ -30,7 +30,7 @@ const BorneDots = ({ bornes, size = 'lg', onClickBorne }: Props) => {
               <button
                 type="button"
                 onClick={() => onClickBorne?.(b)}
-                className={`${dot} rounded-full ${COLOR[b.estado]} ${onClickBorne ? 'cursor-pointer' : 'cursor-default'} flex items-center justify-center text-[10px] text-white font-medium shrink-0`}
+                className={`${dot} rounded-full ${COLOR[b.estado]} ${onClickBorne ? 'cursor-pointer' : 'cursor-default'} flex items-center justify-center text-[10px] text-on-solid font-medium shrink-0`}
               >
                 {size === 'lg' ? b.numero : ''}
               </button>

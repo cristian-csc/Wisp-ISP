@@ -31,7 +31,7 @@ const CAPAS: Record<CapaMapa, { url: string; attribution: string }> = {
 };
 
 const casaIcon = L.divIcon({
-  html: `<div style="background:#fa896b;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)">
+  html: `<div style="background:#C2410C;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg>
   </div>`,
   className: '',
@@ -40,7 +40,7 @@ const casaIcon = L.divIcon({
 });
 
 const cajaIcon = L.divIcon({
-  html: `<div style="background:#13deb9;width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);color:white;font-size:9px;font-weight:800">N</div>`,
+  html: `<div style="background:#404040;width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);color:white;font-size:9px;font-weight:800">N</div>`,
   className: '',
   iconSize: [18, 18],
   iconAnchor: [9, 9],
@@ -123,7 +123,7 @@ const SelectorUbicacion = ({
   return (
     <MapaShell alto={alto}>
       {!valor && (
-        <div className="bg-lightprimary text-primary text-sm font-medium px-3 py-2 flex items-center gap-2">
+        <div className="bg-lightprimary text-primary-text text-sm font-medium px-3 py-2 flex items-center gap-2">
           <Icon icon="tabler:map-pin" height={16} />
           Toca el mapa donde está la casa — después puedes arrastrar el punto
         </div>
@@ -162,7 +162,7 @@ const SelectorUbicacion = ({
             key={`cob-${c.id}`}
             center={[c.lat!, c.lng!]}
             radius={radioCobertura}
-            pathOptions={{ color: '#13deb9', weight: 1, fillOpacity: 0.08 }}
+            pathOptions={{ color: '#404040', weight: 1, fillOpacity: 0.08 }}
           />
         ))}
 
@@ -192,8 +192,8 @@ const SelectorUbicacion = ({
 
       <LeyendaMapa
         items={[
-          { color: '#fa896b', texto: 'Casa del cliente' },
-          ...(cajasUbicadas.length > 0 ? [{ color: '#13deb9', texto: 'Caja NAP' }] : []),
+          { color: '#C2410C', texto: 'Casa del cliente' },
+          ...(cajasUbicadas.length > 0 ? [{ color: '#404040', texto: 'Caja NAP' }] : []),
         ]}
         nota={
           cajasUbicadas.length > 0

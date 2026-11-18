@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router';
 import { Icon } from '@iconify/react';
 import { useCurrentUser } from 'src/lib/useCurrentUser';
 import { puedeAbrirRuta } from 'src/lib/permisos';
+import { useMisModulos } from 'src/lib/modulos';
 
 /** Deja pasar solo si el rol del usuario tiene permitida esta dirección.
  *
@@ -12,9 +13,10 @@ import { puedeAbrirRuta } from 'src/lib/permisos';
  *  pantalla rota, vacía o que no le corresponde. */
 const RutaPermitida = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useCurrentUser();
+  const { cargando: cargandoModulos } = useMisModulos();
   const location = useLocation();
 
-  if (loading) {
+  if (loading || (user && cargandoModulos)) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Icon icon="tabler:loader-2" width={28} className="animate-spin text-muted-foreground" />
@@ -28,7 +30,7 @@ const RutaPermitida = ({ children }: { children: React.ReactNode }) => {
   if (!puedeAbrirRuta(location.pathname, user.rol)) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center">
-        <span className="grid size-14 place-items-center rounded-2xl bg-lightwarning text-warning">
+        <span className="grid size-14 place-items-center rounded-2xl bg-lightwarning text-warning-text">
           <Icon icon="tabler:lock" width={28} />
         </span>
         <div>
@@ -40,7 +42,7 @@ const RutaPermitida = ({ children }: { children: React.ReactNode }) => {
         </div>
         <a
           href="/app/dashboard"
-          className="transition-ui mt-1 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primaryemphasis"
+          className="transition-ui mt-1 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primaryemphasis"
         >
           <Icon icon="tabler:arrow-left" width={16} />
           Volver al inicio
