@@ -23,7 +23,7 @@ const DialogOverlay = React.forwardRef<
       // 700, y cuando el diálogo se monta dentro del mapa en pantalla
       // completa (ver el `container` de DialogPortal abajo) pasa a competir
       // en esa misma capa de apilamiento.
-      'fixed inset-0 z-[1200] bg-black/55 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-[1200] bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className,
     )}
     {...props}
@@ -44,11 +44,10 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-[1200] grid max-h-[92vh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-2xl border border-ld bg-card p-6 shadow-xl duration-200',
+        'fixed left-1/2 top-1/2 z-[1200] grid max-h-[92vh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-2xl border border-ld bg-card p-6 shadow-lg duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] data-[state=closed]:duration-150',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-        'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-        'data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-top-[48%]',
+        'data-[state=closed]:zoom-out-[0.97] data-[state=open]:zoom-in-[0.96]',
         className,
       )}
       {...props}

@@ -29,7 +29,7 @@ const Averias = () => {
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl">Averías</h1>
+          <h1 className="text-[26px] font-semibold leading-tight">Averías</h1>
           <p className="text-sm text-muted-foreground">Selecciona una zona para ver sus averías</p>
         </div>
         <div className="relative sm:max-w-60 w-full">

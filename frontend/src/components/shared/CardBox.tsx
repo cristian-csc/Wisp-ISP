@@ -7,7 +7,7 @@ interface MyAppProps extends React.ComponentProps<"div"> {
 }
 const CardBox: React.FC<MyAppProps> = ({ children, className, ...props }) => {
   return (
-    <Card className={`card no-inset no-ring ${className} shadow-sm border border-ld rounded-lg w-full`} {...props}>
+    <Card className={`card no-inset no-ring rounded-xl border border-ld w-full shadow-none ${className ?? ''}`} {...props}>
       {children}
     </Card>
   );

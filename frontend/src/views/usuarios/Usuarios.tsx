@@ -199,11 +199,18 @@ const Usuarios = () => {
   }
 
   return (
-    <CardBox>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Usuarios</h2>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[26px] font-semibold leading-tight">Usuarios</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Las cuentas del equipo y el rol de cada una.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => setOpen(true)}>Crear usuario</Button>
+        </div>
       </div>
+
+      <CardBox className="gap-0 overflow-hidden !p-0">
 
       <Table>
         <TableHeader>
@@ -504,7 +511,8 @@ const Usuarios = () => {
         description={eliminando ? `¿Eliminar a "${eliminando.nombre}"? Esta acción no se puede deshacer. Si tiene historial real (clientes, pagos, averías, etc.), el sistema lo va a bloquear.` : undefined}
         onConfirm={handleEliminar}
       />
-    </CardBox>
+      </CardBox>
+    </div>
   );
 };
 

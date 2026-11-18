@@ -31,6 +31,7 @@ import {
 import { listUsuarios } from 'src/lib/usuarios';
 import type { Usuario } from 'src/lib/api';
 
+import { soles } from 'src/lib/formato';
 const POLL_MS = 20_000;
 
 /** Iniciales para el avatar de la lista de pasajes. */
@@ -118,7 +119,7 @@ function ReclamoCell({ jornada, onReintegrado }: { jornada: Jornada; onReintegra
   if (jornada.reclamo_reintegrado) {
     return (
       <Badge className="bg-lightsuccess text-success-text rounded-md border-0">
-        Reintegrado — S/ {jornada.monto_reclamado.toFixed(2)}
+        Reintegrado — {soles(jornada.monto_reclamado)}
       </Badge>
     );
   }
@@ -139,7 +140,7 @@ function ReclamoCell({ jornada, onReintegrado }: { jornada: Jornada; onReintegra
   return (
     <div className="flex flex-col gap-1">
       <Badge className="bg-lightwarning text-warning-text rounded-md border-0 w-fit">
-        Pendiente — S/ {jornada.monto_reclamado.toFixed(2)}
+        Pendiente — {soles(jornada.monto_reclamado)}
       </Badge>
       {jornada.nota_reclamo && <span className="text-xs text-muted-foreground">{jornada.nota_reclamo}</span>}
       <Button size="sm" variant="outline" className="w-fit h-7 text-xs" onClick={reintegrar} disabled={procesando}>
@@ -282,7 +283,7 @@ const Jornadas = () => {
           <StatCard
             icono="tabler:bus"
             etiqueta="Pasaje del periodo"
-            valor={`S/ ${pasajeDelDia.toFixed(2)}`}
+            valor={soles(pasajeDelDia)}
             nota={etiquetaPeriodo}
             tono="warning"
           />
@@ -353,7 +354,7 @@ const Jornadas = () => {
                       </div>
                     </div>
                     <span className="shrink-0 rounded-lg bg-lightwarning px-2.5 py-1 text-sm font-semibold tabular-nums text-warning-text">
-                      S/ {r.total_pasajes.toFixed(2)}
+                      {soles(r.total_pasajes)}
                     </span>
                   </div>
                 ))}

@@ -33,6 +33,7 @@ import {
 } from 'src/lib/cajasnap';
 import { getPppoeStatus, type PppoeStatus } from 'src/lib/clientes';
 
+import { fecha } from 'src/lib/formato';
 interface Props {
   cajaId: number | null;
   onOpenChange: (open: boolean) => void;
@@ -225,7 +226,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                               </TableCell>
                               <TableCell className="text-sm">{b.cliente!.plan?.nombre ?? '—'}</TableCell>
                               <TableCell className="text-sm">{b.cliente!.metros_cable != null ? `${b.cliente!.metros_cable} m` : '—'}</TableCell>
-                              <TableCell className="text-sm">{b.cliente!.fecha_instalacion ?? '—'}</TableCell>
+                              <TableCell className="text-sm">{fecha(b.cliente!.fecha_instalacion)}</TableCell>
                               <TableCell>
                                 {b.codigo_precinto ? (
                                   <span className="text-sm">{b.codigo_precinto}</span>

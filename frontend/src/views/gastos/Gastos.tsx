@@ -12,6 +12,7 @@ import {
 import { listZonas, type Zona } from 'src/lib/zonas';
 import { getResumenPorZona, type ResumenZonaGastos } from 'src/lib/gastos';
 
+import { soles } from 'src/lib/formato';
 const MESES = [
   { value: '01', label: 'Enero' }, { value: '02', label: 'Febrero' }, { value: '03', label: 'Marzo' },
   { value: '04', label: 'Abril' }, { value: '05', label: 'Mayo' }, { value: '06', label: 'Junio' },
@@ -42,20 +43,20 @@ function TarjetaZona({ titulo, sub, icono, dashed, resumen, onClick }: {
             {sub}
           </div>
           <h3 className="text-lg font-semibold truncate mb-1">{titulo}</h3>
-          <p className="text-2xl font-bold">S/ {resumen.total_gastos.toFixed(2)}</p>
+          <p className="text-2xl font-bold">{soles(resumen.total_gastos)}</p>
           <p className="text-xs text-muted-foreground">gastado este mes</p>
         </div>
         <div className={`flex flex-col items-end gap-0.5 shrink-0 ${colorMargen}`}>
           <Icon icon={iconoMargen} height={26} />
-          <span className="text-sm font-semibold whitespace-nowrap">S/ {resumen.margen.toFixed(2)}</span>
+          <span className="text-sm font-semibold whitespace-nowrap">{soles(resumen.margen)}</span>
           <span className="text-[11px] text-muted-foreground">margen</span>
         </div>
       </div>
 
       <div className="flex justify-between mt-4 pt-4 border-t border-ld text-xs">
-        <span className="text-foreground font-medium">Fijo: S/ {resumen.fijo.toFixed(2)}</span>
-        <span className="text-foreground font-medium">Variable: S/ {resumen.variable.toFixed(2)}</span>
-        <span className="text-muted-foreground">Ingresos: S/ {resumen.ingresos.toFixed(2)}</span>
+        <span className="text-foreground font-medium">Fijo: {soles(resumen.fijo)}</span>
+        <span className="text-foreground font-medium">Variable: {soles(resumen.variable)}</span>
+        <span className="text-muted-foreground">Ingresos: {soles(resumen.ingresos)}</span>
       </div>
     </CardBox>
   );
@@ -85,7 +86,7 @@ const Gastos = () => {
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl">Gastos</h1>
+          <h1 className="text-[26px] font-semibold leading-tight">Gastos</h1>
           <p className="text-sm text-muted-foreground">Fijos, variables y margen por zona — selecciona una para ver el detalle</p>
         </div>
         <div className="flex gap-2">

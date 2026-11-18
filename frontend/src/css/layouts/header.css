@@ -1,7 +1,7 @@
 .mobile-header-menu {
     height: 0;
     overflow: hidden;
-    transition: all .3s ease-in-out;
+    transition: min-height 200ms ease-out;
 }
 .mobile-header-menu.active {
     min-height: 70px;

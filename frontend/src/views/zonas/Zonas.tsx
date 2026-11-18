@@ -261,7 +261,7 @@ const Zonas = () => {
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl">Zonas</h1>
+          <h1 className="text-[26px] font-semibold leading-tight">Zonas</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {veRed
               ? `${zonas.length} ${zonas.length === 1 ? 'zona' : 'zonas'} de cobertura`

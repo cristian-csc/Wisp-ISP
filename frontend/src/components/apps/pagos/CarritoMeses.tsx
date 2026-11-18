@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { etiquetaMes, mesesCubiertos } from 'src/lib/pagos';
 
+import { soles } from 'src/lib/formato';
 interface Props {
   /** Primer mes que cubre el cobro (el que el cliente debe) */
   mesInicio: string;
@@ -41,7 +42,7 @@ const CarritoMeses = ({ mesInicio, meses, onChange, cuota, maximo = 12 }: Props)
             </span>
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{etiquetaMes(mes)}</span>
             <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-              S/ {cuota.toFixed(2)}
+              {soles(cuota)}
             </span>
             {i === lista.length - 1 && lista.length > 1 ? (
               <button

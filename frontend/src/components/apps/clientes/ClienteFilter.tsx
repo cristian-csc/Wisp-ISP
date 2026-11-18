@@ -55,7 +55,7 @@ const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
     tono: string;
     cuenta: number;
   }[] = [
-    { valor: 'todos', etiqueta: 'Todos', tono: 'primary', cuenta: resumen?.total ?? 0 },
+    { valor: 'todos', etiqueta: 'Todos', tono: 'muted', cuenta: resumen?.total ?? 0 },
     ...ESTADOS_DESTACADOS.map((valor) => {
       const def = ESTADOS_CLIENTE.find((e) => e.valor === valor)!;
       return {
@@ -68,24 +68,28 @@ const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
   ];
 
   return (
-    <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div role="tablist" aria-label="Estado de los clientes" className="-mx-1 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-ld px-1 [scrollbar-width:none]">
       {tarjetas.map((t) => {
         const elegida = filter === t.valor;
         return (
           <button
             key={t.valor}
             type="button"
+            role="tab"
+            aria-selected={elegida}
             onClick={() => setFilter(t.valor)}
-            aria-pressed={elegida}
-            className={`transition-ui flex min-h-[84px] flex-col justify-center rounded-xl border-2 px-3.5 py-3 text-left ${
-              elegida ? 'border-primary bg-lightprimary' : 'border-border bg-card hover:border-primary/40'
+            className={`relative flex min-h-11 shrink-0 cursor-pointer items-center gap-2 px-3 text-sm transition-colors duration-150 ${
+              elegida ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <span className="text-2xl font-bold leading-none text-foreground">{t.cuenta}</span>
-            <span className="mt-2 flex items-start gap-1.5 text-xs font-medium leading-tight text-muted-foreground">
-              <span aria-hidden="true" className={`mt-1 size-2 shrink-0 rounded-full ${PUNTO[t.tono]}`} />
-              {t.etiqueta}
+            <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${PUNTO[t.tono]}`} />
+            <span className="whitespace-nowrap">{t.etiqueta}</span>
+            <span
+              className={`rounded-md px-1.5 text-xs tabular-nums ${elegida ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}
+            >
+              {t.cuenta}
             </span>
+            {elegida && <span aria-hidden="true" className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />}
           </button>
         );
       })}

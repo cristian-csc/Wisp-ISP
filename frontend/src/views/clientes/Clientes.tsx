@@ -46,11 +46,11 @@ const Clientes = ({ initialFilter = 'todos', tipo }: Props) => {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl">{titulo.nombre}</h1>
-        <p className="text-sm text-muted-foreground">{titulo.detalle}</p>
+        <h1 className="text-[26px] font-semibold leading-tight">{titulo.nombre}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{titulo.detalle}</p>
       </div>
 
-      <CardBox>
+      <CardBox className="gap-0 !pt-2">
         <ClienteFilter filter={filter} setFilter={setFilter} resumen={resumen} />
         <ClienteListing
           filter={filter}

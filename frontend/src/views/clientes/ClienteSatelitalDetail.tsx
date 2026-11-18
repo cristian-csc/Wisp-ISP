@@ -24,6 +24,7 @@ import {
 } from 'src/lib/clientes';
 import { enviarAvisoCobro } from 'src/lib/whatsapp';
 
+import { soles, fecha } from 'src/lib/formato';
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 const MES_ESTADO_CLASS: Record<string, string> = {
@@ -150,7 +151,7 @@ const ClienteSatelitalDetail = () => {
         </Button>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl truncate">{cliente.nombre}</h1>
+            <h1 className="text-[26px] font-semibold leading-tight truncate">{cliente.nombre}</h1>
             <Badge className={`${ESTADO_BADGE[cliente.estado]} rounded-md`}>{ESTADO_LABEL[cliente.estado]}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">DNI {cliente.dni ?? '—'}</p>
@@ -193,9 +194,9 @@ const ClienteSatelitalDetail = () => {
             <p className="font-medium">{cliente.plan?.nombre ?? '—'}</p>
             <p><span className="text-muted-foreground">Cobro al cliente:</span> S/ {cliente.plan?.precio.toFixed(2) ?? '—'}</p>
             {margen != null && (
-              <p><span className="text-muted-foreground">Ganancia:</span> <span className="text-success font-medium">S/ {margen.toFixed(2)}</span></p>
+              <p><span className="text-muted-foreground">Ganancia:</span> <span className="text-success font-medium">{soles(margen)}</span></p>
             )}
-            <p><span className="text-muted-foreground">Vencimiento:</span> {cliente.fecha_vencimiento ?? '—'}</p>
+            <p><span className="text-muted-foreground">Vencimiento:</span> {fecha(cliente.fecha_vencimiento)}</p>
           </div>
         </CardBox>
 
@@ -207,7 +208,7 @@ const ClienteSatelitalDetail = () => {
             <p><span className="text-muted-foreground">Correo de la cuenta:</span> {cliente.cuenta_starlink_email ?? '—'}</p>
             <p><span className="text-muted-foreground">Modelo:</span> {cliente.equipo_modelo ?? '—'}</p>
             <p><span className="text-muted-foreground">N° de serie:</span> {cliente.equipo_serial ?? '—'}</p>
-            <p><span className="text-muted-foreground">Costo del equipo:</span> {cliente.equipo_valor != null ? `S/ ${cliente.equipo_valor.toFixed(2)}` : '—'}</p>
+            <p><span className="text-muted-foreground">Costo del equipo:</span> {cliente.equipo_valor != null ? soles(cliente.equipo_valor) : '—'}</p>
           </div>
         </CardBox>
       </div>

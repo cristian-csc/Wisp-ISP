@@ -28,6 +28,7 @@ import {
   type ReporteCaja, type ReporteZona,
 } from 'src/lib/pagos';
 
+import { soles } from 'src/lib/formato';
 const MESES = [
   { value: '01', label: 'Enero' }, { value: '02', label: 'Febrero' }, { value: '03', label: 'Marzo' },
   { value: '04', label: 'Abril' }, { value: '05', label: 'Mayo' }, { value: '06', label: 'Junio' },
@@ -64,7 +65,7 @@ function BarraFila({ label, sublabel, valor, max, color }: {
           {label}
           {sublabel && <span className="text-xs text-muted-foreground ml-1.5">{sublabel}</span>}
         </span>
-        <span className="font-semibold whitespace-nowrap">S/ {valor.toFixed(2)}</span>
+        <span className="font-semibold whitespace-nowrap">{soles(valor)}</span>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
@@ -115,7 +116,7 @@ const ReporteCajaView = () => {
           <Icon icon="tabler:report-money" width={22} className="text-primary" />
         </span>
         <div>
-          <h1 className="text-2xl">Reporte de Caja</h1>
+          <h1 className="text-[26px] font-semibold leading-tight">Reporte de Caja</h1>
           <p className="text-sm text-muted-foreground">Corte de caja diario y recaudación mensual por zona</p>
         </div>
       </div>
@@ -145,7 +146,7 @@ const ReporteCajaView = () => {
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <StatCard icono="tabler:cash" etiqueta="Total recaudado" valor={`S/ ${(caja?.total ?? 0).toFixed(2)}`} tono="success" />
+          <StatCard icono="tabler:cash" etiqueta="Total recaudado" valor={soles((caja?.total ?? 0))} tono="success" />
           <StatCard icono="tabler:receipt" etiqueta="Pagos registrados" valor={caja?.cantidad_pagos ?? 0} tono="primary" />
         </div>
 
@@ -214,7 +215,7 @@ const ReporteCajaView = () => {
                 <TableCell className="text-sm">{p.cliente_nombre ?? `#${p.cliente_id}`}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{p.zona_nombre ?? '—'}</TableCell>
                 <TableCell className="text-sm">{METODO_LABEL[p.metodo_pago] ?? capitalizar(p.metodo_pago)}</TableCell>
-                <TableCell className="text-sm font-medium">S/ {p.monto.toFixed(2)}</TableCell>
+                <TableCell className="text-sm font-medium">{soles(p.monto)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{p.registrado_por ?? '—'}</TableCell>
               </TableRow>
             ))}
@@ -226,7 +227,7 @@ const ReporteCajaView = () => {
       <SectionCard
         titulo="Recaudación mensual por zona"
         icono="tabler:chart-bar"
-        descripcion={`Total del mes: S/ ${totalMesZonas.toFixed(2)}`}
+        descripcion={`Total del mes: ${soles(totalMesZonas)}`}
         extra={
           <>
             <Select value={mesSel} onValueChange={setMesSel}>

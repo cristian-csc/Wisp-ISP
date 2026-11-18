@@ -24,16 +24,14 @@ const SectionCard = ({
   className = '',
   children,
 }: Props) => (
-  <CardBox className={`flex h-full flex-col ${className}`}>
+  <CardBox className={`flex h-full flex-col gap-0 !p-0 ${className}`}>
     <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-4 pt-5">
       <div className="flex min-w-0 items-center gap-2.5">
         {icono && (
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-lightprimary">
-            <Icon icon={icono} width={17} className="text-primary" />
-          </span>
+          <Icon icon={icono} width={18} className="shrink-0 text-muted-foreground" />
         )}
         <div className="min-w-0">
-          <h2 className="truncate text-base font-semibold leading-tight">{titulo}</h2>
+          <h2 className="truncate text-[15px] font-semibold leading-tight">{titulo}</h2>
           {descripcion && (
             <p className="truncate text-xs text-muted-foreground">{descripcion}</p>
           )}

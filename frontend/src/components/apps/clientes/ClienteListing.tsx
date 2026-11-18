@@ -53,6 +53,7 @@ import {
 import { ESTADOS_DESTACADOS } from './ClienteFilter';
 import type { Usuario } from 'src/lib/api';
 
+import { soles, fecha } from 'src/lib/formato';
 const ESTADO_LABEL: Record<EstadoCliente, string> = {
   pendiente_aprobacion: 'Pendiente',
   rechazado: 'Rechazado',
@@ -215,8 +216,9 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
     <div>
       {/* Registrar a la izquierda; zona y buscador a la derecha. En pantalla
           chica se reparten en varias filas en vez de desbordarse. */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <Button onClick={() => setCrearOpen(true)} className="rounded-md whitespace-nowrap">
+      <div className="my-4 flex flex-wrap items-center justify-between gap-3">
+        <Button onClick={() => setCrearOpen(true)} className="whitespace-nowrap">
+          <Icon icon="tabler:user-plus" width={18} />
           Registrar cliente
         </Button>
 
@@ -312,12 +314,12 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-base font-semibold py-3 whitespace-nowrap">Cliente</TableHead>
-              <TableHead className="text-base font-semibold py-3 whitespace-nowrap">Zona / Plan</TableHead>
-              <TableHead className="text-base font-semibold py-3 whitespace-nowrap">Estado</TableHead>
-              <TableHead className="text-base font-semibold py-3 whitespace-nowrap">Cuota mensual</TableHead>
-              <TableHead className="text-base font-semibold py-3 whitespace-nowrap">Vencimiento</TableHead>
-              <TableHead className="text-base font-semibold py-3 text-end">Acciones</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Zona / Plan</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Cuota mensual</TableHead>
+              <TableHead>Vencimiento</TableHead>
+              <TableHead className="text-end">Acciones</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -385,9 +387,9 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
                     {ESTADO_LABEL[c.estado]}
                   </Badge>
                 </TableCell>
-                <TableCell>{c.monto_mensual != null ? `S/ ${c.monto_mensual.toFixed(2)}` : '—'}</TableCell>
+                <TableCell className="text-right">{soles(c.monto_mensual)}</TableCell>
                 <TableCell>
-                  <p className="text-sm text-muted-foreground">{c.fecha_vencimiento ?? '—'}</p>
+                  <p className="text-sm text-muted-foreground">{fecha(c.fecha_vencimiento)}</p>
                 </TableCell>
                 <TableCell className="text-end">
                   <TooltipProvider>

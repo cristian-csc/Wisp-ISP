@@ -3,9 +3,9 @@ import { Link } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
 import SectionCard from 'src/components/shared/SectionCard';
-import StatCard from 'src/components/shared/StatCard';
 import EmptyState from 'src/components/shared/EmptyState';
 import LoadingState from 'src/components/shared/LoadingState';
+import { Button } from 'src/components/ui/button';
 import FinanzasChart from './FinanzasChart';
 import EstadoClientesDonut from './EstadoClientesDonut';
 import {
@@ -21,27 +21,61 @@ import {
   type MesFinanzas,
   type Movimiento,
 } from 'src/lib/api';
-import { nombreDeRol, puedeVerUrl } from 'src/lib/permisos';
+import { puedeVerUrl } from 'src/lib/permisos';
 import { useMisModulos } from 'src/lib/modulos';
-
-function soles(n: number): string {
-  return `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-/** Iniciales para el avatar de la lista de movimientos. */
-function iniciales(nombre: string): string {
-  return nombre
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? '')
-    .join('');
-}
+import { fecha, soles } from 'src/lib/formato';
 
 const TIPO_PUNTO: Record<string, { texto: string; color: string }> = {
   activacion: { texto: 'Activación', color: 'var(--success)' },
   corte: { texto: 'Corte', color: 'var(--error)' },
-  pago: { texto: 'Pago', color: 'var(--primary)' },
+  pago: { texto: 'Pago', color: 'var(--brand)' },
+};
+
+function saludo(): string {
+  const h = new Date().getHours();
+  return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+}
+
+/** Una cifra de la franja de resumen. */
+const Cifra = ({
+  etiqueta,
+  valor,
+  nota,
+  to,
+  delta,
+}: {
+  etiqueta: string;
+  valor: string | number;
+  nota?: string;
+  to?: string;
+  delta?: number | null;
+}) => {
+  const cuerpo = (
+    <div className="flex h-full flex-col gap-1 px-5 py-4">
+      <p className="text-sm text-muted-foreground">{etiqueta}</p>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span className="text-[28px] font-semibold leading-none tracking-tight">{valor}</span>
+        {delta != null && (
+          <span
+            className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+              delta > 0 ? 'text-success-text' : delta < 0 ? 'text-error-text' : 'text-muted-foreground'
+            }`}
+          >
+            <Icon icon={delta >= 0 ? 'tabler:arrow-up-right' : 'tabler:arrow-down-right'} width={14} />
+            {Math.abs(delta).toFixed(0)}%
+          </span>
+        )}
+      </div>
+      {nota && <p className="text-xs text-muted-foreground">{nota}</p>}
+    </div>
+  );
+  return to ? (
+    <Link to={to} className="block transition-colors duration-150 hover:bg-surface-2">
+      {cuerpo}
+    </Link>
+  ) : (
+    cuerpo
+  );
 };
 
 const Dashboard = () => {
@@ -76,6 +110,7 @@ const Dashboard = () => {
   const veGastos = puedeVerUrl('/gastos', rol);
   const veClientes = puedeVerUrl('/clientes', rol);
   const veZonas = puedeVerUrl('/zonas', rol);
+  const veAverias = puedeVerUrl('/averias', rol);
 
   // El histórico de ingresos y gastos es de gerencia: solo se pide cuando el
   // rol puede verlo, para no provocar un 403 silencioso en cada carga.
@@ -86,194 +121,155 @@ const Dashboard = () => {
 
   const deltaIngresos =
     stats && stats.ingresos_mes_anterior > 0
-      ? ((stats.ingresos_mes_actual - stats.ingresos_mes_anterior) / stats.ingresos_mes_anterior) *
-        100
+      ? ((stats.ingresos_mes_actual - stats.ingresos_mes_anterior) / stats.ingresos_mes_anterior) * 100
       : null;
 
-  const hoy = new Date().toLocaleDateString('es-PE', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
+  const hoyTexto = new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const hoy = hoyTexto.charAt(0).toUpperCase() + hoyTexto.slice(1);
 
-  // Reparto de estados para la dona. "Otros" agrupa lo que no es activo,
-  // pendiente ni suspendido (rechazados, anulados, por instalar).
+  // "Otros" agrupa lo que no es activo, pendiente ni suspendido.
   const otros = stats
-    ? Math.max(
-        0,
-        stats.total_clientes -
-          stats.clientes_activos -
-          stats.clientes_suspendidos -
-          (porAprobar ?? 0),
-      )
+    ? Math.max(0, stats.total_clientes - stats.clientes_activos - stats.clientes_suspendidos - (porAprobar ?? 0))
     : 0;
 
-  const accesos = [
-    {
-      titulo: 'Registrar cliente',
-      icono: 'tabler:user-plus',
-      a: '/clientes',
-      visible: veClientes,
-      destacado: true,
-    },
-    {
-      titulo: 'Pendientes de aprobación',
-      icono: 'tabler:user-check',
-      a: '/clientes/pendientes',
-      visible: puedeVerUrl('/clientes/pendientes', rol),
-    },
-    {
-      titulo: 'Reportar avería',
-      icono: 'tabler:alert-triangle',
-      a: '/averias',
-      visible: puedeVerUrl('/averias', rol),
-    },
-    {
-      titulo: 'Ver zonas y cobertura',
-      icono: 'tabler:map-pin',
-      a: '/zonas',
-      visible: veZonas,
-    },
-  ].filter((x) => x.visible);
+  /** Lo que alguien tiene que atender hoy, de lo más urgente a lo menos. */
+  const pendientes = [
+    { texto: 'Averías abiertas', cuenta: averias, icono: 'tabler:alert-triangle', a: '/averias', ve: veAverias, urgente: true },
+    { texto: 'Clientes por aprobar', cuenta: porAprobar, icono: 'tabler:user-check', a: '/clientes/pendientes', ve: puedeVerUrl('/clientes/pendientes', rol) },
+    { texto: 'Instalaciones por hacer', cuenta: porInstalar, icono: 'tabler:tool', a: '/clientes/fibra', ve: veClientes },
+    { texto: 'Retiros de equipo', cuenta: retiros, icono: 'tabler:package-export', a: '/ordenes-retiro', ve: puedeVerUrl('/ordenes-retiro', rol) },
+    { texto: 'Pagos pendientes', cuenta: stats?.pagos_pendientes ?? null, icono: 'tabler:receipt', a: '/pagos', ve: vePagos },
+  ].filter((p) => p.ve);
+  const cargandoPendientes = pendientes.some((p) => p.cuenta === null);
+  const conTrabajo = pendientes.filter((p) => (p.cuenta ?? 0) > 0);
+
+  const nombre = usuario?.nombre.split(/\s+/)[0];
+  const conGrafico = veGastos && meses.length > 0;
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* ── Saludo ───────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="flex flex-col gap-6">
+      {/* ── Encabezado ───────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold leading-tight">
-            ¡Bienvenido, {usuario?.nombre ?? '…'}!
+          <p className="text-sm text-muted-foreground">{hoy}</p>
+          <h1 className="mt-1 text-[26px] font-semibold leading-tight">
+            {saludo()}{nombre ? `, ${nombre}` : ''}
           </h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            {usuario && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-lightprimary px-2.5 py-1 text-xs font-semibold text-primary-text">
-                <Icon icon="tabler:shield-check" width={13} />
-                {nombreDeRol(usuario)}
-              </span>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Aquí tienes un resumen de tu red y operaciones.
-            </p>
-          </div>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-ld bg-card px-3.5 py-2">
-          <Icon icon="tabler:calendar" width={18} className="text-muted-foreground" />
-          <div className="leading-tight">
-            <p className="text-[11px] text-muted-foreground">Hoy</p>
-            <p className="text-sm font-semibold">{hoy}</p>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          {vePagos && (
+            <Button asChild variant="outline">
+              <Link to="/pagos">
+                <Icon icon="tabler:cash" width={18} />
+                Registrar pago
+              </Link>
+            </Button>
+          )}
+          {veClientes && (
+            <Button asChild>
+              <Link to="/clientes/fibra">
+                <Icon icon="tabler:user-plus" width={18} />
+                Registrar cliente
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* ── Indicadores ──────────────────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          icono="tabler:users"
-          etiqueta="Clientes activos"
-          valor={stats ? stats.clientes_activos : '—'}
-          tono="primary"
-          to={veClientes ? '/clientes' : undefined}
-          nota={stats ? `${stats.total_clientes} registrados en total` : undefined}
-        />
-
-        {vePagos ? (
-          <StatCard
-            icono="tabler:cash"
-            etiqueta="Ingresos este mes"
-            valor={stats ? soles(stats.ingresos_mes_actual) : '—'}
-            delta={deltaIngresos}
-            tono="brand"
-            to="/pagos"
-            nota={stats ? `vs ${soles(stats.ingresos_mes_anterior)} el mes pasado` : undefined}
+      {/* ── Resumen: una sola franja, separada por líneas ────────────────── */}
+      <CardBox className="overflow-hidden !p-0">
+        {/* Las líneas salen del hueco de 1 px entre celdas: así se acomodan
+            solas en dos o cuatro columnas. */}
+        <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-4 [&>*]:bg-card">
+          <Cifra
+            etiqueta="Clientes activos"
+            valor={stats ? stats.clientes_activos : '—'}
+            nota={stats ? `de ${stats.total_clientes} registrados` : undefined}
+            to={veClientes ? '/clientes/fibra' : undefined}
           />
-        ) : (
-          <StatCard
-            icono="tabler:user-off"
-            etiqueta="Clientes suspendidos"
-            valor={stats ? stats.clientes_suspendidos : '—'}
-            tono="error"
-            to={veClientes ? '/clientes' : undefined}
+          {vePagos ? (
+            <Cifra
+              etiqueta="Cobrado este mes"
+              valor={stats ? soles(stats.ingresos_mes_actual, true) : '—'}
+              delta={deltaIngresos}
+              nota={stats ? `${soles(stats.ingresos_mes_anterior, true)} el mes pasado` : undefined}
+              to="/pagos"
+            />
+          ) : (
+            <Cifra etiqueta="Suspendidos" valor={stats ? stats.clientes_suspendidos : '—'} to={veClientes ? '/clientes/fibra' : undefined} />
+          )}
+          <Cifra
+            etiqueta="Por instalar"
+            valor={porInstalar ?? '—'}
+            nota="Aprobados, sin instalación"
+            to={veClientes ? '/clientes/fibra' : undefined}
           />
-        )}
+          <Cifra
+            etiqueta="Zonas con cobertura"
+            valor={stats ? stats.total_zonas : '—'}
+            to={veZonas ? '/zonas' : undefined}
+          />
+        </div>
+      </CardBox>
 
-        <StatCard
-          icono="tabler:tool"
-          etiqueta="Por instalar"
-          valor={porInstalar ?? '—'}
-          tono="info"
-          to={veClientes ? '/clientes' : undefined}
-          nota="Aprobados y no instalados"
-        />
-
-        <StatCard
-          icono="tabler:alert-triangle"
-          etiqueta="Averías abiertas"
-          valor={averias ?? '—'}
-          tono="warning"
-          to={puedeVerUrl('/averias', rol) ? '/averias' : undefined}
-          nota={retiros !== null ? `${retiros} retiros pendientes` : undefined}
-        />
-
-        <StatCard
-          icono="tabler:map-pin"
-          etiqueta="Zonas con cobertura"
-          valor={stats ? stats.total_zonas : '—'}
-          tono="success"
-          to={veZonas ? '/zonas' : undefined}
-          nota={vePagos && stats ? `${stats.pagos_pendientes} pagos pendientes` : undefined}
-        />
-      </div>
-
-      {/* ── Gráfico + estado de clientes ─────────────────────────────────── */}
-      <div className="grid gap-4 xl:grid-cols-3">
-        {veGastos && meses.length > 0 && (
+      {/* ── Gráfico + por atender ────────────────────────────────────────── */}
+      <div className="grid gap-6 xl:grid-cols-3">
+        {conGrafico && (
           <CardBox className="p-5 md:p-6 xl:col-span-2">
             <FinanzasChart datos={meses} />
           </CardBox>
         )}
 
         <SectionCard
-          titulo="Estado de clientes"
-          icono="tabler:chart-donut"
-          descripcion="Reparto del padrón actual"
-          className={veGastos && meses.length > 0 ? '' : 'xl:col-span-3'}
+          titulo="Por atender"
+          descripcion={cargandoPendientes ? undefined : conTrabajo.length ? 'Lo que espera a alguien del equipo' : 'Todo al día'}
+          sinRelleno
+          className={conGrafico ? '' : 'xl:col-span-3'}
         >
-          {stats ? (
-            <EstadoClientesDonut
-              total={stats.total_clientes}
-              segmentos={[
-                { etiqueta: 'Activos', valor: stats.clientes_activos, color: 'var(--success)' },
-                { etiqueta: 'Pendientes', valor: porAprobar ?? 0, color: 'var(--warning)' },
-                {
-                  etiqueta: 'Suspendidos',
-                  valor: stats.clientes_suspendidos,
-                  color: 'var(--error)',
-                },
-                { etiqueta: 'Otros', valor: otros, color: 'var(--muted-foreground)' },
-              ]}
-            />
+          {cargandoPendientes ? (
+            <LoadingState filas={4} />
           ) : (
-            <LoadingState filas={3} className="p-0" />
+            <ul className="divide-y divide-border border-t border-ld">
+              {pendientes.map((p) => {
+                const n = p.cuenta ?? 0;
+                return (
+                  <li key={p.a}>
+                    <Link
+                      to={p.a}
+                      className="flex min-h-12 items-center gap-3 px-5 py-2.5 transition-colors duration-150 hover:bg-surface-2"
+                    >
+                      <Icon icon={p.icono} width={18} className="shrink-0 text-muted-foreground" />
+                      <span className={`min-w-0 flex-1 truncate text-sm ${n ? 'font-medium' : 'text-muted-foreground'}`}>
+                        {p.texto}
+                      </span>
+                      <span
+                        className={`min-w-7 rounded-md px-1.5 py-0.5 text-center text-sm font-semibold tabular-nums ${
+                          !n ? 'text-muted-foreground' : p.urgente ? 'bg-lightwarning text-warning-text' : 'bg-muted text-foreground'
+                        }`}
+                      >
+                        {n}
+                      </span>
+                      <Icon icon="tabler:chevron-right" width={16} className="shrink-0 text-muted-foreground" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </SectionCard>
       </div>
 
-      {/* ── Movimientos + accesos rápidos ────────────────────────────────── */}
-      <div className="grid gap-4 xl:grid-cols-3">
+      {/* ── Movimientos + estado de clientes ─────────────────────────────── */}
+      <div className="grid gap-6 xl:grid-cols-3">
         <SectionCard
-          titulo="Último movimiento"
-          icono="tabler:history"
-          descripcion="Activaciones, cortes y pagos recientes"
+          titulo="Últimos movimientos"
+          descripcion="Activaciones, cortes y pagos"
           className="xl:col-span-2"
           sinRelleno
           extra={
             veClientes && (
-              <Link
-                to="/clientes"
-                className="transition-ui inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-              >
+              <Link to="/clientes/fibra" className="text-sm font-medium text-primary-text hover:underline">
                 Ver clientes
-                <Icon icon="tabler:arrow-right" width={15} />
               </Link>
             )
           }
@@ -282,46 +278,29 @@ const Dashboard = () => {
             <LoadingState filas={4} />
           ) : movimientos.length === 0 ? (
             <EmptyState
-              icono="tabler:history-off"
+              icono="tabler:history"
               titulo="Todavía no hay movimientos"
               descripcion="Las activaciones, cortes y pagos aparecerán aquí en cuanto ocurran."
             />
           ) : (
-            <ul className="px-5 pb-5">
+            <ul className="divide-y divide-border border-t border-ld">
               {movimientos.map((m) => {
-                const tipo = TIPO_PUNTO[m.tipo] ?? {
-                  texto: m.tipo,
-                  color: 'var(--muted-foreground)',
-                };
+                const tipo = TIPO_PUNTO[m.tipo] ?? { texto: m.tipo, color: 'var(--muted-foreground)' };
                 return (
-                  <li
-                    key={m.id}
-                    className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-ld/60 py-3 last:border-0"
-                  >
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">
-                      {iniciales(m.cliente_nombre)}
-                    </span>
+                  <li key={m.id} className="flex items-start gap-3 px-5 py-3">
+                    <span
+                      className="mt-1.5 size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: tipo.color }}
+                      aria-hidden="true"
+                    />
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate font-medium">{m.cliente_nombre}</span>
-                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span
-                            className="size-2 rounded-full"
-                            style={{ backgroundColor: tipo.color }}
-                            aria-hidden="true"
-                          />
-                          {tipo.texto}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-sm text-muted-foreground">{m.descripcion}</p>
+                      <p className="text-sm">
+                        <span className="font-medium">{m.cliente_nombre}</span>
+                        <span className="text-muted-foreground"> · {tipo.texto}</span>
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{m.descripcion}</p>
                     </div>
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {new Date(m.creado_en).toLocaleDateString('es-PE', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </span>
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{fecha(m.creado_en)}</span>
                   </li>
                 );
               })}
@@ -329,30 +308,20 @@ const Dashboard = () => {
           )}
         </SectionCard>
 
-        <SectionCard titulo="Acciones rápidas" icono="tabler:bolt">
-          <div className="flex flex-col gap-2">
-            {accesos.map((a) => (
-              <Link
-                key={a.a}
-                to={a.a}
-                className={`transition-ui group flex items-center gap-3 rounded-xl border px-3.5 py-3 ${
-                  a.destacado
-                    ? 'border-transparent bg-brand text-brand-foreground hover:brightness-105'
-                    : 'border-ld hover:border-primary/40 hover:bg-lightprimary'
-                }`}
-              >
-                <span
-                  className={`grid size-9 shrink-0 place-items-center rounded-lg ${
-                    a.destacado ? 'bg-black/10' : 'bg-muted group-hover:bg-card'
-                  }`}
-                >
-                  <Icon icon={a.icono} width={18} />
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.titulo}</span>
-                <Icon icon="tabler:chevron-right" width={16} className="shrink-0 opacity-60" />
-              </Link>
-            ))}
-          </div>
+        <SectionCard titulo="Estado de clientes" descripcion={stats ? `${stats.total_clientes} en el padrón` : undefined}>
+          {stats ? (
+            <EstadoClientesDonut
+              total={stats.total_clientes}
+              segmentos={[
+                { etiqueta: 'Activos', valor: stats.clientes_activos, color: 'var(--success)' },
+                { etiqueta: 'Por aprobar', valor: porAprobar ?? 0, color: 'var(--warning)' },
+                { etiqueta: 'Suspendidos', valor: stats.clientes_suspendidos, color: 'var(--error)' },
+                { etiqueta: 'Otros', valor: otros, color: 'var(--muted-foreground)' },
+              ]}
+            />
+          ) : (
+            <LoadingState filas={3} className="p-0" />
+          )}
         </SectionCard>
       </div>
     </div>

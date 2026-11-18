@@ -99,7 +99,7 @@ const CajaNapZona = () => {
           <Icon icon="tabler:arrow-left" height={20} />
         </Button>
         <div className="min-w-0">
-          <h1 className="text-2xl truncate">{zona?.nombre ?? 'Cargando…'}</h1>
+          <h1 className="text-[26px] font-semibold leading-tight truncate">{zona?.nombre ?? 'Cargando…'}</h1>
           <p className="text-sm text-muted-foreground">Cajas NAP de esta zona</p>
         </div>
         <Button onClick={() => setOpen(true)} className="ml-auto whitespace-nowrap">

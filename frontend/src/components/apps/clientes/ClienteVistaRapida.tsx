@@ -6,6 +6,7 @@ import { Button } from 'src/components/ui/button';
 import { getCliente, type ClienteListItem, type ClienteOut } from 'src/lib/clientes';
 import { listEvidenciasCliente, getEvidenciaBlobUrl } from 'src/lib/evidencias';
 
+import { soles } from 'src/lib/formato';
 /** Cuántos días faltan (o sobran) para el vencimiento. */
 function diasHasta(fecha: string | null): number | null {
   if (!fecha) return null;
@@ -133,7 +134,7 @@ const ClienteVistaRapida = ({
           </span>
           {cliente.monto_mensual != null && (
             <span className="rounded-md bg-muted px-2.5 py-1 text-xs font-semibold">
-              S/ {cliente.monto_mensual.toFixed(2)} al mes
+              {soles(cliente.monto_mensual)} al mes
             </span>
           )}
           {dias !== null && (

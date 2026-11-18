@@ -56,6 +56,7 @@ import {
 } from 'src/lib/pagos';
 import { reactivarCliente, darCompromisoPago, type ClienteListItem } from 'src/lib/clientes';
 
+import { soles, fecha } from 'src/lib/formato';
 const MESES = [
   { value: '01', label: 'Enero' },
   { value: '02', label: 'Febrero' },
@@ -381,7 +382,7 @@ const Pagos = () => {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center flex-wrap gap-3">
-        <h1 className="text-2xl">Pagos</h1>
+        <h1 className="text-[26px] font-semibold leading-tight">Pagos</h1>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Baja el historial completo, no solo la página que se ve, y
               respetando los filtros que estén puestos en la tabla. */}
@@ -404,7 +405,7 @@ const Pagos = () => {
         <StatCard
           icono="tabler:cash"
           etiqueta="Recaudado este mes"
-          valor={`S/ ${ingresosMes.toFixed(2)}`}
+          valor={soles(ingresosMes)}
           tono="success"
         />
         <StatCard
@@ -416,7 +417,7 @@ const Pagos = () => {
         <StatCard
           icono="tabler:receipt-2"
           etiqueta="Gastos este mes"
-          valor={`S/ ${gastosMes.toFixed(2)}`}
+          valor={soles(gastosMes)}
           tono="error"
         />
       </div>
@@ -471,7 +472,7 @@ const Pagos = () => {
                     </TableCell>
                     <TableCell className="text-sm">{c.zona?.nombre ?? '—'}</TableCell>
                     <TableCell className="text-sm">{c.plan?.nombre ?? '—'}</TableCell>
-                    <TableCell className="text-sm">{c.monto_mensual != null ? `S/ ${c.monto_mensual.toFixed(2)}` : '—'}</TableCell>
+                    <TableCell className="text-sm">{c.monto_mensual != null ? soles(c.monto_mensual) : '—'}</TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1 items-start">
                         {c.categoria === 'atrasado' && (
@@ -486,13 +487,13 @@ const Pagos = () => {
                         )}
                         {c.categoria === 'pausado' && (
                           <Badge className="bg-lightinfo text-info-text rounded-md">
-                            Pausado hasta {c.pausa_hasta ?? '—'}
+                            Pausado hasta {fecha(c.pausa_hasta)}
                           </Badge>
                         )}
                         {c.compromiso_pago_hasta && (
                           <Badge className="bg-lightprimary text-primary-text rounded-md">
                             <Icon icon="tabler:handshake" height={12} className="mr-1" />
-                            Compromiso hasta {c.compromiso_pago_hasta}
+                            Compromiso hasta {fecha(c.compromiso_pago_hasta)}
                           </Badge>
                         )}
                       </div>
@@ -634,12 +635,12 @@ const Pagos = () => {
                     </button>
                   </TableCell>
                   <TableCell className="text-sm">{p.mes_pagado}</TableCell>
-                  <TableCell className="text-sm">S/ {p.monto.toFixed(2)}</TableCell>
+                  <TableCell className="text-sm">{soles(p.monto)}</TableCell>
                   <TableCell className="text-sm capitalize">{p.metodo_pago}</TableCell>
                   <TableCell>
                     <Badge className={`${ESTADO_BADGE[p.estado]} rounded-md`}>{ESTADO_LABEL[p.estado]}</Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{p.fecha_pago}</TableCell>
+                  <TableCell className="text-sm">{fecha(p.fecha_pago)}</TableCell>
                   <TableCell>
                     {p.ruta_comprobante ? (
                       <Button
@@ -766,10 +767,10 @@ const Pagos = () => {
                 required
                 hint={
                   mesesNum > 1
-                    ? `${mesesNum} × S/ ${cuotaCliente.toFixed(2)}`
+                    ? `${mesesNum} × ${soles(cuotaCliente)}`
                     : clienteSel?.monto_mensual_detalle && clienteSel.monto_mensual_detalle.length > 1
                       ? clienteSel.monto_mensual_detalle
-                          .map((d) => `${d.concepto}: S/ ${d.monto.toFixed(2)}`)
+                          .map((d) => `${d.concepto}: ${soles(d.monto)}`)
                           .join('  +  ')
                       : undefined
                 }
@@ -805,7 +806,7 @@ const Pagos = () => {
                 <span
                   className={`text-xl font-bold tabular-nums ${totalAPagar > 0 ? 'text-success-text' : 'text-error-text'}`}
                 >
-                  S/ {totalAPagar.toFixed(2)}
+                  {soles(totalAPagar)}
                 </span>
               </div>
             </FormSection>
@@ -944,7 +945,7 @@ const Pagos = () => {
         open={!!borrando}
         onOpenChange={(v) => !v && setBorrando(null)}
         title="Eliminar pago"
-        description={borrando ? `¿Eliminar el pago de ${borrando.cliente?.nombre ?? 'este cliente'} por S/ ${borrando.monto.toFixed(2)}?` : undefined}
+        description={borrando ? `¿Eliminar el pago de ${borrando.cliente?.nombre ?? 'este cliente'} por ${soles(borrando.monto)}?` : undefined}
         onConfirm={handleEliminar}
       />
     </div>

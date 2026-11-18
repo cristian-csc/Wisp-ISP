@@ -59,7 +59,7 @@ const StatusBadge = ({ estado, conIcono = true, className = '' }: Props) => {
   };
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${e.clase} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ${e.clase} ${className}`}
     >
       {conIcono && <Icon icon={e.icono} width={14} className="shrink-0" />}
       {e.texto}

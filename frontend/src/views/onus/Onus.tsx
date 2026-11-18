@@ -152,13 +152,20 @@ const Onus = () => {
   }
 
   return (
-    <CardBox>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Inventario de ONUs</h2>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[26px] font-semibold leading-tight">Inventario de ONUs</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Equipos en almacén, asignados a técnicos e instalados.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
         {/* Atención al cliente consulta el inventario para saber si hay
             equipo disponible; darlo de alta o darlo de baja es de almacén. */}
         {puedeGestionar && <Button onClick={() => setOpenCreate(true)}>Registrar ONU</Button>}
+        </div>
       </div>
+
+      <CardBox className="gap-0 overflow-hidden !p-0">
 
       <Table>
         <TableHeader>
@@ -362,7 +369,8 @@ const Onus = () => {
         description={borrando ? `¿Eliminar la ONU "${borrando.numero_serie}" del inventario?` : undefined}
         onConfirm={handleEliminar}
       />
-    </CardBox>
+      </CardBox>
+    </div>
   );
 };
 

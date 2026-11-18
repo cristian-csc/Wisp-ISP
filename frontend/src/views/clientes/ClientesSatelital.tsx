@@ -47,6 +47,7 @@ import {
 } from 'src/lib/clientes';
 import { enviarAvisoCobro } from 'src/lib/whatsapp';
 
+import { soles, fecha } from 'src/lib/formato';
 const ESTADO_LABEL: Record<EstadoCliente, string> = {
   pendiente_aprobacion: 'Pendiente',
   rechazado: 'Rechazado',
@@ -228,14 +229,14 @@ const ClientesSatelital = () => {
 
   function margen(p: Plan | null): string {
     if (!p || p.costo_proveedor == null) return '';
-    return ` (ganancia S/ ${(p.precio - p.costo_proveedor).toFixed(2)})`;
+    return ` (ganancia ${soles((p.precio - p.costo_proveedor))})`;
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl">Clientes Satelital</h1>
+          <h1 className="text-[26px] font-semibold leading-tight">Clientes Satelital</h1>
           <p className="text-sm text-muted-foreground">
             Clientes con servicio satelital revendido. Solo admite recordatorios de pago; el servicio no se puede suspender desde el sistema.
           </p>
@@ -283,7 +284,7 @@ const ClientesSatelital = () => {
                   <span className="text-xs text-success">{margen(c.plan)}</span>
                 </TableCell>
                 <TableCell><Badge className={`${ESTADO_BADGE[c.estado]} rounded-md`}>{ESTADO_LABEL[c.estado]}</Badge></TableCell>
-                <TableCell className="text-sm text-muted-foreground">{c.fecha_vencimiento ?? '—'}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{fecha(c.fecha_vencimiento)}</TableCell>
                 <TableCell className="text-end">
                   <TooltipProvider>
                     <div className="flex justify-end gap-1">

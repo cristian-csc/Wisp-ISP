@@ -39,6 +39,7 @@ import {
   type Gasto, type GastoInput,
 } from 'src/lib/gastos';
 
+import { soles, fecha } from 'src/lib/formato';
 const MESES = [
   { value: '01', label: 'Enero' }, { value: '02', label: 'Febrero' }, { value: '03', label: 'Marzo' },
   { value: '04', label: 'Abril' }, { value: '05', label: 'Mayo' }, { value: '06', label: 'Junio' },
@@ -183,8 +184,8 @@ const GastoZonaDetail = () => {
               <TableCell className="max-w-xs truncate">{g.descripcion}</TableCell>
               <TableCell><Badge className="bg-lightprimary text-primary-text rounded-md">{g.categoria}</Badge></TableCell>
               <TableCell className="text-sm text-muted-foreground">{g.proveedor ?? '—'}</TableCell>
-              <TableCell className="text-sm">{g.fecha}</TableCell>
-              <TableCell className="font-medium">S/ {g.monto.toFixed(2)}</TableCell>
+              <TableCell className="text-sm">{fecha(g.fecha)}</TableCell>
+              <TableCell className="font-medium">{soles(g.monto)}</TableCell>
               <TableCell className="text-end">
                 <div className="flex justify-end gap-1">
                   <Button variant="ghost" size="icon" onClick={() => abrirEditar(g)}>
@@ -210,7 +211,7 @@ const GastoZonaDetail = () => {
           <Icon icon="tabler:arrow-left" height={20} />
         </Button>
         <div className="min-w-0">
-          <h1 className="text-2xl truncate">{esGeneral ? 'General' : zona?.nombre ?? 'Cargando…'}</h1>
+          <h1 className="text-[26px] font-semibold leading-tight truncate">{esGeneral ? 'General' : zona?.nombre ?? 'Cargando…'}</h1>
           <p className="text-sm text-muted-foreground">{esGeneral ? 'Gastos sin zona asignada' : 'Gastos de esta zona'}</p>
         </div>
         <div className="ml-auto flex flex-wrap justify-end gap-2">
@@ -233,11 +234,11 @@ const GastoZonaDetail = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <CardBox className="p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Fijos este mes</p>
-          <p className="text-xl font-bold text-info">S/ {totalFijo.toFixed(2)}</p>
+          <p className="text-xl font-bold text-info">{soles(totalFijo)}</p>
         </CardBox>
         <CardBox className="p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Variables / otros este mes</p>
-          <p className="text-xl font-bold text-warning">S/ {totalVariable.toFixed(2)}</p>
+          <p className="text-xl font-bold text-warning">{soles(totalVariable)}</p>
         </CardBox>
       </div>
 

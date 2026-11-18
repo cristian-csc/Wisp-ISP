@@ -67,6 +67,7 @@ import ReciboDialog from 'src/components/apps/pagos/ReciboDialog';
 import CarritoMeses from 'src/components/apps/pagos/CarritoMeses';
 import { puedeVerUrl, ROL_LABEL } from 'src/lib/permisos';
 
+import { fecha } from 'src/lib/formato';
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 const MES_ESTADO_LABEL: Record<string, string> = {
@@ -700,7 +701,7 @@ const ClienteDetail = () => {
               </p>
             )}
             {cliente.estado === 'pausado' && cliente.pausa_hasta && (
-              <p className="text-xs text-muted-foreground">Pausado hasta {cliente.pausa_hasta}</p>
+              <p className="text-xs text-muted-foreground">Pausado hasta {fecha(cliente.pausa_hasta)}</p>
             )}
           </div>
         </div>
@@ -738,7 +739,7 @@ const ClienteDetail = () => {
           etiqueta="Estado de servicio"
           valor={ESTADO_LABEL[cliente.estado]}
           tono={cliente.estado === 'activo' ? 'success' : cliente.estado === 'suspendido' ? 'error' : 'info'}
-          nota={cliente.compromiso_pago_hasta ? `Compromiso hasta ${cliente.compromiso_pago_hasta}` : undefined}
+          nota={cliente.compromiso_pago_hasta ? `Compromiso hasta ${fecha(cliente.compromiso_pago_hasta)}` : undefined}
         />
       </div>
 
@@ -938,7 +939,7 @@ const ClienteDetail = () => {
                             {p.id}
                           </TableCell>
                           <TableCell>{p.mes_pagado}</TableCell>
-                          <TableCell>{p.fecha_pago ?? '—'}</TableCell>
+                          <TableCell>{fecha(p.fecha_pago)}</TableCell>
                           <TableCell className="font-semibold tabular-nums">
                             {soles(p.monto)}
                           </TableCell>
@@ -1235,12 +1236,12 @@ const ClienteDetail = () => {
             )}
             {cliente.compromiso_pago_hasta && (
               <p className="mt-2 rounded-lg bg-lightwarning px-3 py-2 text-xs text-warning-text">
-                Compromiso de pago hasta {cliente.compromiso_pago_hasta}
+                Compromiso de pago hasta {fecha(cliente.compromiso_pago_hasta)}
               </p>
             )}
             {cliente.pausa_hasta && (
               <p className="mt-2 rounded-lg bg-lightinfo px-3 py-2 text-xs text-info-text">
-                En pausa hasta {cliente.pausa_hasta}
+                En pausa hasta {fecha(cliente.pausa_hasta)}
               </p>
             )}
           </SectionCard>
@@ -1446,7 +1447,7 @@ const ClienteDetail = () => {
                   <SelectContent>
                     {planes.map((p) => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        {p.nombre} — S/ {p.precio.toFixed(2)}
+                        {p.nombre} — {soles(p.precio)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1679,7 +1680,7 @@ const ClienteDetail = () => {
             <FormField
               label="Subtotal (S/)"
               htmlFor="pagoSubtotal"
-              hint={pagoMesesNum > 1 ? `${pagoMesesNum} × S/ ${pagoCuota.toFixed(2)}` : undefined}
+              hint={pagoMesesNum > 1 ? `${pagoMesesNum} × ${soles(pagoCuota)}` : undefined}
             >
               <Input
                 id="pagoSubtotal"
@@ -1711,7 +1712,7 @@ const ClienteDetail = () => {
               <span
                 className={`text-xl font-bold tabular-nums ${pagoTotal > 0 ? 'text-success-text' : 'text-error-text'}`}
               >
-                S/ {pagoTotal.toFixed(2)}
+                {soles(pagoTotal)}
               </span>
             </div>
           </FormSection>

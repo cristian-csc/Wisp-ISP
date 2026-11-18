@@ -39,6 +39,7 @@ import {
 } from 'src/lib/planes';
 import { listZonas, type Zona } from 'src/lib/zonas';
 
+import { soles } from 'src/lib/formato';
 const TIPO_LABEL: Record<TipoConexion, string> = {
   fibra_optica: 'Fibra óptica',
   inalambrico: 'Inalámbrico',
@@ -265,9 +266,13 @@ const Planes = () => {
   }
 
   return (
-    <CardBox>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Planes</h2>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[26px] font-semibold leading-tight">Planes</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Velocidades y precios que se ofrecen a los clientes.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-2">
           <Button variant="outline" onClick={comprobarEnRouters} disabled={comprobando} className="gap-2">
             <Icon
@@ -279,7 +284,10 @@ const Planes = () => {
           </Button>
           <Button onClick={abrirNuevo}>Nuevo plan</Button>
         </div>
+        </div>
       </div>
+
+      <CardBox className="gap-0 overflow-hidden !p-0">
 
 
       <Table>
@@ -306,9 +314,9 @@ const Planes = () => {
                 {p.bajada_mbps}M / {p.subida_mbps}M
               </TableCell>
               <TableCell>
-                S/ {p.precio.toFixed(2)}
+                {soles(p.precio)}
                 {p.tipo_conexion === 'satelital' && p.costo_proveedor != null && (
-                  <p className="text-xs text-success">ganancia S/ {(p.precio - p.costo_proveedor).toFixed(2)}</p>
+                  <p className="text-xs text-success">ganancia {soles((p.precio - p.costo_proveedor))}</p>
                 )}
               </TableCell>
               <TableCell>
@@ -653,7 +661,7 @@ const Planes = () => {
                   />
                   {form.precio && form.costoProveedor && (
                     <p className="mt-1.5 text-xs font-medium text-success-text">
-                      Ganancia: S/ {(Number(form.precio) - Number(form.costoProveedor)).toFixed(2)}
+                      Ganancia: {soles((Number(form.precio) - Number(form.costoProveedor)))}
                     </p>
                   )}
                 </FormField>
@@ -709,7 +717,8 @@ const Planes = () => {
         description={borrando ? `¿Eliminar el plan "${borrando.nombre}"? Esta acción no se puede deshacer.` : undefined}
         onConfirm={handleEliminar}
       />
-    </CardBox>
+      </CardBox>
+    </div>
   );
 };
 
