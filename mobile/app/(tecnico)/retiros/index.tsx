@@ -4,6 +4,8 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getOrdenesRetiro, OrdenRetiro } from '@/services/api';
 import { TecnicoNav } from '@/components/TecnicoNav';
+import { ESPACIO_BARRA } from '@/components/BarraInferior';
+import { BotonCuenta } from '@/components/BotonesCabecera';
 import { COLORS } from '@/theme/colors';
 
 const ESTADO_LABEL: Record<OrdenRetiro['estado'], string> = {
@@ -65,7 +67,7 @@ export default function RetirosScreen() {
   useEffect(() => { load(); }, [load]);
 
   const header = (
-    <Stack.Screen options={{ title: 'Órdenes de retiro', headerLeft: () => null }} />
+    <Stack.Screen options={{ title: 'Órdenes de retiro', headerLeft: () => null, headerRight: () => <BotonCuenta /> }} />
   );
 
   if (loading) return (
@@ -86,7 +88,7 @@ export default function RetirosScreen() {
         renderItem={({ item }) => (
           <OrdenCard item={item} onPress={() => router.push(`/(tecnico)/retiros/${item.id}` as any)} />
         )}
-        contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: ESPACIO_BARRA }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.dark} />}
         ListHeaderComponent={<Text style={st.listaHeader}>{pendientes.length} retiro{pendientes.length !== 1 ? 's' : ''} pendiente{pendientes.length !== 1 ? 's' : ''}</Text>}
         ListEmptyComponent={

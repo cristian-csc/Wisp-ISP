@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/theme/colors';
 
 /**
- * Las piezas que repiten todas las pantallas: la cabecera azul marino, las
+ * Las piezas que repiten todas las pantallas: la cabecera negro, las
  * tarjetas claras y los botones.
  *
  * Antes cada pantalla se pintaba sola y acababan pareciéndose de lejos pero
@@ -23,7 +23,7 @@ export function useTopeSeguro() {
 }
 
 /**
- * Cabecera azul marino.
+ * Cabecera negro.
  *
  * `compacta` es la de las pantallas de dentro: una línea con el título y el
  * botón de volver. Sin ella queda la grande, la de las pantallas principales,
@@ -49,7 +49,7 @@ export function Cabecera({
 
   return (
     <View style={[c.caja, { paddingTop: tope + (compacta ? 10 : 16) }]}>
-      {/* La hora y la batería en claro: debajo hay azul marino. */}
+      {/* La hora y la batería en claro: debajo hay negro. */}
       <StatusBar style="light" />
 
       <View style={c.filaTitulo}>

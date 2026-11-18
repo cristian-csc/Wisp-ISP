@@ -67,7 +67,7 @@ export default function PerfilScreen() {
               value={value}
               onChangeText={set}
               placeholder="••••••••"
-              placeholderTextColor="#CBD5E1"
+              placeholderTextColor={COLORS.placeholder}
               secureTextEntry
               keyboardType="default"
               maxLength={100}

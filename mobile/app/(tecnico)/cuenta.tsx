@@ -4,7 +4,6 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getClientes } from '@/services/api';
 import { CuentaScreen } from '@/components/CuentaScreen';
-import { TecnicoNav } from '@/components/TecnicoNav';
 import { COLORS } from '@/theme/colors';
 
 export default function TecnicoCuentaScreen() {
@@ -54,7 +53,6 @@ export default function TecnicoCuentaScreen() {
           <Ionicons name="chevron-forward" size={18} color={COLORS.mutedForeground} />
         </TouchableOpacity>
       </CuentaScreen>
-      <TecnicoNav />
     </View>
   );
 }

@@ -4,13 +4,14 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useFonts, Baloo2_500Medium, Baloo2_700Bold, Baloo2_800ExtraBold } from '@expo-google-fonts/baloo-2';
 import { SessionProvider, useSession, resetInactivity, clearInactivityTimer, seccionDeRol } from '@/hooks/useSession';
 import { AvisoHost } from '@/components/Aviso';
 
 const INACTIVITY_MS = 10 * 60 * 1000;
 
 function AppNavigator() {
-  const { session, loading, signOut } = useSession();
+  const { session, loading, onboardingPendiente, signOut } = useSession();
   const router = useRouter();
   const segments = useSegments();
   const lastActivityRef = useRef(Date.now());
@@ -25,11 +26,16 @@ function AppNavigator() {
       return;
     }
 
+    if (onboardingPendiente) {
+      if (segments[0] !== 'onboarding') router.replace('/onboarding' as any);
+      return;
+    }
+
     const seccionCorrecta = seccionDeRol(session.role);
     if (segments[0] !== seccionCorrecta) {
       router.replace(`/${seccionCorrecta}` as any);
     }
-  }, [session, loading, segments]);
+  }, [session, loading, onboardingPendiente, segments]);
 
   useEffect(() => {
     if (!session) return;
@@ -57,9 +63,14 @@ function AppNavigator() {
 }
 
 export default function RootLayout() {
+  // Si la letra no carga, la app sigue con la del sistema en vez de quedarse
+  // en blanco.
+  const [fuentesListas, errorFuentes] = useFonts({ Baloo2_500Medium, Baloo2_700Bold, Baloo2_800ExtraBold });
+  if (!fuentesListas && !errorFuentes) return null;
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* Clara: encima hay azul marino en todas las pantallas con sesion.
+      {/* Clara: encima hay negro en todas las pantallas con sesion.
           El login pinta su propio bloque oscuro arriba, asi que tambien. */}
       <StatusBar style="light" />
       <SafeAreaProvider>

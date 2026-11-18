@@ -1,13 +1,14 @@
 import { Stack } from 'expo-router';
 import { COLORS } from '@/theme/colors';
 import { JornadaProvider } from '@/hooks/useJornada';
+import { AccionesVendedora } from '@/components/BotonesCabecera';
 
 export default function VendedorLayout() {
   return (
     <JornadaProvider>
       <Stack
         screenOptions={{
-          // Azul marino en todas: antes unas pantallas tenian cabecera clara
+          // Negro en todas: antes unas pantallas tenian cabecera clara
           // y otras la oscura propia, y se notaba el salto al navegar.
           headerStyle: { backgroundColor: COLORS.surfaceDark },
           headerTintColor: COLORS.onDark,
@@ -21,13 +22,14 @@ export default function VendedorLayout() {
           options={{
             title: 'Mis Clientes',
             headerLeft: () => null,
+            headerRight: () => <AccionesVendedora />,
           }}
         />
-        <Stack.Screen name="nuevo-cliente" options={{ title: 'Nuevo Cliente', headerLeft: () => null }} />
+        <Stack.Screen name="nuevo-cliente" options={{ title: 'Nuevo Cliente', headerLeft: () => null, headerRight: () => <AccionesVendedora /> }} />
         <Stack.Screen name="cliente/[id]" options={{ title: 'Detalle' }} />
-        <Stack.Screen name="jornada" options={{ title: 'Jornada', headerLeft: () => null }} />
-        <Stack.Screen name="mapa" options={{ title: 'Cobertura de fibra', headerLeft: () => null }} />
-        <Stack.Screen name="cuenta" options={{ title: 'Mi Cuenta', headerLeft: () => null }} />
+        <Stack.Screen name="jornada" options={{ title: 'Jornada', headerLeft: () => null, headerRight: () => <AccionesVendedora /> }} />
+        <Stack.Screen name="mapa" options={{ title: 'Cobertura de fibra' }} />
+        <Stack.Screen name="cuenta" options={{ title: 'Mi cuenta' }} />
       </Stack>
     </JornadaProvider>
   );

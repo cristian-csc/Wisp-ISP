@@ -37,7 +37,7 @@ function textoRecibo(item: Pago, nombreCliente: string) {
 function ReciboModal({ item, nombreCliente, onClose }: { item: Pago | null; nombreCliente: string; onClose: () => void }) {
   if (!item) return null;
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible transparent statusBarTranslucent navigationBarTranslucent animationType="fade" onRequestClose={onClose}>
       <View style={s.modalBg}>
         <View style={s.ticket}>
           <Text style={s.ticketTitle}>WISP</Text>
@@ -87,7 +87,7 @@ function PagoCard({ item, onVerRecibo }: { item: Pago; onVerRecibo: () => void }
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={s.monto}>S/ {item.monto.toFixed(2)}</Text>
         <View style={s.pagadoBadge}>
-          <Ionicons name="checkmark-circle" size={11} color="#059669" />
+          <Ionicons name="checkmark-circle" size={11} color={COLORS.success} />
           <Text style={s.pagadoText}>Pagado</Text>
         </View>
         {item.numero_operacion && <Text style={s.ref}>N° operación: {item.numero_operacion}</Text>}
@@ -140,7 +140,7 @@ export default function MisPagosScreen() {
         : null}
       ListEmptyComponent={
         <View style={s.empty}>
-          <Ionicons name="file-tray-outline" size={44} color="#CBD5E1" />
+          <Ionicons name="file-tray-outline" size={44} color={COLORS.placeholder} />
           <Text style={s.emptyText}>Sin pagos registrados</Text>
         </View>
       }
@@ -161,14 +161,14 @@ const s = StyleSheet.create({
   fecha: { fontSize:12, color:COLORS.placeholder, marginTop:2 },
   metodo: { fontSize:12, color:COLORS.mutedForeground, marginTop:2 },
   monto: { fontSize:18, fontWeight:'900', color:COLORS.success },
-  pagadoBadge: { flexDirection:'row', alignItems:'center', gap:3, backgroundColor:'rgba(16,185,129,0.1)', borderRadius:8, paddingHorizontal:7, paddingVertical:3, marginTop:4 },
+  pagadoBadge: { flexDirection:'row', alignItems:'center', gap:3, backgroundColor:COLORS.lightsuccess, borderRadius:8, paddingHorizontal:7, paddingVertical:3, marginTop:4 },
   pagadoText: { fontSize:11, color:COLORS.success, fontWeight:'700' },
   ref: { fontSize:11, color:COLORS.placeholder, marginTop:4 },
   verRecibo: { fontSize:11, color: COLORS.dark, fontWeight:'700', marginTop:6 },
   empty: { alignItems:'center', marginTop:80 },
   emptyText: { color:COLORS.placeholder, marginTop:12, fontSize:15 },
 
-  modalBg: { flex:1, backgroundColor:'rgba(15,23,42,0.55)', justifyContent:'center', alignItems:'center', padding:24 },
+  modalBg: { flex:1, backgroundColor:COLORS.overlay, justifyContent:'center', alignItems:'center', padding:24 },
   ticket: { backgroundColor:COLORS.white, borderRadius:16, padding:20, width:'100%', maxWidth:340 },
   ticketTitle: { fontSize:16, fontWeight:'900', color:COLORS.dark, textAlign:'center' },
   ticketSub: { fontSize:12, color:COLORS.mutedForeground, textAlign:'center', marginTop:2, marginBottom:10 },

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getClientes, ClienteListItem, EstadoCliente } from '@/services/api';
 import { VendedorNav } from '@/components/VendedorNav';
+import { ESPACIO_BARRA } from '@/components/BarraInferior';
 import { COLORS } from '@/theme/colors';
 
 const ESTADO_LABEL: Record<EstadoCliente, string> = {
@@ -78,7 +79,7 @@ export default function VendedorClientesScreen() {
         renderItem={({ item }) => (
           <ClienteCard item={item} onPress={() => router.push(`/(vendedor)/cliente/${item.id}` as any)} />
         )}
-        contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: ESPACIO_BARRA }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.dark} />}
         ListHeaderComponent={
           <View style={st.statsRow}>

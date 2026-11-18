@@ -253,10 +253,10 @@ const s = StyleSheet.create({
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
-  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)' },
+  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: COLORS.surfaceDarkSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 2, borderColor: COLORS.brand },
   avatarText: { color: COLORS.white, fontSize: 26, fontWeight: '900' },
   nombre: { fontSize: 19, fontWeight: '800', color: COLORS.white },
-  rolBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 8 },
+  rolBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.surfaceDarkSoft, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 8 },
   rolText: { fontSize: 12, fontWeight: '700', color: COLORS.white },
 
   infoCard: { backgroundColor: COLORS.card, borderRadius: 16, marginHorizontal: 20, marginTop: -16, padding: 6, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, elevation: 3 },
@@ -277,7 +277,7 @@ const s = StyleSheet.create({
   footer: { alignItems: 'center', gap: 6, paddingBottom: 20, paddingTop: 20 },
   footerText: { fontSize: 11, color: COLORS.mutedForeground, fontWeight: '600' },
 
-  overlay: { flex: 1, backgroundColor: 'rgba(28,37,54,0.5)', justifyContent: 'center', padding: 24 },
+  overlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'center', padding: 24 },
   modalCard: { backgroundColor: COLORS.card, borderRadius: 16, padding: 20 },
   modalTitle: { fontSize: 15, fontWeight: '700', color: COLORS.dark, marginBottom: 14 },
   modalLabel: { fontSize: 12, fontWeight: '700', color: COLORS.mutedForeground, marginBottom: 6, marginTop: 10 },

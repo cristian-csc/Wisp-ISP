@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/logo-wisp.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "android": {
       "package": "com.wispfibra.app",
@@ -45,7 +45,8 @@
         {
           "locationWhenInUsePermission": "WISP necesita tu ubicación para marcar dónde está la vivienda del cliente al registrarlo."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "router": {},

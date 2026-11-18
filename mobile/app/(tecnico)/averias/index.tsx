@@ -4,6 +4,8 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getAverias, iniciarAveria, Averia } from '@/services/api';
 import { TecnicoNav } from '@/components/TecnicoNav';
+import { ESPACIO_BARRA } from '@/components/BarraInferior';
+import { BotonCuenta, BotonIcono } from '@/components/BotonesCabecera';
 import { COLORS } from '@/theme/colors';
 import { alerta } from '@/components/Aviso';
 
@@ -76,9 +78,10 @@ export default function AveriasScreen() {
         title: 'Averías',
         headerLeft: () => null,
         headerRight: () => (
-          <TouchableOpacity onPress={() => router.push('/(tecnico)/averias/nueva')} style={{ paddingHorizontal: 4 }}>
-            <Ionicons name="add-circle-outline" size={24} color={COLORS.mutedForeground} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BotonIcono icono="add" etiqueta="Reportar avería" onPress={() => router.push('/(tecnico)/averias/nueva')} />
+            <BotonCuenta />
+          </View>
         ),
       }}
     />
@@ -104,7 +107,7 @@ export default function AveriasScreen() {
             onPress={() => router.push(`/(tecnico)/averias/${item.id}` as any)}
           />
         )}
-        contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: ESPACIO_BARRA }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.dark} />}
         ListHeaderComponent={<Text style={st.listaHeader}>{averias.length} avería{averias.length !== 1 ? 's' : ''} en atención</Text>}
         ListEmptyComponent={

@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getClientes, noInstalarCliente, ClienteListItem } from '@/services/api';
 import { TecnicoNav } from '@/components/TecnicoNav';
+import { ESPACIO_BARRA } from '@/components/BarraInferior';
+import { BotonCuenta } from '@/components/BotonesCabecera';
 import { PromptModal } from '@/components/PromptModal';
 import { COLORS } from '@/theme/colors';
 import { Cabecera, AccionCabecera, Rotulo, UI } from '@/components/Pantalla';
@@ -97,7 +99,7 @@ export default function TecnicoOrdenesScreen() {
           de abajo. Dentro de ListHeaderComponent se desplazaba con el
           contenido y el tecnico perdia de vista el acceso a Escanear justo
           cuando mas lo usa, con la lista larga. */}
-      <Cabecera titulo="Órdenes de hoy">
+      <Cabecera titulo="Órdenes de hoy" derecha={<BotonCuenta />}>
         <View style={st.heroNumeroFila}>
           <Text style={st.heroValue}>{ordenes.length}</Text>
           <Text style={st.heroUnidad}>
@@ -137,7 +139,7 @@ export default function TecnicoOrdenesScreen() {
         )}
         // El relleno de abajo deja ver entera la ultima tarjeta por encima de
         // la barra inferior, que flota sobre la lista.
-        contentContainerStyle={{ paddingBottom: 28 }}
+        contentContainerStyle={{ paddingBottom: ESPACIO_BARRA }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.brand} />}
         ListHeaderComponent={ordenes.length > 0 ? <Rotulo>POR INSTALAR</Rotulo> : null}
         ListEmptyComponent={

@@ -57,9 +57,9 @@ export function buildMapHtml(
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
     .capa-toggle { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); overflow: hidden; display: flex; font-family: sans-serif; }
-    .capa-toggle button { border: none; background: white; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #64748B; }
+    .capa-toggle button { border: none; background: white; padding: 8px 12px; font-size: 12px; font-weight: 600; color: ${COLORS.mutedForeground}; }
     .capa-toggle button.activo { background: ${COLORS.primary}; color: white; }
-    .leyenda { position: absolute; bottom: 10px; right: 10px; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); padding: 8px 10px; font-family: sans-serif; font-size: 11px; color: #334155; line-height: 1.7; }
+    .leyenda { position: absolute; bottom: 10px; right: 10px; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); padding: 8px 10px; font-family: sans-serif; font-size: 11px; color: ${COLORS.sidebarText}; line-height: 1.7; }
     .leyenda i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
   </style>
 </head>
@@ -74,7 +74,7 @@ export function buildMapHtml(
       ? `<div class="leyenda">
     <div><i style="background:${COLORS.success}"></i>Con bornes libres</div>
     <div><i style="background:${COLORS.error}"></i>Caja llena</div>
-    <div style="color:#64748B">Círculo = ${radioM} m de alcance</div>
+    <div style="color:${COLORS.mutedForeground}">Círculo = ${radioM} m de alcance</div>
   </div>`
       : ''
   }

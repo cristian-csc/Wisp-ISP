@@ -5,6 +5,7 @@ import { getZonas } from '@/services/api';
 import { SelectorZona } from '@/components/SelectorZona';
 import { useJornada } from '@/hooks/useJornada';
 import { VendedorNav } from '@/components/VendedorNav';
+import { ESPACIO_BARRA } from '@/components/BarraInferior';
 import { COLORS } from '@/theme/colors';
 import { alerta } from '@/components/Aviso';
 
@@ -96,7 +97,7 @@ export default function JornadaScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: ESPACIO_BARRA }} showsVerticalScrollIndicator={false}>
       <View style={[s.hero, activa && s.heroActiva]}>
         <View style={s.heroIconWrap}>
           <Ionicons name={activa ? 'navigate' : 'walk'} size={30} color={COLORS.white} />
@@ -136,7 +137,7 @@ export default function JornadaScreen() {
             // puso directamente desde la web, o porque ya le reintegraron un
             // reclamo anterior. En ambos casos no tiene nada que reportar.
             <View style={[s.reclamoBadge, s.reclamoBadgeOk]}>
-              <Ionicons name="checkmark-circle" size={15} color="#059669" />
+              <Ionicons name="checkmark-circle" size={15} color={COLORS.success} />
               <Text style={[s.reclamoBadgeText, { color: COLORS.success }]}>
                 {jornada.reclamo_reintegrado
                   ? `Pasaje reintegrado — S/ ${jornada.monto_pasaje.toFixed(2)}`
@@ -252,7 +253,7 @@ const s = StyleSheet.create({
     borderBottomRightRadius: 28,
   },
   heroActiva: { backgroundColor: COLORS.success },
-  heroIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 14, borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)' },
+  heroIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.surfaceDarkSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 14, borderWidth: 2, borderColor: COLORS.brand },
   heroTitle: { fontSize: 19, fontWeight: '800', color: COLORS.white },
   heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 6, textAlign: 'center', lineHeight: 18 },
 
@@ -278,10 +279,10 @@ const s = StyleSheet.create({
   reclamoLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, alignSelf: 'flex-start' },
   reclamoLinkText: { fontSize: 12, fontWeight: '700', color: COLORS.warning },
   reclamoBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, backgroundColor: COLORS.lightwarning, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
-  reclamoBadgeOk: { backgroundColor: 'rgba(16,185,129,0.1)' },
+  reclamoBadgeOk: { backgroundColor: COLORS.lightsuccess },
   reclamoBadgeText: { fontSize: 12, fontWeight: '700', color: COLORS.warning, flexShrink: 1 },
 
-  overlay: { flex: 1, backgroundColor: 'rgba(28,37,54,0.5)', justifyContent: 'center', padding: 24 },
+  overlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'center', padding: 24 },
   modalCard: { backgroundColor: COLORS.card, borderRadius: 16, padding: 20 },
   modalTitle: { fontSize: 15, fontWeight: '800', color: COLORS.dark, marginBottom: 6 },
   modalHint: { fontSize: 12, color: COLORS.mutedForeground, marginBottom: 14, lineHeight: 17 },

@@ -6,7 +6,7 @@ export default function ClienteLayout() {
   return (
     <Tabs
       screenOptions={{
-        // Azul marino en todas: antes unas pantallas tenian cabecera clara
+        // Negro en todas: antes unas pantallas tenian cabecera clara
         // y otras la oscura propia, y se notaba el salto al navegar.
         headerStyle: { backgroundColor: COLORS.surfaceDark },
         headerTintColor: COLORS.onDark,

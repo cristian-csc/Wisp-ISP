@@ -102,7 +102,7 @@ const s = StyleSheet.create({
   estadoBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   estadoText: { fontSize: 14, fontWeight: '700' },
-  motivoCard: { backgroundColor: COLORS.lighterror, borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)' },
+  motivoCard: { backgroundColor: COLORS.lighterror, borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: COLORS.lighterror },
   motivoTitle: { fontSize: 10, fontWeight: '700', color: COLORS.error, letterSpacing: 1.5, marginBottom: 6 },
   motivoText: { fontSize: 13, color: COLORS.dark, lineHeight: 19 },
   card: { backgroundColor: COLORS.card, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 16, marginBottom: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },

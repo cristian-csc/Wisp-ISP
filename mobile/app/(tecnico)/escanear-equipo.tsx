@@ -292,7 +292,7 @@ export default function EscanearEquipoScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  infoCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: COLORS.muted, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(93,135,255,0.25)' },
+  infoCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: COLORS.muted, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: COLORS.lightprimary },
   infoText: { flex: 1, fontSize: 13, color: COLORS.dark, lineHeight: 19 },
   label: { fontSize: 11, fontWeight: '800', color: COLORS.dark, letterSpacing: 1.2, marginBottom: 6, marginTop: 14 },
   row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
@@ -342,5 +342,5 @@ const sc = StyleSheet.create({
   permText: { color: COLORS.white, textAlign: 'center', fontSize: 14 },
   permBtn: { backgroundColor: COLORS.dark, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
   permBtnText: { color: COLORS.white, fontWeight: '700' },
-  cancelText: { color: '#9CA3AF', fontSize: 13, marginTop: 4 },
+  cancelText: { color: COLORS.onDarkMuted, fontSize: 13, marginTop: 4 },
 });
