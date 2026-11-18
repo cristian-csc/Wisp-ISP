@@ -218,6 +218,17 @@ export async function completarDatosInstalacion(id: number, data: {
   return out;
 }
 
+/** Borrar del sistema a un cliente que nunca llegó a instalarse.
+ *
+ *  Borra de verdad: el cliente, su historial y sus fotos, y le quita el
+ *  secreto PPPoE al MikroTik. No hay papelera. El servidor lo rechaza si el
+ *  cliente llegó a instalarse o si tiene algún pago — para ésos existe el
+ *  retiro, que cierra el servicio y conserva el registro. */
+export async function deleteCliente(id: number): Promise<{ ok: boolean; mikrotik_ok: boolean }> {
+  const { data } = await api.delete(`/clientes/${id}`);
+  return data;
+}
+
 export async function activarSatelital(id: number, data: {
   cuenta_starlink_email?: string;
   estado_equipo?: EstadoEquipo;

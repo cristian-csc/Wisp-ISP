@@ -1497,6 +1497,31 @@ def delete_cliente(
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
+    # Esto borra de verdad: el cliente, su historial, sus fotos y SUS PAGOS.
+    # No hay papelera ni deshacer. Por eso solo alcanza a quien nunca llego a
+    # tener servicio -- se registro, no se pudo instalar, y no deberia quedar
+    # ocupando sitio.
+    #
+    # A un cliente que si estuvo conectado no se le borra: su historial de
+    # cobros es la respuesta a "yo ya pague ese mes", y una vez borrado no
+    # hay forma de recuperarlo. Para ese hay retiro, que lo cierra y conserva
+    # todo.
+    if cliente.fecha_instalacion is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Este cliente llegó a instalarse, así que no se borra: con él se irían "
+                   "sus pagos y su historial. Para darlo de baja usa el retiro de equipos, "
+                   "que cierra el servicio y conserva el registro.",
+        )
+
+    pagos = db.query(models.Pago).filter(models.Pago.cliente_id == cliente_id).count()
+    if pagos:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Este cliente tiene {pagos} pago(s) registrados y no se puede borrar. "
+                   "Un cobro no se borra nunca: si fue un error, anula el pago.",
+        )
+
     usuario = _ros_str(cliente.usuario_pppoe)
     wg_ip = _get_wg_ip(db, cliente.zona_id)
 

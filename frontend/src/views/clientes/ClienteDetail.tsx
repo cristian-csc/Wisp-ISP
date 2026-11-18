@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Icon } from '@iconify/react';
+import { toast } from 'sonner';
 import CardBox from 'src/components/shared/CardBox';
 import SectionCard from 'src/components/shared/SectionCard';
 import StatCard from 'src/components/shared/StatCard';
@@ -8,6 +9,7 @@ import EmptyState from 'src/components/shared/EmptyState';
 import { Badge } from 'src/components/ui/badge';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
+import { Switch } from 'src/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -43,6 +45,7 @@ import {
   reactivarCliente,
   pausarCliente,
   updateCliente,
+  deleteCliente,
   getCalendarioPagos,
   type ClienteOut,
   type MesPago,
@@ -196,6 +199,9 @@ const ClienteDetail = () => {
   const [editCantidadTv, setEditCantidadTv] = useState('0');
   const [editTipoConexion, setEditTipoConexion] = useState<'fibra_optica' | 'inalambrico'>('fibra_optica');
   const [editNotas, setEditNotas] = useState('');
+  const [editMigrado, setEditMigrado] = useState(false);
+  const [borrarOpen, setBorrarOpen] = useState(false);
+  const [borrando, setBorrando] = useState(false);
   /** Las fechas mueven el dinero: cuando se cobra y cuando se corta. Solo un
    *  administrador las ve y las toca, y el servidor lo vuelve a comprobar. */
   const [editFechaInstalacion, setEditFechaInstalacion] = useState('');
@@ -301,6 +307,32 @@ const ClienteDetail = () => {
     reload();
   }
 
+  /** Solo para quien nunca llego a tener servicio. El servidor lo vuelve a
+   *  comprobar: una condicion que solo vive en la pantalla no es una
+   *  condicion. */
+  const sePuedeBorrar = puedeAprobar && !cliente?.fecha_instalacion;
+
+  async function handleBorrar() {
+    if (!cliente) return;
+    setBorrando(true);
+    try {
+      const res = await deleteCliente(cliente.id);
+      toast.success('Cliente eliminado', {
+        description: res.mikrotik_ok
+          ? 'También se quitó su usuario PPPoE del MikroTik.'
+          : 'No se pudo quitar su usuario del MikroTik — revísalo a mano.',
+      });
+      navigate('/clientes');
+    } catch (err: any) {
+      toast.error('No se pudo eliminar', {
+        description: err?.response?.data?.detail ?? 'Inténtalo de nuevo.',
+      });
+      setBorrarOpen(false);
+    } finally {
+      setBorrando(false);
+    }
+  }
+
   function abrirEditar() {
     if (!cliente) return;
     setEditNombre(cliente.nombre);
@@ -312,6 +344,7 @@ const ClienteDetail = () => {
     setEditCantidadTv(String(cliente.cantidad_tv ?? 0));
     setEditTipoConexion((cliente.tipo_conexion as 'fibra_optica' | 'inalambrico' | null) ?? 'fibra_optica');
     setEditNotas(cliente.notas ?? '');
+    setEditMigrado(cliente.migrado === true);
     setEditFechaInstalacion(cliente.fecha_instalacion ?? '');
     setEditFechaActivacion(cliente.fecha_ultima_activacion ?? '');
     setEditFechaVencimiento(cliente.fecha_vencimiento ?? '');
@@ -350,6 +383,7 @@ const ClienteDetail = () => {
         plan_id: Number(editPlanId),
         cantidad_tv: Number(editCantidadTv) || 0,
         tipo_conexion: editTipoConexion,
+        migrado: editMigrado,
         notas: editNotas.trim() || null,
         ...fechas,
       });
@@ -565,6 +599,19 @@ const ClienteDetail = () => {
                 <Icon icon="tabler:pencil" height={16} className="mr-1" />
                 Editar
               </Button>
+              {/* Solo mientras no haya llegado a instalarse. Despues no sale:
+                  un cliente que tuvo servicio se da de baja con el retiro,
+                  que conserva sus pagos y su historial. */}
+              {sePuedeBorrar && (
+                <Button
+                  variant="lighterror"
+                  className="rounded-md"
+                  onClick={() => setBorrarOpen(true)}
+                >
+                  <Icon icon="tabler:trash" height={16} className="mr-1" />
+                  Eliminar
+                </Button>
+              )}
               {cliente.estado === 'pendiente_aprobacion' && puedeAprobar && (
                 <>
                   <Button variant="lightsuccess" onClick={handleAprobar} className="rounded-md">
@@ -915,10 +962,17 @@ const ClienteDetail = () => {
                       libre un puerto que en realidad está ocupado.
                     </p>
                   </div>
-                  <Button onClick={() => setCompletarOpen(true)} className="shrink-0">
-                    <Icon icon="tabler:clipboard-check" height={17} className="me-1.5" />
-                    Completar datos
-                  </Button>
+                  {/* Solo el admin: el endpoint se lo niega a Atencion al
+                      Cliente, y un boton que siempre falla es peor que no
+                      tenerlo. Para los demas el recuadro sigue saliendo —que
+                      se vea el pendiente es util aunque no puedan
+                      resolverlo—, pero sin la promesa de poder hacerlo. */}
+                  {puedeAprobar && (
+                    <Button onClick={() => setCompletarOpen(true)} className="shrink-0">
+                      <Icon icon="tabler:clipboard-check" height={17} className="me-1.5" />
+                      Completar datos
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -1232,6 +1286,37 @@ const ClienteDetail = () => {
         </FormField>
       </FormDialog>
 
+      <FormDialog
+        open={borrarOpen}
+        onOpenChange={setBorrarOpen}
+        title="Eliminar cliente"
+        subtitle={cliente.nombre}
+        icon="tabler:trash"
+        tone="error"
+        footer={
+          <FormActions
+            onCancel={() => setBorrarOpen(false)}
+            cancelLabel="No, conservarlo"
+            submitLabel="Sí, eliminar"
+            submitIcon="tabler:trash"
+            submitVariant="destructive"
+            onSubmit={handleBorrar}
+            submitting={borrando}
+          />
+        }
+      >
+        <FormCallout tone="error">
+          Esto no se puede deshacer. Desaparecen el cliente, su historial y sus
+          fotos, y se le quita el usuario PPPoE del MikroTik.
+        </FormCallout>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Se puede borrar porque nunca llegó a instalarse, así que no tiene
+          pagos ni servicio que perder. Si alguna vez vuelve, se registra de
+          nuevo —con otro número de cliente, porque los números no se
+          reutilizan—.
+        </p>
+      </FormDialog>
+
       {/* Editar cliente */}
       <FormDialog
         open={editarOpen}
@@ -1352,6 +1437,29 @@ const ClienteDetail = () => {
                 </Select>
               </FieldIcon>
             </FormField>
+            <FormField label="¿Viene del sistema anterior?" htmlFor="editMigrado" wide>
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-3">
+                <Switch
+                  id="editMigrado"
+                  checked={editMigrado}
+                  onCheckedChange={setEditMigrado}
+                  disabled={!puedeAprobar}
+                />
+                <div className="min-w-0 text-sm">
+                  <p className="font-medium text-foreground">
+                    {editMigrado ? 'Cliente migrado' : 'Cliente nuevo'}
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {cliente.fecha_instalacion
+                      ? 'Este cliente ya está instalado, así que la marca no cambia nada de lo que ya pasó: queda como etiqueta de dónde salió. Lo que le falte de caja, borne o equipo se registra con «Completar datos», en la pestaña Equipos.'
+                      : editMigrado
+                        ? 'El técnico podrá cerrar la instalación sin caja NAP, borne, equipo ni fotos — de un cliente que ya estaba conectado no existen esos datos.'
+                        : 'La instalación exigirá caja NAP, borne, equipo y fotos, como debe ser para todo cliente nuevo.'}
+                  </p>
+                </div>
+              </div>
+            </FormField>
+
             <FormField label="Notas" htmlFor="editNotas" wide>
               <Textarea
                 id="editNotas"
