@@ -1,375 +1,318 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { Icon } from '@iconify/react';
-import { toast } from 'sonner';
 import CardBox from 'src/components/shared/CardBox';
+import Cifra from 'src/components/shared/Cifra';
+import Pestanas from 'src/components/shared/Pestanas';
+import SearchInput from 'src/components/shared/SearchInput';
+import EmptyState from 'src/components/shared/EmptyState';
+import LoadingState from 'src/components/shared/LoadingState';
+import { Button } from 'src/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'src/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'src/components/ui/table';
+import RegistrarOnu from 'src/components/apps/onus/RegistrarOnu';
+import DetalleOnu from 'src/components/apps/onus/DetalleOnu';
+import { DondeEsta, EstadoOnuChip } from 'src/components/apps/onus/piezasOnu';
 import { useCurrentUser } from 'src/lib/useCurrentUser';
 import { puedeAccion } from 'src/lib/permisos';
-import ConfirmDialog from 'src/components/shared/ConfirmDialog';
-import { Badge } from 'src/components/ui/badge';
-import { Button } from 'src/components/ui/button';
-import { Input } from 'src/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from 'src/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from 'src/components/ui/table';
-import {
-  FieldIcon,
-  FormActions,
-  FormCallout,
-  FormDialog,
-  FormField,
-  FormGrid,
-} from 'src/components/shared/form';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from 'src/components/ui/tooltip';
-import { listOnus, createOnu, asignarOnu, marcarOnu, deleteOnu, detectarMarca, type Onu } from 'src/lib/onus';
 import { listUsuarios } from 'src/lib/usuarios';
 import type { Usuario } from 'src/lib/api';
+import { listOnus, macValida, type EstadoOnu, type Onu } from 'src/lib/onus';
 
-const ESTADO_LABEL: Record<Onu['estado'], string> = {
-  en_almacen: 'En almacén',
-  asignado_tecnico: 'Asignada a técnico',
-  instalado: 'Instalada',
-  danado: 'Dañada',
-  perdido: 'Perdida',
-};
+const TODOS = 'todos';
+type Filtro = 'todos' | EstadoOnu | 'revisar';
 
-const ESTADO_BADGE: Record<Onu['estado'], string> = {
-  en_almacen: 'bg-lightinfo text-info-text',
-  asignado_tecnico: 'bg-lightwarning text-warning-text',
-  instalado: 'bg-lightsuccess text-success-text',
-  danado: 'bg-lighterror text-error-text',
-  perdido: 'bg-muted text-muted-foreground',
-};
-
+/** Registro de ONUs: cada equipo por su serie y dónde está ahora. Lo que le
+ *  pasó a cada una está en su ficha, no aquí: esta lista responde «¿qué hay
+ *  y dónde?». */
 const Onus = () => {
   const { user } = useCurrentUser();
-  /** Consultar el inventario lo puede hacer también atención al cliente;
-   *  dar de alta, asignar o borrar equipos es de almacén. */
   const puedeGestionar = puedeAccion('onus.gestionar', user?.rol);
-  const [onus, setOnus] = useState<Onu[]>([]);
+  const [params, setParams] = useSearchParams();
+  const [onus, setOnus] = useState<Onu[] | null>(null);
   const [tecnicos, setTecnicos] = useState<Usuario[]>([]);
-  const [openCreate, setOpenCreate] = useState(false);
-  const [asignando, setAsignando] = useState<Onu | null>(null);
-  const [tecnicoSel, setTecnicoSel] = useState('');
-  const [serie, setSerie] = useState('');
-  const [mac, setMac] = useState('');
-  const [marca, setMarca] = useState('');
-  const [serieConfirmada, setSerieConfirmada] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [borrando, setBorrando] = useState<Onu | null>(null);
-  const macInputRef = useRef<HTMLInputElement>(null);
+  const [busqueda, setBusqueda] = useState('');
+  const [registrando, setRegistrando] = useState(false);
+  const [abierta, setAbierta] = useState<number | null>(null);
 
-  async function reload() {
-    setOnus(await listOnus());
-  }
+  const filtro = (params.get('ver') as Filtro) || 'todos';
+  const tecnicoSel = params.get('tecnico') ?? TODOS;
+  const marcaSel = params.get('marca') ?? TODOS;
 
-  useEffect(() => {
-    reload();
-    // La lista de técnicos solo la recibe quien puede asignar equipos.
-    listUsuarios().then((all) => setTecnicos(all.filter((u) => u.rol === 'tecnico'))).catch(() => setTecnicos([]));
+  const cargar = useCallback(() => {
+    listOnus().then(setOnus).catch(() => setOnus([]));
   }, []);
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    try {
-      await createOnu({ numero_serie: serie, mac: mac || undefined, marca: marca || undefined });
-      setOpenCreate(false);
-      setSerie('');
-      setMac('');
-      setMarca('');
-      setSerieConfirmada(false);
-      reload();
-      toast.success('ONU registrada');
-    } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'No se pudo registrar la ONU');
+  useEffect(() => {
+    cargar();
+    // La lista de técnicos solo la recibe quien puede entregar equipos.
+    listUsuarios()
+      .then((todos) => setTecnicos(todos.filter((u) => u.rol === 'tecnico')))
+      .catch(() => setTecnicos([]));
+  }, [cargar]);
+
+  function filtrar(cambio: Record<string, string>) {
+    const p = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(cambio)) {
+      if (!v || v === TODOS) p.delete(k);
+      else p.set(k, v);
     }
+    setParams(p, { replace: true });
   }
 
-  function handleSerieChange(valor: string) {
-    setSerie(valor);
-    setSerieConfirmada(false);
-    const detectada = detectarMarca(valor);
-    if (detectada) setMarca(detectada);
-  }
+  const lista = onus ?? [];
+  /** MAC que aparecen en más de una ONU: datos viejos por revisar. */
+  const macRepetidas = useMemo(() => {
+    const vistas = new Map<string, number>();
+    for (const o of lista) if (o.mac) vistas.set(o.mac, (vistas.get(o.mac) ?? 0) + 1);
+    return new Set([...vistas].filter(([, n]) => n > 1).map(([m]) => m));
+  }, [lista]);
+  const porRevisar = (o: Onu) => !macValida(o.mac) || (!!o.mac && macRepetidas.has(o.mac));
 
-  // El lector de código de barras USB (NETUM) escribe el texto escaneado y
-  // termina enviando un Enter, igual que si lo tipeara una persona y diera
-  // "Intro". Lo usamos para confirmar la serie y saltar directo a MAC.
-  function handleSerieKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    if (!serie.trim()) return;
-    const detectada = detectarMarca(serie);
-    if (detectada) setMarca(detectada);
-    setSerieConfirmada(true);
-    macInputRef.current?.focus();
-  }
-
-  async function handleAsignar() {
-    if (!asignando || !tecnicoSel) return;
-    try {
-      await asignarOnu(asignando.id, Number(tecnicoSel));
-      setAsignando(null);
-      setTecnicoSel('');
-      reload();
-      toast.success('ONU asignada al técnico');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'No se pudo asignar la ONU');
+  const marcas = useMemo(() => [...new Set(lista.map((o) => o.marca).filter(Boolean) as string[])].sort(), [lista]);
+  const conTecnicos = useMemo(() => {
+    const m = new Map<number, { nombre: string; n: number }>();
+    for (const o of lista) {
+      if (o.estado === 'asignado_tecnico' && o.tecnico) m.set(o.tecnico.id, { nombre: o.tecnico.nombre, n: (m.get(o.tecnico.id)?.n ?? 0) + 1 });
     }
-  }
+    return [...m.entries()].sort((a, b) => b[1].n - a[1].n);
+  }, [lista]);
 
-  async function handleMarcar(onu: Onu, estado: Onu['estado']) {
-    try {
-      await marcarOnu(onu.id, estado);
-      reload();
-      toast.success(estado === 'danado' ? 'ONU marcada como dañada' : 'ONU actualizada');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'No se pudo actualizar la ONU');
-    }
-  }
+  const delAlcance = lista.filter(
+    (o) => (tecnicoSel === TODOS || String(o.tecnico?.id) === tecnicoSel) && (marcaSel === TODOS || o.marca === marcaSel),
+  );
+  const cuenta = (f: Filtro) =>
+    delAlcance.filter((o) => (f === 'todos' ? true : f === 'revisar' ? porRevisar(o) : o.estado === f)).length;
 
-  async function handleEliminar() {
-    if (!borrando) return;
-    try {
-      await deleteOnu(borrando.id);
-      reload();
-      toast.success('ONU eliminada del inventario');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'No se pudo eliminar la ONU');
-    }
-  }
+  const visibles = useMemo(() => {
+    const q = busqueda.trim().toLowerCase().replace(/[:\-\s]/g, '');
+    return delAlcance.filter((o) => {
+      if (filtro === 'revisar' ? !porRevisar(o) : filtro !== 'todos' && o.estado !== filtro) return false;
+      if (!q) return true;
+      return [o.numero_serie, o.mac?.replace(/:/g, ''), o.cliente?.nombre, o.tecnico?.nombre, o.marca].some((t) =>
+        t?.toLowerCase().replace(/\s/g, '').includes(q),
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delAlcance, filtro, busqueda, macRepetidas]);
+
+  const total = (e: EstadoOnu) => lista.filter((o) => o.estado === e).length;
+  const fuera = total('danado') + total('perdido');
+  const hayFiltros = !!busqueda.trim() || filtro !== 'todos' || tecnicoSel !== TODOS || marcaSel !== TODOS;
+  const onuAbierta = lista.find((o) => o.id === abierta) ?? null;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[26px] font-semibold leading-tight">ONUs</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Equipos en almacén, asignados a técnicos e instalados.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Cada equipo por su serie: si está en almacén, con qué técnico o en qué cliente.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-        {/* Atención al cliente consulta el inventario para saber si hay
-            equipo disponible; darlo de alta o darlo de baja es de almacén. */}
-        {puedeGestionar && <Button onClick={() => setOpenCreate(true)}>Registrar ONU</Button>}
-        </div>
+        {puedeGestionar && (
+          <Button onClick={() => setRegistrando(true)}>
+            <Icon icon="tabler:plus" width={17} /> Registrar ONU
+          </Button>
+        )}
       </div>
 
       <CardBox className="gap-0 overflow-hidden !p-0">
-
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Serie</TableHead>
-            <TableHead>MAC</TableHead>
-            <TableHead>Marca</TableHead>
-            <TableHead>WiFi</TableHead>
-            <TableHead>Cliente / Zona</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="text-end">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {onus.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                No hay ONUs registradas.
-              </TableCell>
-            </TableRow>
-          )}
-          {onus.map((o) => (
-            <TableRow key={o.id}>
-              <TableCell className="font-medium">{o.numero_serie}</TableCell>
-              <TableCell className="font-mono text-xs">{o.mac ?? '—'}</TableCell>
-              <TableCell>{o.marca ?? '—'}</TableCell>
-              <TableCell>{o.wifi_version ?? '—'}</TableCell>
-              <TableCell>
-                {o.cliente ? (
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{o.cliente.nombre}</p>
-                    <p className="text-xs text-muted-foreground truncate">{o.cliente.zona?.nombre ?? '—'}</p>
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </TableCell>
-              <TableCell>
-                <Badge className={`${ESTADO_BADGE[o.estado]} rounded-md`}>{ESTADO_LABEL[o.estado]}</Badge>
-              </TableCell>
-              <TableCell className="text-end">
-                <TooltipProvider>
-                  <div className="flex justify-end gap-1">
-                    {puedeGestionar && o.estado === 'en_almacen' && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => setAsignando(o)}>
-                            <Icon icon="tabler:user-plus" height={18} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Asignar a técnico</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {puedeGestionar && o.estado !== 'danado' && o.estado !== 'instalado' && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => handleMarcar(o, 'danado')}>
-                            <Icon icon="tabler:alert-triangle" height={18} className="text-muted-foreground" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Marcar dañada</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {puedeGestionar && o.estado !== 'instalado' && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => setBorrando(o)}>
-                            <Icon icon="tabler:trash" height={18} className="text-error" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Eliminar del inventario</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                </TooltipProvider>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <FormDialog
-        open={openCreate}
-        onOpenChange={setOpenCreate}
-        title="Registrar ONU"
-        subtitle="Agrega un equipo al inventario"
-        icon="tabler:device-nfc"
-        size="md"
-        footer={
-          <FormActions
-            onCancel={() => {
-              setOpenCreate(false);
-              setSerie('');
-              setMac('');
-              setMarca('');
-              setSerieConfirmada(false);
-            }}
-            submitLabel="Guardar"
-            submitForm="onu-create-form"
+        <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-4 [&>*]:bg-card">
+          <Cifra
+            etiqueta="En almacén"
+            icono="solar:box-linear"
+            tono="marca"
+            valor={onus ? total('en_almacen') : '—'}
+            nota="Listas para entregar"
           />
-        }
-      >
-        <form id="onu-create-form" onSubmit={handleCreate} className="flex flex-col gap-5">
-          <FormGrid>
-            <FormField
-              label="Número de serie (GPON)"
-              icon="tabler:barcode"
-              htmlFor="serie"
-              required
-              wide
-              hint="Escanéala con el lector USB o escríbela y presiona Enter."
-            >
-              <div className="relative">
-                <Input
-                  id="serie"
-                  autoFocus
-                  className={serieConfirmada ? 'pr-9' : ''}
-                  value={serie}
-                  onChange={(e) => handleSerieChange(e.target.value)}
-                  onKeyDown={handleSerieKeyDown}
-                  required
-                />
-                {serieConfirmada && (
-                  <Icon
-                    icon="tabler:circle-check-filled"
-                    height={18}
-                    className="text-success absolute right-2.5 top-1/2 -translate-y-1/2"
-                  />
-                )}
-              </div>
-            </FormField>
-
-            <FormField label="MAC" icon="tabler:network" htmlFor="mac">
-              <FieldIcon icon="tabler:network">
-                <Input id="mac" ref={macInputRef} value={mac} onChange={(e) => setMac(e.target.value)} />
-              </FieldIcon>
-            </FormField>
-
-            <FormField label="Marca" icon="tabler:tag" htmlFor="marca">
-              <FieldIcon icon="tabler:tag">
-                <Input
-                  id="marca"
-                  value={marca}
-                  onChange={(e) => setMarca(e.target.value)}
-                  placeholder="Se detecta sola al escanear la serie"
-                />
-              </FieldIcon>
-            </FormField>
-          </FormGrid>
-
-          {error && <FormCallout tone="error">{error}</FormCallout>}
-        </form>
-      </FormDialog>
-
-      <FormDialog
-        open={!!asignando}
-        onOpenChange={(o) => !o && setAsignando(null)}
-        title={`Asignar ONU ${asignando?.numero_serie ?? ''}`}
-        subtitle="Entrega el equipo a un técnico"
-        icon="tabler:user-check"
-        tone="primary"
-        size="md"
-        footer={
-          <FormActions
-            onCancel={() => setAsignando(null)}
-            submitLabel="Asignar"
-            submitIcon="tabler:user-check"
-            onSubmit={handleAsignar}
-            disabled={!tecnicoSel}
+          <Cifra
+            etiqueta="Con técnicos"
+            icono="solar:users-group-two-rounded-linear"
+            valor={onus ? total('asignado_tecnico') : '—'}
+            nota={conTecnicos.length ? conTecnicos.slice(0, 2).map(([, t]) => `${t.nombre} ${t.n}`).join(' · ') : 'Nadie tiene ONUs ahora'}
           />
-        }
-      >
-        <FormField label="Técnico" icon="tabler:tool">
-          <FieldIcon icon="tabler:tool">
-            <Select value={tecnicoSel} onValueChange={setTecnicoSel}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecciona un técnico" />
-              </SelectTrigger>
-              <SelectContent>
-                {tecnicos.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FieldIcon>
-        </FormField>
-      </FormDialog>
-
-      <ConfirmDialog
-        open={!!borrando}
-        onOpenChange={(v) => !v && setBorrando(null)}
-        title="Eliminar ONU"
-        description={borrando ? `¿Eliminar la ONU "${borrando.numero_serie}" del inventario?` : undefined}
-        onConfirm={handleEliminar}
-      />
+          <Cifra
+            etiqueta="Instaladas"
+            icono="solar:home-wifi-linear"
+            tono="ok"
+            valor={onus ? total('instalado') : '—'}
+            progreso={onus ? { valor: total('instalado'), total: lista.length } : null}
+            nota={onus ? `de ${lista.length} registradas` : undefined}
+          />
+          <Cifra
+            etiqueta="Dañadas o perdidas"
+            icono="solar:danger-triangle-linear"
+            tono={fuera ? 'peligro' : 'neutro'}
+            valor={onus ? fuera : '—'}
+            nota={onus ? `${total('danado')} dañadas · ${total('perdido')} perdidas` : undefined}
+          />
+        </div>
       </CardBox>
+
+      {onus && cuenta('revisar') > 0 && filtro !== 'revisar' && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-ld bg-card px-4 py-3">
+          <span className="grid size-8 place-items-center rounded-lg bg-lightwarning text-warning-text">
+            <Icon icon="tabler:alert-triangle" width={18} />
+          </span>
+          <p className="min-w-0 flex-1 text-sm">
+            <span className="font-medium">
+              {cuenta('revisar')} ONU{cuenta('revisar') === 1 ? '' : 's'} con la MAC mal cargada o repetida.
+            </span>{' '}
+            <span className="text-muted-foreground">Se registraron antes de que se validara; conviene corregirlas.</span>
+          </p>
+          <Button size="sm" variant="outline" onClick={() => filtrar({ ver: 'revisar' })}>
+            Ver cuáles
+          </Button>
+        </div>
+      )}
+
+      <CardBox className="gap-0 overflow-hidden !p-0">
+        <div className="flex flex-col gap-3 px-4 pt-4 sm:px-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <SearchInput value={busqueda} onChange={setBusqueda} placeholder="Serie, MAC, cliente o técnico" className="lg:w-80" />
+            <div className="flex flex-1 flex-wrap items-center gap-2 lg:justify-end">
+              {tecnicos.length > 0 && (
+                <Select value={tecnicoSel} onValueChange={(v) => filtrar({ tecnico: v })}>
+                  <SelectTrigger className="h-9 w-full sm:w-52" aria-label="Técnico">
+                    <Icon icon="tabler:user" width={16} className="text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TODOS}>Todos los técnicos</SelectItem>
+                    {tecnicos.map((t) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {marcas.length > 1 && (
+                <Select value={marcaSel} onValueChange={(v) => filtrar({ marca: v })}>
+                  <SelectTrigger className="h-9 w-full sm:w-44" aria-label="Marca">
+                    <Icon icon="tabler:tag" width={16} className="text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TODOS}>Todas las marcas</SelectItem>
+                    {marcas.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+          <Pestanas
+            label="Estado"
+            valor={filtro}
+            onChange={(v) => filtrar({ ver: v })}
+            pestanas={[
+              { valor: 'todos', etiqueta: 'Todas', cuenta: cuenta('todos') },
+              { valor: 'en_almacen', etiqueta: 'En almacén', cuenta: cuenta('en_almacen') },
+              { valor: 'asignado_tecnico', etiqueta: 'Con técnico', cuenta: cuenta('asignado_tecnico'), punto: 'bg-brand' },
+              { valor: 'instalado', etiqueta: 'Instaladas', cuenta: cuenta('instalado'), punto: 'bg-success-solid' },
+              { valor: 'danado', etiqueta: 'Dañadas', cuenta: cuenta('danado'), punto: 'bg-error-solid' },
+              { valor: 'perdido', etiqueta: 'Perdidas', cuenta: cuenta('perdido'), punto: 'bg-foreground' },
+              ...(cuenta('revisar') ? [{ valor: 'revisar' as Filtro, etiqueta: 'Por revisar', cuenta: cuenta('revisar'), punto: 'bg-warning-solid' }] : []),
+            ]}
+          />
+        </div>
+
+        {onus === null ? (
+          <LoadingState filas={8} />
+        ) : visibles.length === 0 ? (
+          <EmptyState
+            icono="tabler:router-off"
+            titulo={lista.length === 0 ? 'Aún no hay ONUs registradas' : 'Ninguna ONU coincide'}
+            descripcion={lista.length === 0 ? 'Registra la primera escaneando su número de serie.' : 'Prueba con otra búsqueda o quita los filtros.'}
+            accion={
+              lista.length === 0 && puedeGestionar ? (
+                <Button onClick={() => setRegistrando(true)}>
+                  <Icon icon="tabler:plus" width={17} /> Registrar ONU
+                </Button>
+              ) : hayFiltros ? (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setBusqueda('');
+                    filtrar({ ver: '', tecnico: '', marca: '' });
+                  }}
+                >
+                  Quitar filtros
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Serie</TableHead>
+                <TableHead className="hidden md:table-cell">MAC</TableHead>
+                <TableHead>Dónde está</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="w-10">
+                  <span className="sr-only">Abrir</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visibles.map((o) => (
+                <TableRow key={o.id} className="cursor-pointer" onClick={() => setAbierta(o.id)}>
+                  <TableCell>
+                    <button type="button" className="block text-left" onClick={() => setAbierta(o.id)}>
+                      <span className="block font-mono text-sm font-semibold tracking-wide">{o.numero_serie}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {[o.marca, o.wifi_version === 'wifi6' ? 'WiFi 6' : o.wifi_version === 'wifi5' ? 'WiFi 5' : null].filter(Boolean).join(' · ') || 'Sin marca'}
+                      </span>
+                    </button>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {o.mac ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs">{o.mac}</span>
+                        {porRevisar(o) && (
+                          <span className="rounded bg-lightwarning px-1.5 py-px text-[11px] font-medium text-warning-text">
+                            {macValida(o.mac) ? 'repetida' : 'no válida'}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-56">
+                    <DondeEsta onu={o} />
+                  </TableCell>
+                  <TableCell>
+                    <EstadoOnuChip estado={o.estado} />
+                  </TableCell>
+                  <TableCell>
+                    <Icon icon="tabler:chevron-right" width={16} className="text-muted-foreground" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        {onus && visibles.length > 0 && (
+          <p className="border-t border-ld px-5 py-3 text-sm text-muted-foreground">
+            {visibles.length} de {lista.length} ONUs · toca una para ver su recorrido
+          </p>
+        )}
+      </CardBox>
+
+      <RegistrarOnu open={registrando} onOpenChange={setRegistrando} onRegistrada={cargar} />
+      <DetalleOnu
+        onu={onuAbierta}
+        onClose={() => setAbierta(null)}
+        puedeGestionar={puedeGestionar}
+        tecnicos={tecnicos}
+        macRepetida={!!onuAbierta?.mac && macRepetidas.has(onuAbierta.mac)}
+        onCambio={() => cargar()}
+      />
     </div>
   );
 };

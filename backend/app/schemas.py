@@ -647,16 +647,43 @@ class BorneDanarRequest(BaseModel):
 # ── ONU (inventario) ──────────────────────────────────────────────────────────
 
 class OnuCreate(BaseModel):
-    numero_serie: str
-    mac: Optional[str] = None
-    marca: Optional[str] = None
+    """La serie y la MAC se normalizan y validan aquí: así da igual si vienen
+    del lector, escritas a mano o desde la app del técnico."""
+    numero_serie: str = Field(..., max_length=100)
+    mac: Optional[str] = Field(None, max_length=50)
+    marca: Optional[str] = Field(None, max_length=100)
     wifi_version: Optional[WifiVersion] = None
+
+    @field_validator("numero_serie")
+    @classmethod
+    def _serie(cls, v: str) -> str:
+        from .onus_historial import normalizar_serie
+        return normalizar_serie(v)
+
+    @field_validator("mac")
+    @classmethod
+    def _mac(cls, v: Optional[str]) -> Optional[str]:
+        from .onus_historial import normalizar_mac
+        return normalizar_mac(v)
+
+    @field_validator("marca")
+    @classmethod
+    def _marca(cls, v: Optional[str]) -> Optional[str]:
+        return (v or "").strip() or None
 
 class OnuAsignarRequest(BaseModel):
     tecnico_id: int
+    nota: Optional[str] = Field(None, max_length=255)
 
 class OnuMarcarRequest(BaseModel):
     estado: EstadoOnu  # danado | perdido | en_almacen (devolución)
+    nota: Optional[str] = Field(None, max_length=255)
+
+class OnuTecnicoOut(BaseModel):
+    id: int
+    nombre: str
+    class Config:
+        from_attributes = True
 
 class ZonaMiniOut(BaseModel):
     id: int
@@ -681,8 +708,24 @@ class OnuOut(BaseModel):
     tecnico_id: Optional[int] = None
     cliente_id: Optional[int] = None
     cliente: Optional[OnuClienteOut] = None
+    tecnico: Optional[OnuTecnicoOut] = None
     fecha_asignacion_tecnico: Optional[date] = None
     fecha_instalacion: Optional[date] = None
+    creado_en: Optional[datetime] = None
+    class Config:
+        from_attributes = True
+
+
+class OnuMovimientoOut(BaseModel):
+    id: int
+    tipo: str
+    estado_anterior: Optional[str] = None
+    estado_nuevo: str
+    persona: Optional[OnuTecnicoOut] = None
+    cliente: Optional[OnuTecnicoOut] = None
+    nota: Optional[str] = None
+    registrado_por: Optional[OnuTecnicoOut] = None
+    creado_en: datetime
     class Config:
         from_attributes = True
 

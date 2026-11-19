@@ -179,6 +179,8 @@ LECTURAS: dict[tuple[str, str], frozenset] = {
     ("GET", "/api/ordenes-retiro/{orden_id}"): _LEER_RETIROS,
     ("GET", "/api/onus"): _LEER_ONUS,
     ("GET", "/api/onus/{onu_id}"): _LEER_ONUS,
+    ("GET", "/api/onus/{onu_id}/historial"): _LEER_ONUS,
+    ("GET", "/api/onus/validar"): _LEER_ONUS,
     ("GET", "/api/inventario/categorias"): INVENTARIO,
     ("GET", "/api/inventario/resumen"): INVENTARIO,
     ("GET", "/api/inventario/articulos"): INVENTARIO,

@@ -13,6 +13,7 @@ import httpx
 
 from ..database import get_db
 from .. import models, schemas
+from ..onus_historial import anotar as anotar_onu
 from .auth import get_current_user, get_password_hash, require_roles, zonas_asignadas
 from ..config import settings
 from ..mensajeria import cabeceras_bot
@@ -926,6 +927,8 @@ def instalar_cliente(
         onu.estado = models.EstadoOnu.instalado
         onu.cliente_id = cliente.id
         onu.fecha_instalacion = hoy
+        anotar_onu(db, onu, "instalacion", current_user, models.EstadoOnu.asignado_tecnico,
+                   persona_id=onu.tecnico_id, cliente_id=cliente.id)
 
     partes = []
     if caja is not None and borne is not None:
@@ -1125,13 +1128,21 @@ def completar_datos_de_instalacion(
         if vieja is not None:
             # Vuelve al almacen, no se borra: aunque fuera un dato puesto a
             # ojo, que existio tiene que quedar en el historial.
+            antes_vieja = vieja.estado
             vieja.cliente_id = None
             vieja.tecnico_id = None
             vieja.estado = models.EstadoOnu.en_almacen
+            anotar_onu(db, vieja, "retiro", current_user, antes_vieja, cliente_id=cliente.id,
+                       nota="Reemplazada al completar los datos de instalación; vuelve al almacén")
             cambios.append(f"equipo anterior {vieja.numero_serie} devuelto al almacén")
 
+        antes_onu = onu.estado
+        ya_estaba = onu.cliente_id == cliente.id
         onu.cliente_id = cliente.id
         onu.estado = models.EstadoOnu.instalado
+        if not ya_estaba:
+            anotar_onu(db, onu, "instalacion", current_user, antes_onu, persona_id=onu.tecnico_id,
+                       cliente_id=cliente.id, nota="Registrada en la ficha del cliente")
         if onu.fecha_instalacion is None:
             onu.fecha_instalacion = cliente.fecha_instalacion or date.today()
         cambios.append(f"equipo {onu.numero_serie}")
@@ -1536,9 +1547,13 @@ def delete_cliente(
         borne.potencia_optica_dbm = None
 
     for onu in db.query(models.Onu).filter(models.Onu.cliente_id == cliente_id).all():
+        antes_onu = onu.estado
         onu.cliente_id = None
         onu.fecha_instalacion = None
         onu.estado = models.EstadoOnu.asignado_tecnico if onu.tecnico_id else models.EstadoOnu.en_almacen
+        # El cliente se borra: su nombre queda en la nota, porque el enlace se pierde.
+        anotar_onu(db, onu, "retiro", current_user, antes_onu, persona_id=onu.tecnico_id,
+                   nota=f"Se eliminó el cliente {cliente.nombre}")
 
     # Eliminar registros que no tienen sentido sin el cliente
     averia_ids = [a.id for a in db.query(models.Averia.id).filter(models.Averia.cliente_id == cliente_id).all()]

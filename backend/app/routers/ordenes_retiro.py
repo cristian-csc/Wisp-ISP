@@ -7,6 +7,7 @@ from typing import Optional, List
 
 from ..database import get_db
 from .. import models, schemas
+from ..onus_historial import anotar as anotar_onu
 from ..config import settings
 from ..mensajeria import contacto_empresa, enviar_texto, telefono_de, oculta
 from .auth import get_current_user, require_roles
@@ -181,9 +182,12 @@ def completar_orden_retiro(
     if data.onu_retirada_id:
         onu = db.query(models.Onu).filter(models.Onu.id == data.onu_retirada_id).first()
         if onu:
+            antes_onu = onu.estado
             onu.estado = models.EstadoOnu.en_almacen
             onu.cliente_id = None
             onu.tecnico_id = None
+            anotar_onu(db, onu, "retiro", current_user, antes_onu, persona_id=current_user.id,
+                       cliente_id=orden.cliente_id, nota="Retirada con la orden de retiro; vuelve al almacén")
 
     borne = db.query(models.Borne).filter(models.Borne.cliente_id == orden.cliente_id).first()
     if borne:

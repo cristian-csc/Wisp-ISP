@@ -429,6 +429,32 @@ class Onu(Base):
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
 
     cliente = relationship("Cliente", back_populates="onus")
+    tecnico = relationship("Usuario", foreign_keys=[tecnico_id])
+
+
+class OnuMovimiento(Base):
+    """El recorrido de una ONU: cada vez que entra, se entrega, se instala, se
+    retira o se daña queda una fila, con quién lo hizo y a qué hora. La ONU
+    guarda solo dónde está ahora; esto guarda cómo llegó ahí."""
+    __tablename__ = "onu_movimientos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    onu_id = Column(Integer, ForeignKey("onus.id", ondelete="CASCADE"), nullable=False, index=True)
+    # alta | asignacion | traspaso | devolucion | instalacion | retiro | danada | perdida | recuperada
+    tipo = Column(String(20), nullable=False, index=True)
+    estado_anterior = Column(String(30))
+    estado_nuevo = Column(String(30), nullable=False)
+    # El técnico que la recibe, la devuelve o la instala.
+    persona_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), index=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="SET NULL"), index=True)
+    nota = Column(String(255))
+    # Vacío solo en lo que se reconstruyó al crear esta tabla.
+    registrado_por_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), index=True)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    persona = relationship("Usuario", foreign_keys=[persona_id])
+    registrado_por = relationship("Usuario", foreign_keys=[registrado_por_id])
+    cliente = relationship("Cliente")
 
 
 class OrdenRetiro(Base):

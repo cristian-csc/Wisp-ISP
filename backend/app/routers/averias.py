@@ -8,6 +8,7 @@ from typing import Optional, List
 
 from ..database import get_db
 from .. import models, schemas
+from ..onus_historial import anotar as anotar_onu
 from .auth import get_current_user, require_roles, zonas_asignadas
 from .whatsapp import wa_request
 from ..config import settings
@@ -256,8 +257,11 @@ async def resolver_averia(
         onu_vieja = db.query(models.Onu).filter(models.Onu.id == data.onu_reemplazada_id).first()
         if not onu_vieja:
             raise HTTPException(status_code=404, detail="ONU a retirar no encontrada")
+        antes_vieja = onu_vieja.estado
         onu_vieja.estado = models.EstadoOnu.danado
         onu_vieja.cliente_id = None
+        anotar_onu(db, onu_vieja, "danada", current_user, antes_vieja, persona_id=current_user.id,
+                   cliente_id=averia.cliente_id, nota=f"Retirada del cliente por avería: {data.diagnostico_solucion}")
 
     if data.onu_nueva_id:
         onu_nueva = db.query(models.Onu).filter(models.Onu.id == data.onu_nueva_id).first()
@@ -268,6 +272,8 @@ async def resolver_averia(
         onu_nueva.estado = models.EstadoOnu.instalado
         onu_nueva.cliente_id = averia.cliente_id
         onu_nueva.fecha_instalacion = date.today()
+        anotar_onu(db, onu_nueva, "instalacion", current_user, models.EstadoOnu.asignado_tecnico,
+                   persona_id=onu_nueva.tecnico_id, cliente_id=averia.cliente_id, nota="Cambio de equipo por avería")
 
     if data.onu_reemplazada_id:
         averia.onu_reemplazada_id = data.onu_reemplazada_id

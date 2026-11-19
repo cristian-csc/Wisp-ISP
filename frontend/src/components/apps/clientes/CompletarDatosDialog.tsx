@@ -18,7 +18,7 @@ import {
 } from 'src/components/ui/select';
 import { completarDatosInstalacion, type ClienteOut } from 'src/lib/clientes';
 import { listCajasNap, type CajaNap } from 'src/lib/cajasnap';
-import { listOnus, createOnu, type Onu } from 'src/lib/onus';
+import { listOnus, createOnu, mensajeDeError, type Onu } from 'src/lib/onus';
 
 const NUEVO_EQUIPO = 'nuevo';
 const SIN_MUFA = 'Sin mufa asignada';
@@ -146,7 +146,8 @@ export default function CompletarDatosDialog({
       onOpenChange(false);
       onListo();
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'No se pudo guardar. Revisa los datos.');
+      // La serie nueva se valida en el servidor: su mensaje dice qué está mal.
+      setError(mensajeDeError(err, 'No se pudo guardar. Revisa los datos.'));
     } finally {
       setGuardando(false);
     }
