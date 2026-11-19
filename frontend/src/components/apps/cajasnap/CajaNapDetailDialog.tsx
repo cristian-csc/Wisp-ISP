@@ -20,7 +20,7 @@ import {
   FormDialog,
   FormField,
 } from 'src/components/shared/form';
-import BorneCardGrid from './BorneCardGrid';
+import BorneGrid from './BorneGrid';
 import {
   getCajaNap,
   ampliarCajaNap,
@@ -126,7 +126,9 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
         open={!!cajaId}
         onOpenChange={onOpenChange}
         title={caja?.codigo ?? 'Cargando…'}
-        subtitle="Bornes, clientes y estado en el MikroTik"
+        // De donde cuelga, que es lo que ubica la caja en la planta. El
+        // texto fijo de antes describia la ventana, no la caja.
+        subtitle={caja?.mufa_codigo ?? 'Sin mufa asignada'}
         icon="tabler:box"
         tone="primary"
         size="xl"
@@ -134,45 +136,40 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
 
           {caja && (
             <>
-              <div className="flex justify-between items-center flex-wrap gap-3">
-                <div className="flex gap-2.5 flex-wrap">
-                  <div className="flex items-center gap-2.5 rounded-xl bg-lightprimary px-3.5 py-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary-text">
-                      <Icon icon="tabler:plug-connected" height={17} />
-                    </span>
-                    <div className="leading-none">
-                      <p className="text-xl font-bold text-primary">{libres}</p>
-                      <p className="text-[10px] font-medium text-primary/70 uppercase tracking-wide">Libres</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2.5 rounded-xl bg-lightsuccess px-3.5 py-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/15 text-success-text">
-                      <Icon icon="tabler:wifi" height={17} />
-                    </span>
-                    <div className="leading-none">
-                      <p className="text-xl font-bold text-success">{ocupados}</p>
-                      <p className="text-[10px] font-medium text-success/70 uppercase tracking-wide">Ocupados</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2.5 rounded-xl bg-lighterror px-3.5 py-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-error/15 text-error-text">
-                      <Icon icon="tabler:alert-triangle-filled" height={17} />
-                    </span>
-                    <div className="leading-none">
-                      <p className="text-xl font-bold text-error">{danados}</p>
-                      <p className="text-[10px] font-medium text-error/70 uppercase tracking-wide">Dañados</p>
-                    </div>
-                  </div>
-                </div>
+              {/* Los totales en una linea. Tres recuadros de color para tres
+                  numeros de un digito pesaban mas que el dato: aqui se leen
+                  de corrido y dejan el alto para la rejilla, que es lo que de
+                  verdad se viene a mirar. */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ld pb-4">
+                <p className="text-sm">
+                  <span className="font-semibold">{caja.capacidad_bornes} bornes</span>
+                  <span className="text-muted-foreground">
+                    {' · '}
+                    <span className="font-semibold text-foreground">{libres} libres</span>
+                    {' · '}
+                    {ocupados} ocupados
+                    {' · '}
+                  </span>
+                  <span
+                    className={
+                      danados > 0 ? 'font-semibold text-error-text dark:text-error' : 'text-muted-foreground'
+                    }
+                  >
+                    {danados} dañados
+                  </span>
+                </p>
                 {caja.capacidad_bornes < 32 && (
-                  <Button size="sm" onClick={handleAmpliar}>
+                  <Button variant="outlinebrand" size="sm" onClick={handleAmpliar}>
                     <Icon icon="tabler:layout-grid-add" height={15} className="mr-1" />
                     Ampliar a {caja.capacidad_bornes >= 16 ? 32 : 16} bornes
                   </Button>
                 )}
               </div>
 
-              <BorneCardGrid bornes={caja.bornes} onClickBorne={handleBorneClick} />
+              <div>
+                <h4 className="mb-3 text-sm font-semibold">Bornes</h4>
+                <BorneGrid bornes={caja.bornes} onClickBorne={handleBorneClick} />
+              </div>
               <div className="flex items-start gap-2 rounded-lg bg-lightinfo px-3 py-2.5">
                 <Icon icon="tabler:info-circle" height={16} className="text-info shrink-0 mt-0.5" />
                 <p className="text-xs text-info/90">
@@ -188,7 +185,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                       <Icon icon="tabler:users" height={16} className="text-muted-foreground" />
                       Registro de abonados
                     </h4>
-                    <Button variant="outline" size="sm" disabled={cargandoEstados} onClick={handleRefrescarEstados}>
+                    <Button variant="outlinebrand" size="sm" disabled={cargandoEstados} onClick={handleRefrescarEstados}>
                       <Icon icon="tabler:refresh" height={14} className="mr-1" />
                       {cargandoEstados ? 'Consultando…' : 'Refrescar estados'}
                     </Button>

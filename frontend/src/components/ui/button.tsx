@@ -27,6 +27,11 @@ const buttonVariants = cva(
           'border border-info bg-transparent hover:bg-info text-info hover:text-white',
         outlineerror:
           'border border-error bg-transparent hover:bg-error text-error hover:text-white',
+        // Secundaria pero destacada: borde naranja. La `outline` normal es
+        // neutra a proposito, y para "Ampliar" o "Refrescar" se perderia
+        // entre el resto de la ventana.
+        outlinebrand:
+          'border border-brand bg-transparent text-brand-strong hover:bg-lightbrand dark:text-brand',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondaryemphasis',
         success: 'bg-success-solid text-on-solid hover:bg-success-solid/90',
         warning: 'bg-warning-solid text-on-solid hover:bg-warning-solid/90',

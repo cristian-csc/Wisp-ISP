@@ -21,9 +21,7 @@ import {
   FormField,
   FormGrid,
 } from 'src/components/shared/form';
-import BorneGrid from 'src/components/apps/cajasnap/BorneGrid';
 import CajaNapDetailDialog from 'src/components/apps/cajasnap/CajaNapDetailDialog';
-import RingProgress, { toneForPct } from 'src/components/apps/cajasnap/RingProgress';
 import { listCajasNap, createCajaNap, type CajaNap } from 'src/lib/cajasnap';
 import { getZona, type Zona } from 'src/lib/zonas';
 import { listMufas, type Mufa } from 'src/lib/mufas';
@@ -128,68 +126,81 @@ const CajaNapZona = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Una fila por caja, no una rejilla de tarjetas: con trece cajas lo
+          que se hace aquí es recorrerlas buscando dónde queda sitio, y en
+          columna se comparan de un barrido vertical. */}
+      <div className="flex flex-col gap-3">
         {cajasFiltradas.length === 0 && (
-          <div className="sm:col-span-2 lg:col-span-3">
-            <EmptyState
-              icono="tabler:box-off"
-              titulo={cajas.length === 0 ? 'Sin cajas NAP registradas' : 'Ninguna caja coincide con la búsqueda'}
-              descripcion={cajas.length === 0 ? 'Todavía no hay cajas NAP en esta zona.' : undefined}
-            />
-          </div>
+          <EmptyState
+            icono="tabler:box-off"
+            titulo={cajas.length === 0 ? 'Sin cajas NAP registradas' : 'Ninguna caja coincide con la búsqueda'}
+            descripcion={cajas.length === 0 ? 'Todavía no hay cajas NAP en esta zona.' : undefined}
+          />
         )}
         {cajasFiltradas.map((c) => {
           const libres = c.bornes.filter((b) => b.estado === 'libre').length;
           const ocupados = c.bornes.filter((b) => b.estado === 'ocupado').length;
           const danados = c.bornes.filter((b) => b.estado === 'danado').length;
           const pct = c.capacidad_bornes > 0 ? Math.round((ocupados / c.capacidad_bornes) * 100) : 0;
-          const tone = toneForPct(pct);
           return (
             <CardBox
               key={c.id}
-              className="p-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+              className="transition-ui cursor-pointer p-4 hover:border-brand/50 hover:shadow-md"
               onClick={() => setCajaAbierta(c.id)}
             >
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide mb-0.5">
-                    <Icon icon="tabler:box" height={12} />
-                    Caja NAP
-                  </div>
-                  <h3 className="text-sm font-semibold truncate">{c.codigo}</h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {mufas.find((m) => m.id === c.mufa_id)?.codigo ?? '—'}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+                {/* Quién es y dónde está */}
+                <div className="min-w-0 sm:w-56 sm:shrink-0">
+                  <h3 className="truncate text-lg font-bold leading-tight">{c.codigo}</h3>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {mufas.find((m) => m.id === c.mufa_id)?.codigo ?? 'Sin mufa'}
+                    {zona?.nombre ? ` · ${zona.nombre}` : ''}
                   </p>
+                  <span className="mt-1.5 inline-block rounded-md bg-muted px-2 py-0.5 text-xs font-medium">
+                    {c.capacidad_bornes} bornes
+                  </span>
                 </div>
-                <RingProgress pct={pct} tone={tone} size="sm" />
-              </div>
 
-              <BorneGrid bornes={c.bornes} compacto />
-
-              {/* Las tres cuentas con su nombre entero. Abreviar a «ocup.» y
-                  «dañ.» ahorraba unos píxeles y obligaba a adivinar; en tres
-                  columnas iguales caben completas sin crecer la tarjeta. */}
-              <div className="mt-3 grid grid-cols-3 gap-1 border-t border-ld pt-3 text-center">
-                <div>
-                  <p className="text-sm font-bold leading-none text-success-text dark:text-success">
-                    {ocupados}
+                {/* Cómo está de llena */}
+                <div className="min-w-0 flex-1 sm:border-l sm:border-ld sm:pl-5">
+                  <p className="text-sm">
+                    Ocupación: <span className="font-bold">{pct}%</span>
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Ocupados</p>
-                </div>
-                <div>
-                  <p className="text-sm font-bold leading-none">{libres}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Libres</p>
-                </div>
-                <div>
-                  <p
-                    className={`text-sm font-bold leading-none ${
-                      danados > 0 ? 'text-error-text dark:text-error' : 'text-muted-foreground'
-                    }`}
+                  <div
+                    className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted"
+                    role="img"
+                    aria-label={`Ocupación ${pct} por ciento`}
                   >
-                    {danados}
+                    <div
+                      className="h-full rounded-full bg-brand transition-all"
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                  </div>
+                  {/* Los libres, primero y en negrita: es el dato que se viene
+                      a buscar, porque decide si aquí cabe un cliente más. */}
+                  <p className="mt-2 text-sm">
+                    <span className="font-semibold">{libres} libres</span>
+                    <span className="text-muted-foreground">
+                      {' · '}
+                      {ocupados} ocupados
+                      {' · '}
+                    </span>
+                    <span
+                      className={
+                        danados > 0
+                          ? 'font-semibold text-error-text dark:text-error'
+                          : 'text-muted-foreground'
+                      }
+                    >
+                      {danados} dañados
+                    </span>
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Dañados</p>
                 </div>
+
+                <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-strong dark:text-brand">
+                  Ver detalle
+                  <Icon icon="tabler:arrow-right" height={16} />
+                </span>
               </div>
             </CardBox>
           );
