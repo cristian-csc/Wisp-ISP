@@ -15,6 +15,8 @@ import CajaNapDetailDialog from 'src/components/apps/cajasnap/CajaNapDetailDialo
 import DisponibilidadChip, { coincideFiltro, PESTANAS_DISPONIBILIDAD, type FiltroCajas } from 'src/components/apps/cajasnap/DisponibilidadChip';
 import { listCajasNap, resumenBornes, type CajaNap } from 'src/lib/cajasnap';
 import { listZonas, type Zona } from 'src/lib/zonas';
+import { useCurrentUser } from 'src/lib/useCurrentUser';
+import { puedeVerUrl } from 'src/lib/permisos';
 
 const TODAS = 'todas';
 
@@ -22,7 +24,10 @@ const TODAS = 'todas';
  *  responder es «¿dónde hay un borne libre?», así que eso manda: los libres
  *  van en grande, el filtro por disponibilidad está a mano y la caja se abre
  *  aquí mismo, sin cambiar de pantalla. */
-const CajasNap = () => {
+const CajasNap = ({ gestion = false }: { gestion?: boolean }) => {
+  const { user } = useCurrentUser();
+  const base = gestion ? '/inventario/cajas-nap' : '/cajas-nap';
+  const veGestion = !gestion && puedeVerUrl('/inventario/cajas-nap', user?.rol);
   const [params, setParams] = useSearchParams();
   const [zonas, setZonas] = useState<Zona[]>([]);
   const [cajas, setCajas] = useState<CajaNap[] | null>(null);
@@ -85,8 +90,19 @@ const CajasNap = () => {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[26px] font-semibold leading-tight">Cajas NAP</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Dónde hay bornes libres para instalar, y cómo está cada caja de la red.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {gestion
+              ? 'Crea cajas, amplíalas y lleva el estado de cada borne y su precinto.'
+              : 'Dónde hay bornes libres para instalar, y cómo está cada caja de la red.'}
+          </p>
         </div>
+        {veGestion && (
+          <Button variant="outline" asChild>
+            <Link to="/inventario/cajas-nap">
+              <Icon icon="solar:box-linear" width={17} /> Gestionar en Inventario
+            </Link>
+          </Button>
+        )}
       </div>
 
       <CardBox className="gap-0 overflow-hidden !p-0">
@@ -174,7 +190,9 @@ const CajasNap = () => {
             titulo={todas.length === 0 ? 'Aún no hay cajas NAP' : 'Ninguna caja coincide'}
             descripcion={
               todas.length === 0
-                ? 'Las cajas se registran dentro de cada zona, colgando de una mufa.'
+                ? gestion
+                  ? 'Elige una zona en «Ver la zona» y agrega su primera caja, colgando de una mufa.'
+                  : 'Las cajas se registran en Inventario › Cajas NAP, dentro de cada zona.'
                 : filtro === 'libres'
                   ? 'No queda ninguna caja con bornes libres con este filtro.'
                   : 'Prueba con otra zona o quita el filtro.'
@@ -207,7 +225,7 @@ const CajasNap = () => {
                 </p>
                 <OcupacionBarra r={g.r} className="hidden w-32 sm:flex" />
                 <Link
-                  to={`/cajas-nap/zona/${g.zonaId}`}
+                  to={`${base}/zona/${g.zonaId}`}
                   className="ms-auto inline-flex items-center gap-1 text-sm font-medium text-foreground underline-offset-4 hover:underline"
                 >
                   Ver la zona <Icon icon="tabler:arrow-right" width={15} />
@@ -253,7 +271,7 @@ const CajasNap = () => {
         </div>
       )}
 
-      <CajaNapDetailDialog cajaId={abierta} onOpenChange={(o) => !o && setAbierta(null)} onChanged={cargar} />
+      <CajaNapDetailDialog cajaId={abierta} gestion={gestion} onOpenChange={(o) => !o && setAbierta(null)} onChanged={cargar} />
     </div>
   );
 };

@@ -92,6 +92,10 @@ function App() {
             <Route path="/inventario/movimientos" element={<MovimientosInventario />} />
             <Route path="/inventario/personal" element={<PersonalInventario />} />
             <Route path="/inventario/unidades" element={<UnidadesInventario />} />
+            {/* Las mismas pantallas de Red, pero con la gestión: aquí se registra y se cambia. */}
+            <Route path="/inventario/onus" element={<Onus key="gestion" gestion />} />
+            <Route path="/inventario/cajas-nap" element={<CajasNap key="gestion" gestion />} />
+            <Route path="/inventario/cajas-nap/zona/:zonaId" element={<CajaNapZona key="gestion" gestion />} />
             <Route path="/onus" element={<Onus />} />
             <Route path="/averias" element={<Averias />} />
             <Route path="/averias/zona/:zonaId" element={<AveriaZonaDetail />} />

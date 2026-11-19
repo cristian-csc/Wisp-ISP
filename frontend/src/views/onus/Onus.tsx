@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
 import Cifra from 'src/components/shared/Cifra';
@@ -14,8 +14,8 @@ import RegistrarOnu from 'src/components/apps/onus/RegistrarOnu';
 import DetalleOnu from 'src/components/apps/onus/DetalleOnu';
 import { DondeEsta, EstadoOnuChip } from 'src/components/apps/onus/piezasOnu';
 import { useCurrentUser } from 'src/lib/useCurrentUser';
-import { puedeAccion } from 'src/lib/permisos';
-import { listUsuarios } from 'src/lib/usuarios';
+import { puedeVerUrl } from 'src/lib/permisos';
+import { listPersonal } from 'src/lib/inventario';
 import type { Usuario } from 'src/lib/api';
 import { listOnus, macValida, type EstadoOnu, type Onu } from 'src/lib/onus';
 
@@ -24,10 +24,16 @@ type Filtro = 'todos' | EstadoOnu | 'revisar';
 
 /** Registro de ONUs: cada equipo por su serie y dónde está ahora. Lo que le
  *  pasó a cada una está en su ficha, no aquí: esta lista responde «¿qué hay
- *  y dónde?». */
-const Onus = () => {
+ *  y dónde?».
+ *
+ *  La misma pantalla vive en dos lugares. En Red es solo para consultar; en
+ *  Inventario (`gestion`) se registran, entregan y marcan. El servidor hace
+ *  la misma distinción por módulo, así que esconder los botones no es lo
+ *  único que lo impide. */
+const Onus = ({ gestion = false }: { gestion?: boolean }) => {
   const { user } = useCurrentUser();
-  const puedeGestionar = puedeAccion('onus.gestionar', user?.rol);
+  const puedeGestionar = gestion;
+  const veGestion = !gestion && puedeVerUrl('/inventario/onus', user?.rol);
   const [params, setParams] = useSearchParams();
   const [onus, setOnus] = useState<Onu[] | null>(null);
   const [tecnicos, setTecnicos] = useState<Usuario[]>([]);
@@ -45,11 +51,19 @@ const Onus = () => {
 
   useEffect(() => {
     cargar();
-    // La lista de técnicos solo la recibe quien puede entregar equipos.
-    listUsuarios()
-      .then((todos) => setTecnicos(todos.filter((u) => u.rol === 'tecnico')))
-      .catch(() => setTecnicos([]));
-  }, [cargar]);
+    // A quién se le puede entregar: solo hace falta donde se gestiona.
+    if (gestion) {
+      listPersonal()
+        .then((ps) =>
+          setTecnicos(
+            ps
+              .filter((p) => p.persona.rol === 'tecnico')
+              .map((p) => ({ id: p.persona.id, nombre: p.persona.nombre, rol: 'tecnico', activo: p.persona.activo }) as Usuario),
+          ),
+        )
+        .catch(() => setTecnicos([]));
+    }
+  }, [cargar, gestion]);
 
   function filtrar(cambio: Record<string, string>) {
     const p = new URLSearchParams(params);
@@ -68,6 +82,13 @@ const Onus = () => {
     return new Set([...vistas].filter(([, n]) => n > 1).map(([m]) => m));
   }, [lista]);
   const porRevisar = (o: Onu) => !macValida(o.mac) || (!!o.mac && macRepetidas.has(o.mac));
+
+  /** Para filtrar basta con los técnicos que tienen o tuvieron alguna ONU. */
+  const tecnicosConOnus = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const o of lista) if (o.tecnico) m.set(o.tecnico.id, o.tecnico.nombre);
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es'));
+  }, [lista]);
 
   const marcas = useMemo(() => [...new Set(lista.map((o) => o.marca).filter(Boolean) as string[])].sort(), [lista]);
   const conTecnicos = useMemo(() => {
@@ -106,11 +127,22 @@ const Onus = () => {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[26px] font-semibold leading-tight">ONUs</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Cada equipo por su serie: si está en almacén, con qué técnico o en qué cliente.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {gestion
+              ? 'Registra, entrega a los técnicos y sigue el recorrido de cada equipo.'
+              : 'Consulta dónde está cada equipo: en almacén, con qué técnico o en qué cliente.'}
+          </p>
         </div>
         {puedeGestionar && (
           <Button onClick={() => setRegistrando(true)}>
             <Icon icon="tabler:plus" width={17} /> Registrar ONU
+          </Button>
+        )}
+        {veGestion && (
+          <Button variant="outline" asChild>
+            <Link to="/inventario/onus">
+              <Icon icon="solar:box-linear" width={17} /> Gestionar en Inventario
+            </Link>
           </Button>
         )}
       </div>
@@ -157,7 +189,9 @@ const Onus = () => {
             <span className="font-medium">
               {cuenta('revisar')} ONU{cuenta('revisar') === 1 ? '' : 's'} con la MAC mal cargada o repetida.
             </span>{' '}
-            <span className="text-muted-foreground">Se registraron antes de que se validara; conviene corregirlas.</span>
+            <span className="text-muted-foreground">
+              Se registraron antes de que se validara; conviene corregirlas{gestion ? '' : ' desde Inventario'}.
+            </span>
           </p>
           <Button size="sm" variant="outline" onClick={() => filtrar({ ver: 'revisar' })}>
             Ver cuáles
@@ -170,7 +204,7 @@ const Onus = () => {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <SearchInput value={busqueda} onChange={setBusqueda} placeholder="Serie, MAC, cliente o técnico" className="lg:w-80" />
             <div className="flex flex-1 flex-wrap items-center gap-2 lg:justify-end">
-              {tecnicos.length > 0 && (
+              {tecnicosConOnus.length > 0 && (
                 <Select value={tecnicoSel} onValueChange={(v) => filtrar({ tecnico: v })}>
                   <SelectTrigger className="h-9 w-full sm:w-52" aria-label="Técnico">
                     <Icon icon="tabler:user" width={16} className="text-muted-foreground" />
@@ -178,9 +212,9 @@ const Onus = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={TODOS}>Todos los técnicos</SelectItem>
-                    {tecnicos.map((t) => (
-                      <SelectItem key={t.id} value={String(t.id)}>
-                        {t.nombre}
+                    {tecnicosConOnus.map(([id, nombre]) => (
+                      <SelectItem key={id} value={String(id)}>
+                        {nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -226,7 +260,13 @@ const Onus = () => {
           <EmptyState
             icono="tabler:router-off"
             titulo={lista.length === 0 ? 'Aún no hay ONUs registradas' : 'Ninguna ONU coincide'}
-            descripcion={lista.length === 0 ? 'Registra la primera escaneando su número de serie.' : 'Prueba con otra búsqueda o quita los filtros.'}
+            descripcion={
+              lista.length === 0
+                ? gestion
+                  ? 'Registra la primera escaneando su número de serie.'
+                  : 'Las ONUs se registran en Inventario › ONUs.'
+                : 'Prueba con otra búsqueda o quita los filtros.'
+            }
             accion={
               lista.length === 0 && puedeGestionar ? (
                 <Button onClick={() => setRegistrando(true)}>

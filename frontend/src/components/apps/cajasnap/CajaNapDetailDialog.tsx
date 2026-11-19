@@ -26,6 +26,8 @@ import { cn } from 'src/lib/utils';
 
 interface Props {
   cajaId: number | null;
+  /** En Inventario se cambia; en Red solo se mira. */
+  gestion?: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged?: () => void;
 }
@@ -109,7 +111,7 @@ const EstadoRed = ({ estado }: { estado?: EstadoPppoeBorne }) => {
  *  derecha, lo que hay en el puerto elegido. Sin elegir nada, la lista de
  *  abonados. Nada cambia de estado con un clic suelto: marcar dañado o
  *  reparado es un botón aparte. */
-const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
+const CajaNapDetailDialog = ({ cajaId, gestion = false, onOpenChange, onChanged }: Props) => {
   const [caja, setCaja] = useState<CajaNap | null>(null);
   const [zonaNombre, setZonaNombre] = useState<string | null>(null);
   const [elegidoId, setElegidoId] = useState<number | null>(null);
@@ -217,6 +219,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
   }
 
   const proxima = caja && caja.capacidad_bornes < 32 ? (caja.capacidad_bornes >= 16 ? 32 : 16) : null;
+  const puedeAmpliar = gestion && proxima;
 
   return (
     <>
@@ -242,7 +245,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                       </a>
                     </Button>
                   )}
-                  {proxima && (
+                  {puedeAmpliar && (
                     <Button variant="ghost" size="sm" onClick={() => setConfirmarAmpliar(true)}>
                       <Icon icon="tabler:layout-grid-add" width={15} /> Ampliar a {proxima}
                     </Button>
@@ -455,6 +458,9 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                             Código de precinto
                           </label>
                           <p className="text-xs text-muted-foreground">El número del precinto físico amarrado al drop de este cliente.</p>
+                          {!gestion ? (
+                            <p className="mt-2 font-mono text-sm font-medium">{elegido.codigo_precinto ?? '—'}</p>
+                          ) : (
                           <form
                             className="mt-2 flex gap-2"
                             onSubmit={(e) => {
@@ -474,6 +480,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                               {guardando ? 'Guardando…' : 'Guardar'}
                             </Button>
                           </form>
+                          )}
                           {!elegido.codigo_precinto && <p className="mt-1.5 text-xs font-medium text-warning-text">Este abonado todavía no tiene precinto registrado.</p>}
                         </div>
 
@@ -490,6 +497,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                             ? 'Este borne está disponible. Se ocupa solo cuando un técnico instala un cliente en esta caja.'
                             : 'No se puede asignar a ningún cliente hasta que se repare. Cuando quede bien, márcalo como reparado y vuelve a estar libre.'}
                         </p>
+                        {gestion ? (
                         <Button
                           variant={elegido.estado === 'danado' ? 'default' : 'outline'}
                           size="sm"
@@ -499,6 +507,9 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                           <Icon icon={elegido.estado === 'danado' ? 'tabler:tool' : 'tabler:plug-x'} width={15} />
                           {elegido.estado === 'danado' ? 'Marcar como reparado' : 'Marcar como dañado'}
                         </Button>
+                        ) : (
+                          <p className="mt-3 text-xs text-muted-foreground">Se marca desde Inventario › Cajas NAP.</p>
+                        )}
                       </div>
                     )}
                   </div>

@@ -30,8 +30,12 @@ import DisponibilidadChip, { coincideFiltro, PESTANAS_DISPONIBILIDAD, type Filtr
 import { listCajasNap, createCajaNap, resumenBornes, type CajaNap } from 'src/lib/cajasnap';
 import { getZona, type Zona } from 'src/lib/zonas';
 import { listMufas, type Mufa } from 'src/lib/mufas';
+import { useCurrentUser } from 'src/lib/useCurrentUser';
+import { puedeVerUrl } from 'src/lib/permisos';
 
-const CajaNapZona = () => {
+const CajaNapZona = ({ gestion = false }: { gestion?: boolean }) => {
+  const { user } = useCurrentUser();
+  const base = gestion ? '/inventario/cajas-nap' : '/cajas-nap';
   const { zonaId } = useParams();
   const zid = Number(zonaId);
 
@@ -99,7 +103,7 @@ const CajaNapZona = () => {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <nav aria-label="Ruta" className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Link to="/cajas-nap" className="hover:text-foreground hover:underline">
+            <Link to={base} className="hover:text-foreground hover:underline">
               Cajas NAP
             </Link>
             <Icon icon="tabler:chevron-right" width={14} aria-hidden="true" />
@@ -115,9 +119,19 @@ const CajaNapZona = () => {
               <Icon icon="tabler:map-pin" height={17} /> Ver la zona
             </Link>
           </Button>
-          <Button onClick={() => setOpen(true)}>
-            <Icon icon="tabler:plus" height={17} /> Agregar caja NAP
-          </Button>
+          {gestion ? (
+            <Button onClick={() => setOpen(true)}>
+              <Icon icon="tabler:plus" height={17} /> Agregar caja NAP
+            </Button>
+          ) : (
+            puedeVerUrl('/inventario/cajas-nap', user?.rol) && (
+              <Button variant="outline" asChild>
+                <Link to={`/inventario/cajas-nap/zona/${zid}`}>
+                  <Icon icon="solar:box-linear" height={17} /> Gestionar en Inventario
+                </Link>
+              </Button>
+            )
+          )}
         </div>
       </div>
 
@@ -190,7 +204,7 @@ const CajaNapZona = () => {
                 : 'Prueba con otro código o quita el filtro.'
             }
             accion={
-              cajas.length === 0 ? (
+              cajas.length === 0 && gestion ? (
                 <Button onClick={() => setOpen(true)} disabled={!mufas.length}>
                   <Icon icon="tabler:plus" height={17} /> Agregar caja NAP
                 </Button>
@@ -247,6 +261,7 @@ const CajaNapZona = () => {
       )}
 
       <CajaNapDetailDialog
+        gestion={gestion}
         cajaId={cajaAbierta}
         onOpenChange={(o) => !o && setCajaAbierta(null)}
         onChanged={reload}

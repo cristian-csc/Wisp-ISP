@@ -52,10 +52,15 @@ _PAGOS = _usar(PAGOS, CLIENTES_PANEL)
 _SOLO_PAGOS = _usar(PAGOS)
 _INSTALAR = _usar(_m("movil.ordenes"))
 _PLANTA = _usar(_m("movil.ordenes", "movil.averias"))
+# ONUs y Cajas NAP se gestionan desde Inventario. Los módulos de Red con el
+# mismo nombre son solo para consultar y no abren ninguna escritura.
+_GESTION_ONUS = _m("panel.inventario_onus")
+_GESTION_CAJAS = _m("panel.inventario_cajas")
+_BORNES = Regla(usar=_m("movil.ordenes", "movil.averias"), amplia=_GESTION_CAJAS)
 _ATENDER_AVERIA = _usar(AVERIAS, _m("movil.averias"))
 _GASTOS = _delegar("panel.gastos")
 _PLANES = _delegar("panel.planes")
-_CAJAS = _delegar("panel.cajas_nap")
+_CAJAS = _delegar("panel.inventario_cajas")
 _JORNADAS = _delegar("panel.jornadas")
 _JORNADA_PROPIA = _usar(_m("movil.jornada"))
 _APROBAR = _delegar("panel.clientes_pendientes")
@@ -65,6 +70,7 @@ _CAJA = _delegar("panel.reporte_caja")
 _INVENTARIO = _delegar("panel.inventario")
 INVENTARIO = _m(
     "panel.inventario", "panel.inventario_movimientos", "panel.inventario_personal", "panel.inventario_unidades",
+    "panel.inventario_onus", "panel.inventario_cajas",
 )
 _UNIDADES = _delegar("panel.inventario_unidades")
 
@@ -78,9 +84,12 @@ REGLAS: dict[tuple[str, str], Regla] = {
     ("PUT", "/api/cajas-nap/{caja_id}"): _CAJAS,
     ("DELETE", "/api/cajas-nap/{caja_id}"): _CAJAS,
     ("POST", "/api/cajas-nap/{caja_id}/ampliar"): _CAJAS,
-    ("POST", "/api/cajas-nap/bornes/{borne_id}/marcar"): _PLANTA,
-    ("PUT", "/api/cajas-nap/bornes/{borne_id}/precinto"): _PLANTA,
-    ("GET", "/api/cajas-nap/{caja_id}/estado-pppoe"): _PLANTA,
+    ("POST", "/api/cajas-nap/bornes/{borne_id}/marcar"): _BORNES,
+    ("PUT", "/api/cajas-nap/bornes/{borne_id}/precinto"): _BORNES,
+    # Consultar el router es mirar: también lo puede quien consulta en Red.
+    ("GET", "/api/cajas-nap/{caja_id}/estado-pppoe"): Regla(
+        usar=_m("movil.ordenes", "movil.averias"), amplia=_GESTION_CAJAS | _m("panel.cajas_nap"),
+    ),
 
     ("POST", "/api/clientes"): _usar(CLIENTES_PANEL, _m("movil.registrar")),
     ("GET", "/api/clientes/notificaciones"): _FICHA,
@@ -121,7 +130,12 @@ REGLAS: dict[tuple[str, str], Regla] = {
     ("PUT", "/api/jornadas/{jornada_id}/reclamo-pasaje"): _JORNADA_PROPIA,
 
     ("POST", "/api/onus/registrar-propio"): _usar(_m("movil.inventario", "movil.ordenes")),
-    ("POST", "/api/onus/{onu_id}/marcar"): _usar(_m("movil.inventario", "movil.ordenes", "movil.averias", "movil.retiros")),
+    ("POST", "/api/onus/{onu_id}/marcar"): Regla(
+        usar=_m("movil.inventario", "movil.ordenes", "movil.averias", "movil.retiros"), amplia=_GESTION_ONUS,
+    ),
+    ("POST", "/api/onus"): Regla(amplia=_GESTION_ONUS),
+    ("POST", "/api/onus/{onu_id}/asignar"): Regla(amplia=_GESTION_ONUS),
+    ("DELETE", "/api/onus/{onu_id}"): Regla(amplia=_GESTION_ONUS),
 
     ("POST", "/api/ordenes-retiro"): _usar(RETIROS, CLIENTES_PANEL),
     ("POST", "/api/ordenes-retiro/{orden_id}/asignar"): _usar(RETIROS),
@@ -162,7 +176,7 @@ REGLAS: dict[tuple[str, str], Regla] = {
 _LEER_CLIENTES = CLIENTES_PANEL | PAGOS | AVERIAS | RETIROS | CAMPO
 _LEER_AVERIAS = AVERIAS | CLIENTES_PANEL | CAMPO
 _LEER_RETIROS = RETIROS | CLIENTES_PANEL | CAMPO
-_LEER_ONUS = _m("panel.onus") | AVERIAS | RETIROS | CLIENTES_PANEL | CAMPO
+_LEER_ONUS = _m("panel.onus", "panel.inventario_onus") | AVERIAS | RETIROS | CLIENTES_PANEL | CAMPO
 
 # Consultas abiertas a cualquier sesión que también dependen del módulo. Zonas,
 # planes y cajas quedan fuera: son catálogos que usan los formularios de todos.
@@ -219,7 +233,7 @@ DELEGABLES = _m(
     "panel.dashboard", "panel.gastos", "panel.planes", "panel.cajas_nap",
     "panel.jornadas", "panel.reporte_caja", "panel.clientes_pendientes",
     "panel.inventario", "panel.inventario_movimientos", "panel.inventario_personal",
-    "panel.inventario_unidades",
+    "panel.inventario_unidades", "panel.inventario_onus", "panel.inventario_cajas",
 )
 APP_CLIENTE = _m("movil.inicio", "movil.pagos", "movil.perfil")
 

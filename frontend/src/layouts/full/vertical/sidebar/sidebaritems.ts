@@ -121,6 +121,20 @@ const SidebarContent: MenuItem[] = [
         roles: ['admin'],
       },
       {
+        name: 'ONUs',
+        icon: 'solar:wi-fi-router-minimalistic-linear',
+        id: uniqueId(),
+        url: '/inventario/onus',
+        roles: ['admin'],
+      },
+      {
+        name: 'Cajas NAP',
+        icon: 'solar:box-linear',
+        id: uniqueId(),
+        url: '/inventario/cajas-nap',
+        roles: ['admin'],
+      },
+      {
         name: 'Unidades de medida',
         icon: 'solar:ruler-linear',
         id: uniqueId(),
