@@ -263,6 +263,10 @@ La sesión de WhatsApp sí se pierde — hay que volver a escanear el QR una vez
 
 ## 12. Añadir una zona nueva (un MikroTik más)
 
+> Esto es el resumen. Para el detalle completo —la configuración que el
+> router necesita, los perfiles PPP, la regla de corte y la tabla de
+> problemas— está la guía dedicada: **[NUEVA-ZONA-MIKROTIK.md](NUEVA-ZONA-MIKROTIK.md)**.
+
 Esta parte costó una tarde la primera vez. Si sigues el orden de aquí, son
 quince minutos.
 
