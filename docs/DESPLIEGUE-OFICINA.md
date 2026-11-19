@@ -261,15 +261,146 @@ La sesión de WhatsApp sí se pierde — hay que volver a escanear el QR una vez
 
 ---
 
-## Nota sobre MikroTik y WireGuard
+## 12. Añadir una zona nueva (un MikroTik más)
 
-El `docker-compose.yml` monta `/etc/wireguard` y `/root/.ssh` para la gestión de
-los MikroTik. Si en esta prueba todavía no vas a usar esa parte, créalas vacías
-para que Docker no falle:
+Esta parte costó una tarde la primera vez. Si sigues el orden de aquí, son
+quince minutos.
+
+### Lo primero: quién habla con los routers
+
+Dos máquinas distintas, y conviene no confundirlas nunca:
+
+```
+Servidor de la OFICINA                     VPS
+┌────────────────────────┐        ┌──────────────┐
+│ Aquí corre el sistema    │        │ Solo el túnel│
+│ (wisp_backend)           │        │ WireGuard    │
+│ Llave: la del backend    │        │ Llave: la de │
+│   ← ESTA es la que        │        │  tu acceso   │
+│     necesita el panel    │        │  manual      │
+└───────────┬────────────┘        └──────┬───────┘
+            └──────── túnel ────────────┘
+                         │
+                  MikroTik 10.20.0.x
+```
+
+**El sistema solo usa la llave del servidor de la oficina.** La de la VPS es
+tu herramienta de mano: sirve para entrar tú, no para que el panel traiga
+datos. Probar con `ssh` desde la VPS no demuestra que el sistema funcione.
+
+Las llaves pertenecen a las **máquinas**, no a los routers: no se generan
+nuevas por cada MikroTik. Un router nuevo solo tiene que **conocer las dos
+que ya existen**.
+
+### Cómo se llaman, para no perderse
+
+| Archivo | De quién es | Para qué |
+|---|---|---|
+| `wisp_api` (VPS) | La VPS | Entrar tú a mano a los routers |
+| `oficina` (servidor de la oficina) | El backend | Lo que usa el sistema |
+
+Los `.pub` son públicos: se copian, se guardan y se suben a los routers sin
+riesgo. Las privadas **no salen nunca** de su máquina.
+
+> Si al generar una llave le pones comentario (`ssh-keygen -C "oficina"`), el
+> router te lo muestra en la columna KEY-OWNER y puedes distinguirlas. Sin
+> eso, dos llaves distintas se ven iguales en `/user ssh-keys print`.
+
+### Los cinco pasos
+
+**1. El túnel.** Dale al router una IP `10.20.0.x` y crea su peer. Comprueba
+desde el servidor de la oficina, no desde la VPS:
+
+```bash
+ping -c 3 10.20.0.X
+sudo wg show
+```
+
+En `allowed ips` tiene que entrar esa IP. Con `10.20.0.0/24` ya están todas;
+si dijera `10.20.0.2/32`, el túnel está arriba pero **esa IP no tiene
+camino** — es la trampa clásica de WireGuard.
+
+**2. El usuario en el router.** Crea `wisp-api` en el MikroTik. Si falta, el
+paso 3 no tiene a quién asignarle la llave y falla sin decir gran cosa.
+
+**3. Las dos llaves.** Desde el servidor de la oficina:
+
+```bash
+# la pública del backend, derivada de su privada
+sudo ssh-keygen -y -f /root/.ssh/<llave-del-backend> | sudo tee /root/.ssh/oficina.pub
+
+sudo scp /root/.ssh/oficina.pub <usuario>@10.20.0.X:/oficina.pub
+sudo ssh <usuario>@10.20.0.X \
+  "/user ssh-keys import public-key-file=oficina.pub user=wisp-api"
+```
+
+Y lo mismo con la pública de la VPS si quieres seguir entrando desde allí.
+**Importar añade, no reemplaza**: las llaves que ya estaban siguen valiendo.
+
+Ojo con el `user=wisp-api`: subes el archivo con tu usuario de administrador,
+pero la llave tiene que quedar asignada al usuario que usa el sistema.
+
+**4. La zona en el panel.** Dos datos, y los dos son obligatorios:
+
+- **IP del túnel** — `10.20.0.X`. **No la IP pública del router.**
+- **Pool PPPoE** — el nombre exacto que tiene en ESE router. Cada uno usa el
+  suyo; se consulta así:
+
+```bash
+sudo ssh <usuario>@10.20.0.X "/ip pool print"
+```
+
+Se escribe tal cual, con mayúsculas y guiones bajos incluidos. Sin el pool,
+el sistema ni intenta conectarse — y entonces no ves ningún error de red,
+porque nunca hubo red de por medio.
+
+Comprueba que se guardó de verdad:
+
+```bash
+docker exec wisp_postgres sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT nombre, ip_wireguard, pool_pppoe FROM zonas"'
+```
+
+**5. Probarlo por el camino del sistema.** Esto es lo único que vale como
+prueba: corre el código del backend, dentro del contenedor, con su llave.
+
+```bash
+cd ~/Wisp-ISP
+docker exec wisp_backend python -c "
+from app.routers.clientes import _mikrotik_exec
+r = _mikrotik_exec('10.20.0.X', ['/system/identity/print'])
+print(r['ok'], r.get('error','')[:90])
+" 2>/dev/null
+```
+
+Tiene que decir `True`.
+
+### Cuando algo falla
+
+| Lo que ves | Lo que suele ser |
+|---|---|
+| El ping no sale desde la oficina | `allowed ips` no cubre esa IP |
+| «rechazó la llave del usuario» | La pública del backend no está en ese router, o el usuario tiene `address=` limitado (`/user print detail` lo dice) |
+| «no se pudo leer la llave» | La ruta de `SSH_KEY_PATH` no existe, o la llave tiene contraseña (el sistema no puede usarla) |
+| «no tiene configurado el pool» | Falta el paso 4 |
+| El panel dice túnel conectado pero no trae datos | El ping funciona y el SSH no: mira la llave, no la red |
+
+> **Historia que conviene recordar:** hubo una época en que el sistema decía
+> `Invalid key` cuando el problema era la autenticación. La llave estaba
+> perfecta. Era un defecto de la librería, que prueba cuatro tipos de llave
+> en bucle y se queda con el error de la última vuelta. Ya está corregido y
+> ahora el mensaje distingue «no se puede leer» de «el router la rechaza»,
+> pero si alguna vez vuelve a aparecer ese texto en una versión vieja: no te
+> fijes en la llave, fíjate en quién la rechaza.
+
+### Si las carpetas no existen todavía
+
+El `docker-compose.yml` monta `/etc/wireguard` y `/root/.ssh`. Si aún no vas
+a usar esta parte, créalas vacías para que Docker no falle:
 
 ```bash
 sudo mkdir -p /etc/wireguard /root/.ssh
 ```
 
-Esas funciones simplemente no estarán disponibles hasta que configures las
-llaves; el resto del sistema funciona igual.
+Esas funciones no estarán disponibles hasta que configures las llaves; el
+resto del sistema funciona igual.
