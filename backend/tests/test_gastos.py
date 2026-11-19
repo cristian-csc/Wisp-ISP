@@ -221,3 +221,11 @@ class TestPaginacion:
         resp = client.get("/gastos?mes=2026-07&per_page=2&page=2")
         assert resp.status_code == 200
         assert len(resp.json()["items"]) == 2
+
+
+def test_mes_mal_escrito_se_rechaza_sin_caerse(client):
+    """Antes un mes como "texto" hacía caer el servidor con 500."""
+    assert client.get("/gastos/resumen-por-zona", params={"mes": "texto"}).status_code == 422
+    assert client.get("/gastos/resumen-por-zona", params={"mes": "2026-13"}).status_code == 422
+    assert client.get("/gastos", params={"mes": "2026/11"}).status_code == 422
+    assert client.get("/gastos/resumen-por-zona", params={"mes": "2026-11"}).status_code == 200

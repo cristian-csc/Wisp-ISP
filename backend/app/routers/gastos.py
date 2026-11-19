@@ -43,7 +43,8 @@ def _gastos_vigentes_del_mes(db: Session, anio: int, mes: int) -> List[models.Ga
 def list_gastos(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
-    mes: Optional[str] = None,
+    # Mes como 2026-11. Validado aquí: un texto cualquiera rompía el split y daba 500.
+    mes: Optional[str] = Query(None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="YYYY-MM"),
     categoria: Optional[str] = None,
     zona_id: Optional[int] = Query(None, description="0 = solo gastos generales (sin zona)"),
     db: Session = Depends(get_db),
@@ -78,7 +79,7 @@ def list_gastos(
 
 @router.get("/resumen-por-zona")
 def resumen_por_zona(
-    mes: str = Query(..., description="YYYY-MM"),
+    mes: str = Query(..., pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="YYYY-MM"),
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(SOLO_GERENCIA),
 ):

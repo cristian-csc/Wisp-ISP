@@ -1,0 +1,6161 @@
+{
+  "info": {
+    "name": "WISP Control · API",
+    "description": "API de **WISP Control**: clientes, pagos, red (zonas, cajas NAP, ONUs, WireGuard y MikroTik), inventario, WhatsApp y permisos.\n\n### Cómo autenticarse\n1. `POST /api/auth/login` con un formulario `username` + `password` (el personal del panel).\n   La app del cliente usa `POST /api/auth/cliente/login` con su DNI.\n2. La respuesta trae `access_token`, un JWT válido por 8 horas.\n3. En cada petición se envía la cabecera `Authorization: Bearer <access_token>`.\n\nEn Swagger, el botón **Authorize** hace el login por ti. En Postman, la petición\n*Auth › Login* guarda el token en la variable `token` y el resto lo usa solo.\n\n### Permisos\nAdemás del tipo de cuenta, cada endpoint pide los módulos del rol (los de *Roles y módulos*).\nSin sesión se responde **401**; con sesión pero sin el módulo, **403**.\n\n### Efectos externos\nCortar, reactivar, aprobar o instalar un cliente ejecuta comandos en el MikroTik de su zona\n(por SSH, a través del túnel WireGuard) y puede mandar WhatsApp. No los pruebes contra\nun entorno con routers y clientes reales.\n\n\nCorre primero **Auth › Login**: guarda el token y todas las demás peticiones lo usan.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "usuario",
+      "value": "admin"
+    },
+    {
+      "key": "clave",
+      "value": "",
+      "description": "La contraseña del usuario. No se guarda en el repositorio."
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Inicio de sesión, perfil propio y usuarios del personal.",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "type": "text",
+                  "value": "{{usuario}}"
+                },
+                {
+                  "key": "password",
+                  "type": "text",
+                  "value": "{{clave}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.access_token) {",
+                  "  pm.collectionVariables.set('token', r.access_token);",
+                  "  console.log('Token guardado en la variable token');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cliente Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/cliente/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "cliente",
+                "login"
+              ]
+            },
+            "description": "Login para clientes en la app móvil. Usuario y contraseña son su DNI\npor defecto; si el cliente cambió su contraseña desde la app, se valida\ncontra ese valor en vez del DNI.\n\nEl freno de intentos importa más aquí que en el panel: mientras el cliente\nno cambie su clave, ésta es su DNI, que son ocho dígitos y no es secreto.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"texto\",\n  \"pin\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.access_token) {",
+                  "  pm.collectionVariables.set('token', r.access_token);",
+                  "  console.log('Token guardado en la variable token');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Me",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Autoservicio: cualquier usuario autenticado puede actualizar su propio\nteléfono/dirección — son datos de contacto, la persona misma es quien\nsabe que cambiaron. Nombre, DNI, fecha de ingreso, rol y activo quedan\nfuera a propósito — eso lo controla solo el administrador.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"texto\",\n  \"direccion\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Mi Actividad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me/actividad",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me",
+                "actividad"
+              ]
+            },
+            "description": "Lo que hizo quien pregunta, en este mes y desde siempre. Solo sus\npropios números: nunca los de otra persona."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password_actual\": \"texto\",\n  \"password_nueva\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Usuarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"email\": \"usuario@wispfibra.com\",\n  \"password\": \"texto\",\n  \"rol\": \"admin\",\n  \"rol_id\": 1,\n  \"telefono\": \"texto\",\n  \"dni\": \"texto\",\n  \"direccion\": \"texto\",\n  \"fecha_ingreso\": \"2026-11-19\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Usuario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/usuarios/:usuario_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios",
+                ":usuario_id"
+              ],
+              "variable": [
+                {
+                  "key": "usuario_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Editar nombre/rol o activar/desactivar un usuario (técnico, vendedor, etc.).\nDesactivar corta el acceso al instante — get_current_user revisa `activo`\ncontra la BD en cada request, no depende de que expire el token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"rol\": \"admin\",\n  \"rol_id\": 1,\n  \"activo\": true,\n  \"telefono\": \"texto\",\n  \"dni\": \"texto\",\n  \"direccion\": \"texto\",\n  \"fecha_ingreso\": \"2026-11-19\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Usuario",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/usuarios/:usuario_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios",
+                ":usuario_id"
+              ],
+              "variable": [
+                {
+                  "key": "usuario_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Solo se puede borrar un usuario que de verdad nunca hizo nada — si\ntiene clientes, pagos, averías, etc. a su nombre, ese historial vale\ndemasiado para perderlo por error. Para esos casos basta con\ndesactivarlo (el switch de 'Activo'), nunca borrarlo."
+          }
+        },
+        {
+          "name": "Restablecer Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/usuarios/:usuario_id/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios",
+                ":usuario_id",
+                "password"
+              ],
+              "variable": [
+                {
+                  "key": "usuario_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Le pone una contraseña nueva a otro usuario.\n\nHace falta para cuando alguien del equipo olvida la suya: sin esto la\núnica salida era tocar la base de datos a mano, o que la gente se preste\ncuentas entre sí, que es peor. El administrador NO puede ver la\ncontraseña anterior — solo la reemplaza.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password_nueva\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "description": "Cifras del panel principal.",
+      "item": [
+        {
+          "name": "Get Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "stats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ingresos Mensual",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/ingresos-mensual?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "ingresos-mensual"
+              ],
+              "query": [
+                {
+                  "key": "anio",
+                  "value": "2026",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ultimas Activaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/ultimas-activaciones?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "ultimas-activaciones"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clientes",
+      "description": "Alta, aprobación, instalación, corte, pausa y reactivación (actúan sobre el MikroTik). Ojo: cortar, reactivar, pausar, aprobar e instalar mandan comandos al MikroTik y avisos por WhatsApp.",
+      "item": [
+        {
+          "name": "List Clientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "estado",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "tipo_conexion",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "solo_mis_instalaciones",
+                  "value": "False",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "solo_mis_registros",
+                  "value": "False",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "migrado",
+                  "value": "True",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "faltan_datos",
+                  "value": "True",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"dni\": \"texto\",\n  \"plan_id\": 1,\n  \"tipo_documento\": \"dni\",\n  \"ruc\": \"texto\",\n  \"responsable_nombre\": \"texto\",\n  \"telefono\": \"texto\",\n  \"telefono_whatsapp\": \"texto\",\n  \"direccion\": \"texto\",\n  \"lat\": 1.0,\n  \"lng\": 1.0,\n  \"zona_id\": 1,\n  \"cantidad_tv\": 0,\n  \"tipo_conexion\": \"fibra_optica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ips Disponibles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/ips-disponibles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "ips-disponibles"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Las IP del pool que estan libres en el router de la zona del cliente.\n\nSe consulta al aprobar, para elegir la IP de una lista en vez de\nescribirla a mano. Importa acertar: el corte de servicio mete esa IP en\nuna lista del firewall, asi que una IP equivocada corta a otro cliente, y\nuna IP repetida deja a los dos sin servicio."
+          }
+        },
+        {
+          "name": "Aprobar Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/aprobar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "aprobar"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ip_estatica\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Activar Satelital",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/activar-satelital",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "activar-satelital"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Activa un cliente satelital ya aprobado — no hay fibra que tender, así\nque no pasa por /instalar (caja NAP/borne/ONU): acá se registra el equipo\nStarlink entregado y el cliente queda activo de una vez.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cuenta_starlink_email\": \"texto\",\n  \"estado_equipo\": \"comprado\",\n  \"equipo_marca\": \"Starlink\",\n  \"equipo_modelo\": \"texto\",\n  \"equipo_serial\": \"texto\",\n  \"equipo_valor\": 1.0,\n  \"equipo_fecha_entrega\": \"2026-11-19\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Rechazar Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/rechazar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "rechazar"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Instalar Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/instalar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "instalar"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caja_nap_id\": 1,\n  \"numero_borne\": 1,\n  \"onu_id\": 1,\n  \"metros_cable\": 1.0,\n  \"potencia_optica_dbm\": 1.0,\n  \"codigo_precinto\": \"texto\",\n  \"fecha_activacion\": \"2026-11-19\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "No Instalar Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/no-instalar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "no-instalar"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Completar Datos De Instalacion",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/datos-de-instalacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "datos-de-instalacion"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Registrar la caja, el borne y el equipo de un cliente ya instalado.\n\nPara eso se hizo: los clientes migrados quedaron activos sin planta\nporque nadie la anoto hace anos, y el flujo de instalacion no sirve para\narreglarlo --solo corre sobre clientes \"aprobados\"--. Aqui se apunta lo\nque el tecnico ve el dia que por fin pasa por la casa.\n\nTambien corrige: si se habia puesto un borne equivocado, el viejo se\nlibera. Lo que no se vale es usarlo para cambiar un equipo averiado, que\neso tiene su propio camino por averias y deja el rastro del cambio.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caja_nap_id\": 1,\n  \"numero_borne\": 1,\n  \"onu_id\": 1,\n  \"codigo_precinto\": \"texto\",\n  \"potencia_optica_dbm\": 1.0,\n  \"metros_cable\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Resumen Estados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/resumen-estados?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                "resumen-estados"
+              ],
+              "query": [
+                {
+                  "key": "tipo_conexion",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Cuantos clientes hay en cada estado, en UNA consulta.\n\nAntes la pantalla pedia una lista entera por cada tarjeta solo para leer su\ntotal: cuatro llamadas, y nueve si se quieren todos los estados. Con mil\nclientes eso es absurdo. Esto es un GROUP BY y vuelve en una.\n\nRecorta por rol igual que la lista, para que las tarjetas no digan 40\ncuando debajo se ven 7."
+          }
+        },
+        {
+          "name": "Get Notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/notificaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                "notificaciones"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Cliente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"ruc\": \"texto\",\n  \"responsable_nombre\": \"texto\",\n  \"telefono\": \"texto\",\n  \"telefono_whatsapp\": \"texto\",\n  \"direccion\": \"texto\",\n  \"lat\": 1.0,\n  \"lng\": 1.0,\n  \"password_pppoe\": \"texto\",\n  \"ip_estatica\": \"texto\",\n  \"pin_app\": \"texto\",\n  \"zona_id\": 1,\n  \"plan_id\": 1,\n  \"cantidad_tv\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Cliente",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cortar Servicio",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/cortar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "cortar"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pausar Servicio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/pausar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "pausar"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Pausa temporal pedida por el propio cliente (ej. viaje) — distinta de\nun corte por falta de pago: no es morosidad, así que no debe aparecer en\nlas listas de cortados/sin pago ni mandar el aviso de corte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meses\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reactivar Servicio",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/reactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "reactivar"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dar Compromiso Pago",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/compromiso-pago",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "compromiso-pago"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "El cliente pidió plazo ('espérame hasta el 25'). Mientras el compromiso\nesté vigente, el job de corte automático lo saltea. Si ya estaba cortado,\nse reactiva de una vez — la deuda (fecha_vencimiento) no se toca, solo se\nle da chance de pagar sin que lo corten antes de esa fecha.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fecha_limite\": \"2026-11-19\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Historial",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/historial",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "historial"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Calendario Pagos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/calendario-pagos?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "calendario-pagos"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ],
+              "query": [
+                {
+                  "key": "anio",
+                  "value": "2026",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Pppoe Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/:cliente_id/pppoe-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ":cliente_id",
+                "pppoe-status"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zonas",
+      "description": "Zonas de cobertura, túnel WireGuard, estado de los routers y terminal RouterOS. Ojo: la terminal y la gestión del túnel actúan sobre la VPS y los routers reales.",
+      "item": [
+        {
+          "name": "List Zonas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Zona",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"ip_wireguard\": \"texto\",\n  \"ip_lan\": \"texto\",\n  \"usuario_mikrotik\": \"texto\",\n  \"wg_public_key\": \"texto\",\n  \"router_mikrotik\": \"texto\",\n  \"ip_router\": \"texto\",\n  \"pool_pppoe\": \"texto\",\n  \"lista_corte\": \"texto\",\n  \"lat\": 1.0,\n  \"lng\": 1.0,\n  \"descripcion\": \"texto\",\n  \"tiendas_pago\": \"texto\",\n  \"password_mikrotik\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Zonas Publicas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/publicas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                "publicas"
+              ]
+            },
+            "description": "Lista pública de zonas con cobertura activa — sin autenticación, para el\ncomprobador de cobertura de la página pública. Solo expone id y nombre.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Resumen Publico",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/publicas/resumen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                "publicas",
+                "resumen"
+              ]
+            },
+            "description": "Cifras reales (no estimadas) para la página pública: cuántas zonas\nactivas y cuántos clientes activos hay hoy. Sin autenticación.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Estado Red Zonas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/estado-red",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                "estado-red"
+              ]
+            },
+            "description": "Si el router de cada zona contesta, en una sola llamada.\n\nLa pantalla de zonas pinta una tarjeta por zona y cada tarjeta dice si su\nMikroTik está en línea. Preguntarlo zona por zona serían tantas peticiones\ncomo zonas, de varios segundos cada una: acá el handshake de WireGuard sale\nde un solo `wg show` en la VPS y los ping van en paralelo, así que toda la\npantalla tarda lo que la zona más lenta.\n\nVa declarada antes que /{zona_id} a propósito: FastAPI prueba las rutas en\nel orden en que se declaran, y si no, \"estado-red\" entraría como si fuera\nel id de una zona."
+          }
+        },
+        {
+          "name": "Get Zona",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Zona",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"ip_wireguard\": \"texto\",\n  \"ip_lan\": \"texto\",\n  \"usuario_mikrotik\": \"texto\",\n  \"wg_public_key\": \"texto\",\n  \"router_mikrotik\": \"texto\",\n  \"ip_router\": \"texto\",\n  \"pool_pppoe\": \"texto\",\n  \"lista_corte\": \"texto\",\n  \"lat\": 1.0,\n  \"lng\": 1.0,\n  \"descripcion\": \"texto\",\n  \"tiendas_pago\": \"texto\",\n  \"password_mikrotik\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Zona",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Zona Datos",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/datos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "datos"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Corrige nombre/descripción/tiendas de pago, ubicación del servidor\ny las credenciales del MikroTik (usuario, clave, IP LAN, router).\n\nExiste aparte de PUT /zonas/{id} aunque hoy ambos los use el mismo rol:\neste NO toca el túnel WireGuard. La separación se mantiene porque es la\ndiferencia entre equivocarse en un router y dejar sin acceso remoto a\ntoda una zona.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"lat\": 1.0,\n  \"lng\": 1.0,\n  \"descripcion\": \"texto\",\n  \"tiendas_pago\": \"texto\",\n  \"ip_lan\": \"texto\",\n  \"usuario_mikrotik\": \"texto\",\n  \"password_mikrotik\": \"texto\",\n  \"router_mikrotik\": \"texto\",\n  \"ip_router\": \"texto\",\n  \"pool_pppoe\": \"texto\",\n  \"lista_corte\": \"texto\",\n  \"ip_wireguard\": \"texto\",\n  \"wg_public_key\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Wireguard Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/wireguard-status?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "wireguard-status"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ],
+              "query": [
+                {
+                  "key": "forzar",
+                  "value": "False",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Wg Peer",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/wireguard/peer?pubkey=texto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "wireguard",
+                "peer"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ],
+              "query": [
+                {
+                  "key": "pubkey",
+                  "value": "texto",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "lan_network",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Agrega el peer WireGuard de la zona.\nallowed_ips = {ip_wireguard}/32[, {lan_network}]\nRetorna la pubkey del VPS para configurar en el MikroTik."
+          }
+        },
+        {
+          "name": "Remove Wg Peer",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/wireguard/peer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "wireguard",
+                "peer"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Wg Peers Activos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/wireguard/peers-activos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "wireguard",
+                "peers-activos"
+              ]
+            },
+            "description": "Lista todos los peers activos en wg0 con su estado."
+          }
+        },
+        {
+          "name": "Exec Terminal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/exec",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "exec"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cmd\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Tecnicos Zona",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/tecnicos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "tecnicos"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Quién atiende la zona. Solo administración: la ficha de un técnico\nlleva su teléfono, DNI y dirección, que es dato personal del trabajador."
+          }
+        },
+        {
+          "name": "Asignar Tecnico Zona",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/tecnicos/:tecnico_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "tecnicos",
+                ":tecnico_id"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "tecnico_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Quitar Tecnico Zona",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/tecnicos/:tecnico_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "tecnicos",
+                ":tecnico_id"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "tecnico_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Datos Del Router",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zonas/:zona_id/datos-del-router",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zonas",
+                ":zona_id",
+                "datos-del-router"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Lo que el MikroTik puede decir de si mismo, para no escribirlo a mano.\n\nLos dos datos que mas importan son el pool PPPoE y la lista de corte,\nporque son los que, mal escritos, no dan error: el cliente se autentica y\nse queda sin IP, o entra en una lista del firewall que ninguna regla\nconsulta y sigue navegando sin pagar. Leidos del router no se pueden\nescribir mal.\n\nNo adivina nada que no este claro: devuelve lo que hay y deja que se\nelija. El unico caso en que propone es cuando hay una sola opcion, o\ncuando los perfiles PPPoE del propio router ya apuntan a un pool."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagos",
+      "description": "Cobros, comprobantes, recibos PDF y reportes de caja.",
+      "item": [
+        {
+          "name": "List Pagos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "mes",
+                  "value": "2026-11",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "estado",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Pago",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_id\": 1,\n  \"monto\": 1.0,\n  \"mes_pagado\": \"texto\",\n  \"fecha_pago\": \"2026-11-19\",\n  \"metodo_pago\": \"efectivo\",\n  \"numero_operacion\": \"texto\",\n  \"estado\": \"pagado\",\n  \"notas\": \"texto\",\n  \"meses\": 1,\n  \"descuento\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Subir Comprobante Pago",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/:pago_id/comprobante",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                ":pago_id",
+                "comprobante"
+              ],
+              "variable": [
+                {
+                  "key": "pago_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "archivo",
+                  "type": "file"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Descargar Comprobante Pago",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/:pago_id/comprobante",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                ":pago_id",
+                "comprobante"
+              ],
+              "variable": [
+                {
+                  "key": "pago_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reenviar Confirmacion Whatsapp",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/:pago_id/reenviar-whatsapp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                ":pago_id",
+                "reenviar-whatsapp"
+              ],
+              "variable": [
+                {
+                  "key": "pago_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Reenvía manualmente la confirmación de pago por WhatsApp — a pedido,\na diferencia del envío automático al registrar el pago (ej. si el bot\nestaba desconectado en ese momento, o el cliente pide que se lo reenvíen).\nA diferencia del envío automático, este SÍ espera la respuesta real del\nbot para poder avisarle al usuario si se mandó o no."
+          }
+        },
+        {
+          "name": "Recibo Pdf",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/:pago_id/recibo-pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                ":pago_id",
+                "recibo-pdf"
+              ],
+              "variable": [
+                {
+                  "key": "pago_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "El recibo del pago en PDF, con el formato de ticket de la empresa. Si el\npago es parte de un cobro adelantado, sale un solo recibo con todos los\nmeses."
+          }
+        },
+        {
+          "name": "Resumen Mensual",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/resumen-mensual?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "resumen-mensual"
+              ],
+              "query": [
+                {
+                  "key": "anio",
+                  "value": "2026",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reporte Caja",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/reporte-caja?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "reporte-caja"
+              ],
+              "query": [
+                {
+                  "key": "fecha",
+                  "value": "2026-11-19",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reporte Mensual Zonas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/reporte-mensual-zonas?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "reporte-mensual-zonas"
+              ],
+              "query": [
+                {
+                  "key": "mes",
+                  "value": "2026-11",
+                  "disabled": true,
+                  "description": "YYYY-MM — por defecto, el mes actual"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clientes Sin Pago",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/clientes-sin-pago",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "clientes-sin-pago"
+              ]
+            },
+            "description": "Clientes activos cuyo propio ciclo de pago (fecha_vencimiento) ya\nllegó o ya pasó — no usa el mes calendario: un cliente que vence el 29\nno debe aparecer aquí el día 2, aunque el mes calendario recién empiece."
+          }
+        },
+        {
+          "name": "Clientes Cortados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/clientes-cortados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "clientes-cortados"
+              ]
+            },
+            "description": "Clientes con el servicio cortado (suspendido), más recientes primero —\npara encontrar rápido a quien quiere pagar y reactivar. No tiene límite\nde tiempo: los cortados hace años quedan al fondo de la lista solos, sin\ntener que ocultarlos a mano."
+          }
+        },
+        {
+          "name": "Pausas Por Vencer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/pausas-por-vencer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "pausas-por-vencer"
+              ]
+            },
+            "description": "Clientes en pausa temporal (a su propia solicitud) cuyo plazo ya\nvenció o está por vencer en los próximos 7 días — para saber a quién\nreactivar. Distinto de 'Clientes cortados': estos no son morosos."
+          }
+        },
+        {
+          "name": "Exportar Pagos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/exportar?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "exportar"
+              ],
+              "query": [
+                {
+                  "key": "formato",
+                  "value": "excel",
+                  "disabled": true,
+                  "description": "excel | pdf"
+                },
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "mes",
+                  "value": "2026-11",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "estado",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "La lista de pagos con los mismos filtros de la pantalla, pero completa\n(sin paginar) y lista para descargar en Excel o PDF."
+          }
+        },
+        {
+          "name": "Exportar Reporte Caja",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/reporte-caja/exportar?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "reporte-caja",
+                "exportar"
+              ],
+              "query": [
+                {
+                  "key": "formato",
+                  "value": "excel",
+                  "disabled": true,
+                  "description": "excel | pdf"
+                },
+                {
+                  "key": "fecha",
+                  "value": "2026-11-19",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "El corte de caja del día, para imprimirlo o archivarlo al cerrar turno."
+          }
+        },
+        {
+          "name": "Exportar Reporte Zonas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/reporte-mensual-zonas/exportar?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                "reporte-mensual-zonas",
+                "exportar"
+              ],
+              "query": [
+                {
+                  "key": "formato",
+                  "value": "excel",
+                  "disabled": true,
+                  "description": "excel | pdf"
+                },
+                {
+                  "key": "mes",
+                  "value": "2026-11",
+                  "disabled": true,
+                  "description": "YYYY-MM — por defecto, el mes actual"
+                }
+              ]
+            },
+            "description": "Lo recaudado en el mes, zona por zona."
+          }
+        },
+        {
+          "name": "Get Pago",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/:pago_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                ":pago_id"
+              ],
+              "variable": [
+                {
+                  "key": "pago_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Pago",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/:pago_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pagos",
+                ":pago_id"
+              ],
+              "variable": [
+                {
+                  "key": "pago_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gastos",
+      "description": "Gastos de la empresa por zona y categoría.",
+      "item": [
+        {
+          "name": "List Gastos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/gastos?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gastos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "mes",
+                  "value": "2026-11",
+                  "disabled": true,
+                  "description": "YYYY-MM"
+                },
+                {
+                  "key": "categoria",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": "0 = solo gastos generales (sin zona)"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Gasto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/gastos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gastos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion\": \"texto\",\n  \"monto\": 1.0,\n  \"fecha\": \"2026-11-19\",\n  \"categoria\": \"Otros\",\n  \"proveedor\": \"texto\",\n  \"numero_factura\": \"texto\",\n  \"comprobante\": \"texto\",\n  \"es_recurrente\": false,\n  \"notas\": \"texto\",\n  \"zona_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Resumen Por Zona",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/gastos/resumen-por-zona?mes=2026-11",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gastos",
+                "resumen-por-zona"
+              ],
+              "query": [
+                {
+                  "key": "mes",
+                  "value": "2026-11",
+                  "disabled": false,
+                  "description": "YYYY-MM"
+                }
+              ]
+            },
+            "description": "Para la grilla de zonas: gastos fijos/variables y margen (ingresos -\ngastos) de cada zona en el mes, más un balde \"general\" (zona_id null)\npara gastos que no son de ninguna zona en particular."
+          }
+        },
+        {
+          "name": "Update Gasto",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/gastos/:gasto_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gastos",
+                ":gasto_id"
+              ],
+              "variable": [
+                {
+                  "key": "gasto_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion\": \"texto\",\n  \"monto\": 1.0,\n  \"fecha\": \"2026-11-19\",\n  \"categoria\": \"Otros\",\n  \"proveedor\": \"texto\",\n  \"numero_factura\": \"texto\",\n  \"comprobante\": \"texto\",\n  \"es_recurrente\": false,\n  \"notas\": \"texto\",\n  \"zona_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Gasto",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/gastos/:gasto_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gastos",
+                ":gasto_id"
+              ],
+              "variable": [
+                {
+                  "key": "gasto_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Categorias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/gastos/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "gastos",
+                "categorias"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "WhatsApp",
+      "description": "Sesión del bot, avisos de cobro y mensajería masiva. Ojo: los envíos llegan a clientes reales si el bot está vinculado.",
+      "item": [
+        {
+          "name": "Get Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Qr",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/qr",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "qr"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/send?phone=texto&message=texto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "send"
+              ],
+              "query": [
+                {
+                  "key": "phone",
+                  "value": "texto",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "message",
+                  "value": "texto",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Aviso Cobro",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/aviso-cobro/:cliente_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "aviso-cobro",
+                ":cliente_id"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Aviso Corte",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/aviso-corte/:cliente_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "aviso-corte",
+                ":cliente_id"
+              ],
+              "variable": [
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Broadcast Cobros",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/broadcast-cobros?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "broadcast-cobros"
+              ],
+              "query": [
+                {
+                  "key": "mes",
+                  "value": "2026-11",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Recordatorio de pago a todos los activos que no pagaron el mes indicado.\nAntes mandaba todo de golpe en un loop dentro del request — eso arriesgaba\nque WhatsApp bloquee el número por spam. Ahora usa el mismo motor del\nmensaje masivo: corre en segundo plano, con pausa aleatoria entre envíos,\ny se puede cancelar a la mitad."
+          }
+        },
+        {
+          "name": "Ejecutar Recordatorio Preventivo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/recordatorio-preventivo/ejecutar?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "recordatorio-preventivo",
+                "ejecutar"
+              ],
+              "query": [
+                {
+                  "key": "dias_antes",
+                  "value": "3",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Contar Destinatarios Masivo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/masivos/destinatarios-count?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "masivos",
+                "destinatarios-count"
+              ],
+              "query": [
+                {
+                  "key": "zona_ids",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": "IDs de zona separados por coma; vacío = todas"
+                },
+                {
+                  "key": "estados",
+                  "value": "activo",
+                  "disabled": true,
+                  "description": "Estados separados por coma"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Mensajes Masivos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/masivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "masivos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Mensaje Masivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/masivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "masivos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"texto\",\n  \"zona_ids\": [\n    1\n  ],\n  \"estados\": [\n    \"activo\"\n  ],\n  \"plantilla_nombre\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Obtener Mensaje Masivo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/masivos/:mensaje_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "masivos",
+                ":mensaje_id"
+              ],
+              "variable": [
+                {
+                  "key": "mensaje_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancelar Mensaje Masivo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/whatsapp/masivos/:mensaje_id/cancelar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "whatsapp",
+                "masivos",
+                ":mensaje_id",
+                "cancelar"
+              ],
+              "variable": [
+                {
+                  "key": "mensaje_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Planes",
+      "description": "Planes de internet y su perfil PPPoE en cada router.",
+      "item": [
+        {
+          "name": "List Planes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/planes?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "planes"
+              ],
+              "query": [
+                {
+                  "key": "tipo_conexion",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/planes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "planes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"texto\",\n  \"nombre\": \"texto\",\n  \"bajada_mbps\": 1,\n  \"subida_mbps\": 1,\n  \"precio\": 1.0,\n  \"incluye_tv\": false,\n  \"tv_incluidas\": 0,\n  \"precio_tv_adicional\": 1.0,\n  \"descripcion\": \"texto\",\n  \"tipo_conexion\": \"fibra_optica\",\n  \"costo_proveedor\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Plan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/planes/:plan_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "planes",
+                ":plan_id"
+              ],
+              "variable": [
+                {
+                  "key": "plan_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"texto\",\n  \"nombre\": \"texto\",\n  \"bajada_mbps\": 1,\n  \"subida_mbps\": 1,\n  \"precio\": 1.0,\n  \"incluye_tv\": false,\n  \"tv_incluidas\": 0,\n  \"precio_tv_adicional\": 1.0,\n  \"descripcion\": \"texto\",\n  \"tipo_conexion\": \"fibra_optica\",\n  \"costo_proveedor\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Plan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/planes/:plan_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "planes",
+                ":plan_id"
+              ],
+              "variable": [
+                {
+                  "key": "plan_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verificar Planes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/planes/verificacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "planes",
+                "verificacion"
+              ]
+            },
+            "description": "Compara los planes del panel con los perfiles reales de cada router.\n\nNo escribe nada: solo mira y reporta. Se consulta UNA vez por zona y se\ncomparan todos los planes contra esa lectura, en vez de una conexión por\nplan y zona — con 15 routers y 4 planes, eso serían 60 conexiones SSH\npara la misma información.\n\nEs una operación lenta (habla con todos los routers), así que va detrás de\nun botón y no se ejecuta al guardar un plan."
+          }
+        },
+        {
+          "name": "Perfiles De Zona",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/planes/perfiles-de-zona/:zona_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "planes",
+                "perfiles-de-zona",
+                ":zona_id"
+              ],
+              "variable": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Los perfiles PPPoE que tiene ese router, tal cual.\n\nSirve para elegir el código de un plan de una lista real en vez de\nescribirlo a mano y arriesgarse a una errata que solo se descubre cuando\nun cliente no puede conectarse."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "description": "Copias de seguridad y tareas de administración.",
+      "item": [
+        {
+          "name": "Crear Backup",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/backup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "backup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Descargar Backup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/backups/download/:filename",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "backups",
+                "download",
+                ":filename"
+              ],
+              "variable": [
+                {
+                  "key": "filename",
+                  "value": "texto",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Backups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/backups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "backups"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "App Cliente",
+      "description": "Lo que consume la app móvil del cliente. Estas peticiones son de la app del cliente: corre antes **Auth › Cliente Login** con un DNI de cliente.",
+      "item": [
+        {
+          "name": "Mi Cuenta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cliente/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cliente",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cambiar Pin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cliente/cambiar-pin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cliente",
+                "cambiar-pin"
+              ]
+            },
+            "description": "Cambia la contraseña del cliente en la app móvil.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin_actual\": \"texto\",\n  \"pin_nuevo\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Mis Pagos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cliente/mis-pagos?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cliente",
+                "mis-pagos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cajas NAP",
+      "description": "Cajas de distribución, bornes y precintos.",
+      "item": [
+        {
+          "name": "List Cajas Nap",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cajas-nap?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cajas-nap"
+              ],
+              "query": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Caja Nap",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cajas-nap",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cajas-nap"
+              ]
+            },
+            "description": "Registro previo de la caja NAP por el admin (catálogo de infraestructura) —\nel técnico solo elige entre las ya registradas al instalar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"texto\",\n  \"zona_id\": 1,\n  \"mufa_id\": 1,\n  \"lat\": 1.0,\n  \"lng\": 1.0,\n  \"capacidad_bornes\": 8,\n  \"descripcion\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Caja Nap",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cajas-nap/:caja_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cajas-nap",
+                ":caja_id"
+              ],
+              "variable": [
+                {
+                  "key": "caja_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Caja Nap",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cajas-nap/:caja_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cajas-nap",
+                ":caja_id"
+              ],
+              "variable": [
+                {
+                  "key": "caja_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Corrige datos de una caja mal ingresada (código, descripción, ubicación)\n— no permite reasignar mufa/zona, eso implica retirar y volver a instalar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"texto\",\n  \"descripcion\": \"texto\",\n  \"lat\": 1.0,\n  \"lng\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Caja Nap",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cajas-nap/:caja_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cajas-nap",
+                ":caja_id"
+              ],
+              "variable": [
+                {
+                  "key": "caja_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Borra una caja registrada por error — bloqueado si algún borne ya tiene\nun cliente conectado (hay que retirarlo primero, nunca se pierde ese rastro)."
+          }
+        },
+        {
+          "name": "Ampliar Caja Nap",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cajas-nap/:caja_id/ampliar?capacidad_nueva=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cajas-nap",
+                ":caja_id",
+                "ampliar"
+              ],
+              "variable": [
+                {
+                  "key": "caja_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ],
+              "query": [
+                {
+                  "key": "capacidad_nueva",
+                  "value": "1",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Agranda la caja (ej. de 8 a 16 bornes) cuando se llenó — agrega los\nbornes faltantes como libres, nunca reduce ni toca los existentes."
+          }
+        },
+        {
+          "name": "Marcar Borne",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cajas-nap/bornes/:borne_id/marcar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cajas-nap",
+                "bornes",
+                ":borne_id",
+                "marcar"
+              ],
+              "variable": [
+                {
+                  "key": "borne_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Un técnico reporta un borne dañado (o el admin lo vuelve a marcar libre\nuna vez reparado). Si el borne tiene un cliente conectado no se puede\nmarcar dañado sin antes liberar al cliente (retiro).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"danado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Actualizar Precinto",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cajas-nap/bornes/:borne_id/precinto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cajas-nap",
+                "bornes",
+                ":borne_id",
+                "precinto"
+              ],
+              "variable": [
+                {
+                  "key": "borne_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Registra o corrige el código del precinto físico amarrado al cable drop\nde un borne ocupado — sirve para verificar en campo que el cable no fue\ncambiado. Solo aplica a bornes con cliente conectado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo_precinto\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Estado Pppoe Caja",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cajas-nap/:caja_id/estado-pppoe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cajas-nap",
+                ":caja_id",
+                "estado-pppoe"
+              ],
+              "variable": [
+                {
+                  "key": "caja_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Consulta en una sola sesión SSH si cada abonado ocupando un borne de\nesta caja está conectado ahora mismo al MikroTik de su zona — mucho más\nliviano que una consulta por cliente (que abriría una conexión SSH por\ncada una)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mufas",
+      "description": "Mufas de empalme y corridas de fibra.",
+      "item": [
+        {
+          "name": "List Mufas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/mufas?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mufas"
+              ],
+              "query": [
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Mufa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mufas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mufas"
+              ]
+            },
+            "description": "El encargado registra una mufa nueva al mapear la zona — no toca\nMikroTik/WireGuard, es solo infraestructura física de fibra.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"texto\",\n  \"zona_id\": 1,\n  \"lat\": 1.0,\n  \"lng\": 1.0,\n  \"descripcion\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Mufa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/mufas/:mufa_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mufas",
+                ":mufa_id"
+              ],
+              "variable": [
+                {
+                  "key": "mufa_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Mufa",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mufas/:mufa_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mufas",
+                ":mufa_id"
+              ],
+              "variable": [
+                {
+                  "key": "mufa_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 1.0,\n  \"lng\": 1.0,\n  \"descripcion\": \"texto\",\n  \"trazado\": [\n    {\n      \"lat\": 1.0,\n      \"lng\": 1.0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Mufa",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/mufas/:mufa_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mufas",
+                ":mufa_id"
+              ],
+              "variable": [
+                {
+                  "key": "mufa_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Cajas De Mufa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/mufas/:mufa_id/cajas-nap",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mufas",
+                ":mufa_id",
+                "cajas-nap"
+              ],
+              "variable": [
+                {
+                  "key": "mufa_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Corrida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mufas/:mufa_id/corridas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mufas",
+                ":mufa_id",
+                "corridas"
+              ],
+              "variable": [
+                {
+                  "key": "mufa_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"trazado\": [\n    {\n      \"lat\": 1.0,\n      \"lng\": 1.0\n    }\n  ],\n  \"color\": \"texto\",\n  \"metros\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Actualizar Corrida",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mufas/:mufa_id/corridas/:corrida_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mufas",
+                ":mufa_id",
+                "corridas",
+                ":corrida_id"
+              ],
+              "variable": [
+                {
+                  "key": "mufa_id",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "corrida_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"color\": \"texto\",\n  \"metros\": 1.0,\n  \"trazado\": [\n    {\n      \"lat\": 1.0,\n      \"lng\": 1.0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Borrar Corrida",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/mufas/:mufa_id/corridas/:corrida_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mufas",
+                ":mufa_id",
+                "corridas",
+                ":corrida_id"
+              ],
+              "variable": [
+                {
+                  "key": "mufa_id",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "corrida_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ONUs",
+      "description": "Registro de ONUs por serie, con su recorrido.",
+      "item": [
+        {
+          "name": "List Onus",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "en_almacen",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "tecnico_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Onu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus"
+              ]
+            },
+            "description": "Ingresa una ONU al almacén (lo que capturó la lectora: serie/MAC/marca).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numero_serie\": \"texto\",\n  \"mac\": \"texto\",\n  \"marca\": \"texto\",\n  \"wifi_version\": \"wifi5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Validar Onu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus/validar?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus",
+                "validar"
+              ],
+              "query": [
+                {
+                  "key": "numero_serie",
+                  "value": "ASKY10790001",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "mac",
+                  "value": "A4:B1:C2:3D:4E:5F",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Revisa serie y MAC mientras se escriben o se escanean: las devuelve\nnormalizadas, dice la marca y avisa si ya existen."
+          }
+        },
+        {
+          "name": "Registrar Onu Propio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus/registrar-propio",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus",
+                "registrar-propio"
+              ]
+            },
+            "description": "El técnico registra un equipo que el almacén le entregó sin pasar antes\npor el sistema (escaneando MAC/serie en campo) — queda asignado a él\ndirectamente, sin pasar por el stock general que administra el admin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numero_serie\": \"texto\",\n  \"mac\": \"texto\",\n  \"marca\": \"texto\",\n  \"wifi_version\": \"wifi5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Onu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus/:onu_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus",
+                ":onu_id"
+              ],
+              "variable": [
+                {
+                  "key": "onu_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Editar Onu",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus/:onu_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus",
+                ":onu_id"
+              ],
+              "variable": [
+                {
+                  "key": "onu_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Corrige MAC, marca o WiFi. Lo que cambió queda en el historial con el\nvalor anterior, para que una corrección nunca borre lo que había.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mac\": \"texto\",\n  \"marca\": \"texto\",\n  \"wifi_version\": \"wifi5\",\n  \"nota\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Onu",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus/:onu_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus",
+                ":onu_id"
+              ],
+              "variable": [
+                {
+                  "key": "onu_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Borra una ONU registrada por error (duplicada, serie mal escrita). Solo\nsi nunca salió del almacén: una que ya pasó por manos de alguien tiene\nhistoria, y esa no se borra; se marca dañada o perdida."
+          }
+        },
+        {
+          "name": "Historial Onu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus/:onu_id/historial",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus",
+                ":onu_id",
+                "historial"
+              ],
+              "variable": [
+                {
+                  "key": "onu_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "El recorrido de la ONU, lo más reciente primero."
+          }
+        },
+        {
+          "name": "Asignar Onu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus/:onu_id/asignar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus",
+                ":onu_id",
+                "asignar"
+              ],
+              "variable": [
+                {
+                  "key": "onu_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Entrega una ONU a un técnico. Si ya la tenía otro, es un traspaso:\nqueda constancia de quién la tenía y a quién pasó.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tecnico_id\": 1,\n  \"nota\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Marcar Onu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/onus/:onu_id/marcar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "onus",
+                ":onu_id",
+                "marcar"
+              ],
+              "variable": [
+                {
+                  "key": "onu_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Marca una ONU dañada o perdida, o la regresa al almacén (devolución, o\nrecuperada si estaba dañada o perdida).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"en_almacen\",\n  \"nota\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Averías",
+      "description": "Reportes de avería y su atención.",
+      "item": [
+        {
+          "name": "List Averias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/averias?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "averias"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "pendiente",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Averia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/averias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "averias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo_reportado\": \"texto\",\n  \"cliente_id\": 1,\n  \"caja_nap_id\": 1,\n  \"borne_id\": 1,\n  \"tecnico_asignado_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Averia",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/averias/:averia_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "averias",
+                ":averia_id"
+              ],
+              "variable": [
+                {
+                  "key": "averia_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Editar Averia",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/averias/:averia_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "averias",
+                ":averia_id"
+              ],
+              "variable": [
+                {
+                  "key": "averia_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Corrige el motivo reportado — ej. un error de tipeo al registrarla.\nUna vez resuelta ya no se edita: el diagnóstico queda aparte y es lo que\nmanda sobre qué pasó realmente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo_reportado\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Eliminar Averia",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/averias/:averia_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "averias",
+                ":averia_id"
+              ],
+              "variable": [
+                {
+                  "key": "averia_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Borra una avería creada por error (cliente equivocado, duplicada, etc.)\njunto con sus evidencias — tanto el registro como el archivo en disco."
+          }
+        },
+        {
+          "name": "Asignar Averia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/averias/:averia_id/asignar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "averias",
+                ":averia_id",
+                "asignar"
+              ],
+              "variable": [
+                {
+                  "key": "averia_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tecnico_asignado_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar Averia",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/averias/:averia_id/iniciar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "averias",
+                ":averia_id",
+                "iniciar"
+              ],
+              "variable": [
+                {
+                  "key": "averia_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "El técnico marca que ya está en atención (en camino / trabajando)."
+          }
+        },
+        {
+          "name": "Resolver Averia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/averias/:averia_id/resolver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "averias",
+                ":averia_id",
+                "resolver"
+              ],
+              "variable": [
+                {
+                  "key": "averia_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Cierra la avería. `diagnostico_solucion` es lo que REALMENTE se hizo —\npuede ser distinto de `motivo_reportado` — y queda registrado aparte para\nno perder esa diferencia. Si se cambió el equipo, se actualiza el\ninventario de ONUs (la vieja queda dañada, la nueva queda instalada).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diagnostico_solucion\": \"texto\",\n  \"onu_reemplazada_id\": 1,\n  \"onu_nueva_id\": 1,\n  \"potencia_optica_dbm\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Órdenes de retiro",
+      "description": "Retiro de equipos de clientes dados de baja.",
+      "item": [
+        {
+          "name": "List Ordenes Retiro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes-retiro?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes-retiro"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "pendiente",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "zona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Orden Retiro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes-retiro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes-retiro"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_id\": 1,\n  \"motivo\": \"texto\",\n  \"tecnico_asignado_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Orden Retiro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes-retiro/:orden_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes-retiro",
+                ":orden_id"
+              ],
+              "variable": [
+                {
+                  "key": "orden_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Asignar Orden Retiro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes-retiro/:orden_id/asignar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes-retiro",
+                ":orden_id",
+                "asignar"
+              ],
+              "variable": [
+                {
+                  "key": "orden_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tecnico_asignado_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Completar Orden Retiro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes-retiro/:orden_id/completar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes-retiro",
+                ":orden_id",
+                "completar"
+              ],
+              "variable": [
+                {
+                  "key": "orden_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "El técnico confirma que recogió el equipo. La ONU vuelve al almacén\n(disponible para reasignar), el borne se libera y el cliente pasa a\nanulado — no se borra nada de la base de datos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"onu_retirada_id\": 1,\n  \"retiro_roseta\": false,\n  \"retiro_patchcord\": false,\n  \"observaciones\": \"texto\",\n  \"telefono\": \"texto\",\n  \"telefono_whatsapp\": \"texto\",\n  \"direccion\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Evidencias",
+      "description": "Fotos de instalaciones, averías y retiros.",
+      "item": [
+        {
+          "name": "List Evidencias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/evidencias?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "evidencias"
+              ],
+              "query": [
+                {
+                  "key": "averia_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "cliente_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "orden_retiro_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload Evidencia",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/evidencias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "evidencias"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "tipo",
+                  "type": "text",
+                  "value": "instalacion"
+                },
+                {
+                  "key": "archivo",
+                  "type": "file"
+                },
+                {
+                  "key": "averia_id",
+                  "type": "text",
+                  "value": "1"
+                },
+                {
+                  "key": "cliente_id",
+                  "type": "text",
+                  "value": "1"
+                },
+                {
+                  "key": "orden_retiro_id",
+                  "type": "text",
+                  "value": "1"
+                },
+                {
+                  "key": "descripcion",
+                  "type": "text",
+                  "value": "texto"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Descargar Evidencia",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/evidencias/:evidencia_id/archivo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "evidencias",
+                ":evidencia_id",
+                "archivo"
+              ],
+              "variable": [
+                {
+                  "key": "evidencia_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eliminar Evidencia",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/evidencias/:evidencia_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "evidencias",
+                ":evidencia_id"
+              ],
+              "variable": [
+                {
+                  "key": "evidencia_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Borra una foto subida por error — el registro y el archivo en disco."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jornadas",
+      "description": "Jornadas y recorridos de las vendedoras de campo. Las de «mi jornada» son de la vendedora de campo: necesitan su sesión, no la del administrador.",
+      "item": [
+        {
+          "name": "Iniciar Jornada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/iniciar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                "iniciar"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 1.0,\n  \"lng\": 1.0,\n  \"zona_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ping Ubicacion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/ping",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                "ping"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 1.0,\n  \"lng\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Finalizar Jornada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                "finalizar"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 1.0,\n  \"lng\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reportar Reclamo Pasaje",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/:jornada_id/reclamo-pasaje",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                ":jornada_id",
+                "reclamo-pasaje"
+              ],
+              "variable": [
+                {
+                  "key": "jornada_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "El vendedor reporta que la tienda no le dio pasaje y pagó de su\nbolsillo — queda pendiente hasta que el admin lo reintegre.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto_reclamado\": 1.0,\n  \"nota\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reintegrar Reclamo Pasaje",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/:jornada_id/reclamo-pasaje/reintegrar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                ":jornada_id",
+                "reclamo-pasaje",
+                "reintegrar"
+              ],
+              "variable": [
+                {
+                  "key": "jornada_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "El admin confirma que ya le pagó al vendedor lo que reclamó — ese\nmonto pasa a ser el pasaje oficial del día, así el resumen mensual no\nnecesita sumar dos campos distintos."
+          }
+        },
+        {
+          "name": "Mi Jornada Activa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/mi-jornada-activa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                "mi-jornada-activa"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Jornadas Activas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/activas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                "activas"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Jornadas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas"
+              ],
+              "query": [
+                {
+                  "key": "vendedor_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "fecha",
+                  "value": "2026-11-19",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Pasaje",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/:jornada_id/pasaje",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                ":jornada_id",
+                "pasaje"
+              ],
+              "variable": [
+                {
+                  "key": "jornada_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto_pasaje\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Resumen Pasajes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/resumen-pasajes?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                "resumen-pasajes"
+              ],
+              "query": [
+                {
+                  "key": "mes",
+                  "value": "2026-11",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Recorrido Jornada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jornadas/:jornada_id/recorrido",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jornadas",
+                ":jornada_id",
+                "recorrido"
+              ],
+              "variable": [
+                {
+                  "key": "jornada_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consultas",
+      "description": "Consulta de DNI y RUC.",
+      "item": [
+        {
+          "name": "Uso Del Mes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/consultas/uso",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "consultas",
+                "uso"
+              ]
+            },
+            "description": "Cuántas consultas van este mes, para mostrarlo en el panel."
+          }
+        },
+        {
+          "name": "Consultar Documento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/consultas/documento?tipo=texto&numero=texto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "consultas",
+                "documento"
+              ],
+              "query": [
+                {
+                  "key": "tipo",
+                  "value": "texto",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "numero",
+                  "value": "texto",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Devuelve el nombre asociado a un DNI o la razón social de un RUC.\n\nRespuesta siempre con la misma forma:\n  { encontrado: bool, nombre: str|None, origen: str, motivo: str|None, uso: {...} }\n\n`origen` dice de dónde salió el dato: 'sistema' si ya era cliente,\n'proveedor' si se consultó, o el motivo por el que no se pudo."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Roles y módulos",
+      "description": "Roles, módulos padre y qué módulo tiene cada rol.",
+      "item": [
+        {
+          "name": "Mis Modulos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/mis-modulos?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "mis-modulos"
+              ],
+              "query": [
+                {
+                  "key": "plataforma",
+                  "value": "panel",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Los módulos que le tocan a quien pregunta, en el orden en que se muestran."
+          }
+        },
+        {
+          "name": "Listar Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Rol",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "roles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"perfil_base\": \"atencion_cliente\",\n  \"descripcion\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Editar Rol",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/roles/:rol_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "roles",
+                ":rol_id"
+              ],
+              "variable": [
+                {
+                  "key": "rol_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"descripcion\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Eliminar Rol",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/roles/:rol_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "roles",
+                ":rol_id"
+              ],
+              "variable": [
+                {
+                  "key": "rol_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Modulos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/modulos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "modulos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Modulos Padre",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/modulos-padre?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "modulos-padre"
+              ],
+              "query": [
+                {
+                  "key": "plataforma",
+                  "value": "panel",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Modulo Padre",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/modulos-padre",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "modulos-padre"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"icono\": \"texto\",\n  \"plataforma\": \"panel\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ordenar Modulos Padre",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/modulos-padre/orden",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "modulos-padre",
+                "orden"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"padre_ids\": [\n    1\n  ],\n  \"plataforma\": \"panel\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Editar Modulo Padre",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/modulos-padre/:padre_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "modulos-padre",
+                ":padre_id"
+              ],
+              "variable": [
+                {
+                  "key": "padre_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"icono\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Eliminar Modulo Padre",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/modulos-padre/:padre_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "modulos-padre",
+                ":padre_id"
+              ],
+              "variable": [
+                {
+                  "key": "padre_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mover Modulo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/modulos/:modulo_id/padre",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "modulos",
+                ":modulo_id",
+                "padre"
+              ],
+              "variable": [
+                {
+                  "key": "modulo_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modulo_padre_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ordenar Modulos",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/roles/:rol_id/orden",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "roles",
+                ":rol_id",
+                "orden"
+              ],
+              "variable": [
+                {
+                  "key": "rol_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Guarda el orden en que este rol ve sus módulos. La lista debe traer\ntodos los que tiene: si no coincide, otra persona los cambió mientras\ntanto y hay que volver a cargar antes de ordenar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plataforma\": \"panel\",\n  \"modulo_ids\": [\n    1\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cambiar Modulo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permisos/roles/:rol_id/modulos/:modulo_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permisos",
+                "roles",
+                ":rol_id",
+                "modulos",
+                ":modulo_id"
+              ],
+              "variable": [
+                {
+                  "key": "rol_id",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "modulo_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Da o quita un solo módulo. Uno por uno, y no la lista entera, para que\ndos personas con la pantalla abierta no se pisen los cambios.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inventario",
+      "description": "Stock de materiales, movimientos, piezas con etiqueta y unidades de medida.",
+      "item": [
+        {
+          "name": "Listar Categorias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "categorias"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resumen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/resumen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "resumen"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Articulos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/articulos?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "articulos"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "categoria_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "estado",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "incluir_inactivos",
+                  "value": "False",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Articulo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/articulos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "articulos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"texto\",\n  \"nombre\": \"texto\",\n  \"categoria_id\": 1,\n  \"unidad_id\": 1,\n  \"marca\": \"texto\",\n  \"modelo\": \"texto\",\n  \"stock_minimo\": 0,\n  \"costo_unitario\": 1.0,\n  \"ubicacion\": \"texto\",\n  \"descripcion\": \"texto\",\n  \"stock_inicial\": 0,\n  \"controla_por_unidad\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ver Articulo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/articulos/:articulo_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "articulos",
+                ":articulo_id"
+              ],
+              "variable": [
+                {
+                  "key": "articulo_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Editar Articulo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/articulos/:articulo_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "articulos",
+                ":articulo_id"
+              ],
+              "variable": [
+                {
+                  "key": "articulo_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Cambia los datos del material. El stock no se toca aquí: se mueve con\nentradas, salidas o un ajuste, para que siempre quede quién y por qué.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"texto\",\n  \"nombre\": \"texto\",\n  \"categoria_id\": 1,\n  \"unidad_id\": 1,\n  \"marca\": \"texto\",\n  \"modelo\": \"texto\",\n  \"stock_minimo\": 0,\n  \"costo_unitario\": 1.0,\n  \"ubicacion\": \"texto\",\n  \"descripcion\": \"texto\",\n  \"activo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ajustar Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/articulos/:articulo_id/ajuste",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "articulos",
+                ":articulo_id",
+                "ajuste"
+              ],
+              "variable": [
+                {
+                  "key": "articulo_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Corrige el almacén con lo que dio el conteo físico. Solo el\nadministrador: es la única forma de cambiar el stock sin una entrega real.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stock_contado\": 1,\n  \"motivo\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar Movimientos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/movimientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "movimientos"
+              ]
+            },
+            "description": "Una o varias líneas del mismo tipo, todas o ninguna.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"entrada\",\n  \"lineas\": [\n    {\n      \"articulo_id\": 1,\n      \"cantidad\": 1,\n      \"activo_ids\": [\n        1\n      ],\n      \"numeros_serie\": [\n        \"texto\"\n      ]\n    }\n  ],\n  \"persona_id\": 1,\n  \"cliente_id\": 1,\n  \"motivo\": \"texto\",\n  \"documento\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Listar Movimientos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/movimientos?",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "movimientos"
+              ],
+              "query": [
+                {
+                  "key": "articulo_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "persona_id",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "tipo",
+                  "value": "texto",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "desde",
+                  "value": "2026-11-01",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "hasta",
+                  "value": "2026-11-30",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Personal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/personal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "personal"
+              ]
+            },
+            "description": "Técnicos y vendedoras con lo que tiene cada uno en mano. Primero\nquien tiene más, que es a quien se le pide cuentas."
+          }
+        },
+        {
+          "name": "Mi Material",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/mio",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "mio"
+              ]
+            },
+            "description": "Lo que tiene en mano quien inició sesión. Lo usa la app del técnico."
+          }
+        },
+        {
+          "name": "Listar Unidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/unidades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "unidades"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Unidad",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/unidades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "unidades"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"plural\": \"texto\",\n  \"abreviatura\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Editar Unidad",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/unidades/:unidad_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "unidades",
+                ":unidad_id"
+              ],
+              "variable": [
+                {
+                  "key": "unidad_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"texto\",\n  \"plural\": \"texto\",\n  \"abreviatura\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Borrar Unidad",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/unidades/:unidad_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "unidades",
+                ":unidad_id"
+              ],
+              "variable": [
+                {
+                  "key": "unidad_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Activos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/articulos/:articulo_id/activos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "articulos",
+                ":articulo_id",
+                "activos"
+              ],
+              "variable": [
+                {
+                  "key": "articulo_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Activos Por Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/activos?ids=1,2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "activos"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "1,2",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Las piezas pedidas, para imprimir sus etiquetas."
+          }
+        },
+        {
+          "name": "Editar Activo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/activos/:activo_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "activos",
+                ":activo_id"
+              ],
+              "variable": [
+                {
+                  "key": "activo_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numero_serie\": \"texto\",\n  \"notas\": \"texto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Etiquetar Por Pieza",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/articulos/:articulo_id/etiquetar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "articulos",
+                ":articulo_id",
+                "etiquetar"
+              ],
+              "variable": [
+                {
+                  "key": "articulo_id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Pasa un material a etiqueta por pieza. Se crean las piezas de lo que ya\nhay: las del almacén quedan en almacén y las de cada persona, a su cargo,\npara que el conteo siga cuadrando. No tiene vuelta atrás."
+          }
+        },
+        {
+          "name": "Escanear",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/escanear?codigo=ACT-000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "escanear"
+              ],
+              "query": [
+                {
+                  "key": "codigo",
+                  "value": "ACT-000001",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Lo que dice una etiqueta: una pieza (ACT-000123, o su número de serie)\no un material (su código)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Otros",
+      "description": "",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
