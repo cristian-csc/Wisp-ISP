@@ -87,8 +87,15 @@ const SidebarContent: MenuItem[] = [
         url: '/cajas-nap',
         roles: ['admin'],
       },
+    ],
+  },
+  {
+    // Red es la planta —dónde se conecta—; Inventario es el almacén —qué
+    // hay y quién lo tiene—. Un equipo guardado no pertenece a ninguna zona.
+    heading: 'Inventario',
+    children: [
       {
-        name: 'Inventario de ONUs',
+        name: 'Equipos',
         icon: 'solar:cpu-bolt-linear',
         id: uniqueId(),
         url: '/onus',

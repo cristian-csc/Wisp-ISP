@@ -154,7 +154,7 @@ const Onus = () => {
   return (
     <CardBox>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Inventario de ONUs</h2>
+        <h2 className="text-lg font-semibold">Equipos</h2>
         {/* Atención al cliente consulta el inventario para saber si hay
             equipo disponible; darlo de alta o darlo de baja es de almacén. */}
         {puedeGestionar && <Button onClick={() => setOpenCreate(true)}>Registrar ONU</Button>}
