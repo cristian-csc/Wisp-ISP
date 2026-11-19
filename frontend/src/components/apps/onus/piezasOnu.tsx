@@ -6,7 +6,7 @@ import type { EstadoOnu, MovimientoOnu, Onu } from 'src/lib/onus';
 
 export const ESTADO_ONU: Record<EstadoOnu, { texto: string; clase: string; icono: string }> = {
   en_almacen: { texto: 'En almacén', clase: 'bg-muted text-foreground', icono: 'tabler:building-warehouse' },
-  asignado_tecnico: { texto: 'Con técnico', clase: 'bg-lightbrand text-brand-strong dark:text-brand', icono: 'tabler:user' },
+  asignado_tecnico: { texto: 'Con técnico', clase: 'bg-lightbrand text-[#9a3412] dark:text-brand', icono: 'tabler:user' },
   instalado: { texto: 'Instalada', clase: 'bg-lightsuccess text-success-text', icono: 'tabler:home-check' },
   danado: { texto: 'Dañada', clase: 'bg-lighterror text-error-text', icono: 'tabler:alert-triangle' },
   perdido: { texto: 'Perdida', clase: 'bg-foreground text-background', icono: 'tabler:help-hexagon' },
@@ -57,8 +57,8 @@ export const DondeEsta = ({ onu, compacto = false }: { onu: Onu; compacto?: bool
 
 const TIPO: Record<MovimientoOnu['tipo'], { icono: string; clase: string }> = {
   alta: { icono: 'tabler:plus', clase: 'bg-muted text-foreground' },
-  asignacion: { icono: 'tabler:user-share', clase: 'bg-lightbrand text-brand-strong dark:text-brand' },
-  traspaso: { icono: 'tabler:arrows-exchange', clase: 'bg-lightbrand text-brand-strong dark:text-brand' },
+  asignacion: { icono: 'tabler:user-share', clase: 'bg-lightbrand text-[#9a3412] dark:text-brand' },
+  traspaso: { icono: 'tabler:arrows-exchange', clase: 'bg-lightbrand text-[#9a3412] dark:text-brand' },
   devolucion: { icono: 'tabler:arrow-back-up', clase: 'bg-muted text-foreground' },
   instalacion: { icono: 'tabler:home-check', clase: 'bg-lightsuccess text-success-text' },
   retiro: { icono: 'tabler:home-move', clase: 'bg-muted text-foreground' },

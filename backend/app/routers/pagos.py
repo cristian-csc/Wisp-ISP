@@ -307,7 +307,10 @@ def create_pago(
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
-    if data.monto <= 0:
+    # El corte temporal no es un cobro: marca un mes sin servicio y va con
+    # monto 0. Cualquier otro registro tiene que cobrar algo.
+    es_corte = data.estado == models.EstadoPago.corte_temporal
+    if data.monto < 0 or (data.monto == 0 and not es_corte):
         raise HTTPException(
             status_code=400,
             detail="El total a pagar tiene que ser mayor que cero — revisa el descuento",
