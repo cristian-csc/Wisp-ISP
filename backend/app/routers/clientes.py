@@ -50,6 +50,48 @@ def _validate_ip(ip: str) -> str:
 
 # ── SSH MikroTik ──────────────────────────────────────────────────────────────
 
+# La llave se lee una vez y se guarda: abrir y descifrar un archivo RSA en
+# cada llamada cuesta, y esto se llama varias veces por pantalla.
+_LLAVE_SSH: dict[str, object] = {}
+
+# Los tipos que puede tener la llave, en el orden en que conviene probarlos.
+_TIPOS_LLAVE = (
+    paramiko.RSAKey,
+    paramiko.Ed25519Key,
+    paramiko.ECDSAKey,
+)
+
+
+def _cargar_llave(ruta: str):
+    """La llave privada, ya leída, diciendo claramente si no se puede leer.
+
+    Antes se le pasaba a paramiko la RUTA y que él adivinara el tipo. El
+    problema no es que adivine mal: es que prueba los cuatro tipos en bucle y
+    se queda con el error de la ÚLTIMA vuelta. Con una llave RSA buena la
+    carga a la primera, intenta autenticar, el router la rechaza... y luego
+    falla al leerla como Ed25519, que es el error que acababa saliendo:
+    «Invalid key». Mentía — la llave estaba bien, lo que fallaba era la
+    autenticación — y mandó a buscar el problema donde no estaba.
+    """
+    if ruta in _LLAVE_SSH:
+        return _LLAVE_SSH[ruta]
+
+    motivos = []
+    for tipo in _TIPOS_LLAVE:
+        try:
+            llave = tipo.from_private_key_file(ruta)
+            _LLAVE_SSH[ruta] = llave
+            return llave
+        except Exception as e:
+            motivos.append("%s: %s" % (tipo.__name__.replace("Key", ""), e))
+
+    raise ValueError(
+        "No se pudo leer la llave SSH de %s. Se probó como %s. Si tiene "
+        "contraseña, el sistema no puede usarla: hace falta una sin "
+        "contraseña." % (ruta, ", ".join(motivos))
+    )
+
+
 def _mikrotik_exec(host: str, commands: list[str]) -> dict:
     """
     SSH al MikroTik en {host} (IP WireGuard) y ejecuta cada comando RouterOS.
@@ -57,16 +99,28 @@ def _mikrotik_exec(host: str, commands: list[str]) -> dict:
     Nunca lanza excepción — el cliente se guarda en BD aunque falle MikroTik.
     """
     try:
+        llave = _cargar_llave(settings.SSH_KEY_PATH)
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(
-            hostname=host,
-            username=settings.SSH_USER,
-            key_filename=settings.SSH_KEY_PATH,
-            timeout=10,
-            look_for_keys=False,
-            allow_agent=False,
-        )
+        try:
+            ssh.connect(
+                hostname=host,
+                username=settings.SSH_USER,
+                pkey=llave,
+                timeout=10,
+                look_for_keys=False,
+                allow_agent=False,
+            )
+        except paramiko.AuthenticationException:
+            # El router contesta pero no acepta la llave. Decir qué mirar
+            # ahorra la tarde que costó averiguarlo la primera vez.
+            raise ValueError(
+                "El router %s rechazó la llave del usuario «%s». La llave se "
+                "leyó bien, así que no es un problema de formato: o la pública "
+                "que tiene el router no es la pareja de esta privada, o ese "
+                "usuario solo acepta conexiones desde otra dirección "
+                "(/user print detail en el router lo dice)." % (host, settings.SSH_USER)
+            ) from None
         results = []
         for cmd in commands:
             try:
