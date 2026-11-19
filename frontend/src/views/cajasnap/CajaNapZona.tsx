@@ -21,7 +21,7 @@ import {
   FormField,
   FormGrid,
 } from 'src/components/shared/form';
-import BorneDots from 'src/components/apps/cajasnap/BorneDots';
+import BorneGrid from 'src/components/apps/cajasnap/BorneGrid';
 import CajaNapDetailDialog from 'src/components/apps/cajasnap/CajaNapDetailDialog';
 import RingProgress, { toneForPct } from 'src/components/apps/cajasnap/RingProgress';
 import { listCajasNap, createCajaNap, type CajaNap } from 'src/lib/cajasnap';
@@ -164,14 +164,32 @@ const CajaNapZona = () => {
                 <RingProgress pct={pct} tone={tone} size="sm" />
               </div>
 
-              <BorneDots bornes={c.bornes} size="sm" />
+              <BorneGrid bornes={c.bornes} compacto />
 
-              <div className="flex justify-between mt-3 pt-3 border-t border-ld text-[11px]">
-                <span className="text-success font-medium">{ocupados} ocup.</span>
-                <span className="text-info font-medium">{libres} libres</span>
-                <span className={danados > 0 ? 'text-error font-medium' : 'text-muted-foreground'}>
-                  {danados} dañ.
-                </span>
+              {/* Las tres cuentas con su nombre entero. Abreviar a «ocup.» y
+                  «dañ.» ahorraba unos píxeles y obligaba a adivinar; en tres
+                  columnas iguales caben completas sin crecer la tarjeta. */}
+              <div className="mt-3 grid grid-cols-3 gap-1 border-t border-ld pt-3 text-center">
+                <div>
+                  <p className="text-sm font-bold leading-none text-success-text dark:text-success">
+                    {ocupados}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Ocupados</p>
+                </div>
+                <div>
+                  <p className="text-sm font-bold leading-none">{libres}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Libres</p>
+                </div>
+                <div>
+                  <p
+                    className={`text-sm font-bold leading-none ${
+                      danados > 0 ? 'text-error-text dark:text-error' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {danados}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Dañados</p>
+                </div>
               </div>
             </CardBox>
           );

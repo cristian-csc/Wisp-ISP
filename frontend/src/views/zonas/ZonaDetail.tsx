@@ -27,7 +27,7 @@ import {
   FormGrid,
   FormSection,
 } from 'src/components/shared/form';
-import BorneDots from 'src/components/apps/cajasnap/BorneDots';
+import BorneGrid from 'src/components/apps/cajasnap/BorneGrid';
 import { toneForPct } from 'src/components/apps/cajasnap/RingProgress';
 import MapaZona from 'src/components/apps/zonas/MapaZona';
 import CampoCoordenadas from 'src/components/shared/mapa/CampoCoordenadas';
@@ -1052,7 +1052,7 @@ const ZonaDetail = () => {
                   </Button>
                 </div>
               </div>
-              <BorneDots bornes={c.bornes} size="sm" />
+              <BorneGrid bornes={c.bornes} compacto />
             </div>
           ))}
         </div>
