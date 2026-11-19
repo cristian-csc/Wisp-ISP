@@ -38,7 +38,7 @@ const Enlace = ({
       onClick={onClose}
       aria-current={activo ? 'page' : undefined}
       className={`transition-ui flex items-center gap-3 rounded-lg px-3 leading-tight ${FOCO} ${
-        conIcono ? 'min-h-10 py-2 text-sm font-medium' : 'min-h-9 py-1.5 text-[13px]'
+        conIcono ? 'min-h-10 py-2 text-[15px] font-medium' : 'min-h-9 py-1.5 text-sm'
       } ${
         activo
           ? 'bg-brand font-semibold text-brand-foreground'
@@ -75,7 +75,7 @@ const GrupoMenu = ({
         onClick={alternar}
         aria-expanded={abierto}
         aria-controls={idLista}
-        className={`transition-ui flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium ${FOCO} ${
+        className={`transition-ui flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-[15px] font-medium ${FOCO} ${
           contieneActivo
             ? 'text-sidebar-foreground-strong'
             : 'text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-foreground-strong'
