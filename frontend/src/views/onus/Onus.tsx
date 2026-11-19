@@ -155,7 +155,7 @@ const Onus = () => {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[26px] font-semibold leading-tight">Inventario de ONUs</h1>
+          <h1 className="text-[26px] font-semibold leading-tight">ONUs</h1>
           <p className="mt-1 text-sm text-muted-foreground">Equipos en almacén, asignados a técnicos e instalados.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

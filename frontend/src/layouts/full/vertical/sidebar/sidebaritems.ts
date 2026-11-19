@@ -87,6 +87,13 @@ const SidebarContent: MenuItem[] = [
         url: '/cajas-nap',
         roles: ['admin'],
       },
+      {
+        name: 'ONUs',
+        icon: 'solar:cpu-bolt-linear',
+        id: uniqueId(),
+        url: '/onus',
+        roles: ['admin', 'atencion_cliente'],
+      },
     ],
   },
   {
@@ -119,13 +126,6 @@ const SidebarContent: MenuItem[] = [
         id: uniqueId(),
         url: '/inventario/unidades',
         roles: ['admin'],
-      },
-      {
-        name: 'Inventario de ONUs',
-        icon: 'solar:cpu-bolt-linear',
-        id: uniqueId(),
-        url: '/onus',
-        roles: ['admin', 'atencion_cliente'],
       },
     ],
   },
