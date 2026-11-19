@@ -240,7 +240,7 @@ const ConfiguracionWhatsapp = () => {
               />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              <span className="font-medium text-success">{campaniaActiva.enviados} enviados</span>
+              <span className="font-medium text-success-text">{campaniaActiva.enviados} enviados</span>
               {campaniaActiva.fallidos > 0 && (
                 <> · <span className="font-medium text-error">{campaniaActiva.fallidos} fallidos</span></>
               )}
@@ -293,7 +293,7 @@ const ConfiguracionWhatsapp = () => {
                   <TableCell className="max-w-[10rem] truncate text-sm">{zonaNombres(c.zona_ids, zonas)}</TableCell>
                   <TableCell className="max-w-xs truncate text-sm">{c.mensaje}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    <span className="font-medium text-success">{c.enviados}</span>/{c.total_destinatarios} enviados
+                    <span className="font-medium text-success-text">{c.enviados}</span>/{c.total_destinatarios} enviados
                     {c.fallidos > 0 && <> · <span className="font-medium text-error">{c.fallidos} fallidos</span></>}
                   </TableCell>
                   <TableCell>

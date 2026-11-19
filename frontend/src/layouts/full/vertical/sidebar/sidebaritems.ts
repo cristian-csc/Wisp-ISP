@@ -87,6 +87,32 @@ const SidebarContent: MenuItem[] = [
         url: '/cajas-nap',
         roles: ['admin'],
       },
+    ],
+  },
+  {
+    heading: 'Inventario',
+    children: [
+      {
+        name: 'Stock de materiales',
+        icon: 'solar:box-minimalistic-linear',
+        id: uniqueId(),
+        url: '/inventario',
+        roles: ['admin'],
+      },
+      {
+        name: 'Entradas y salidas',
+        icon: 'solar:transfer-vertical-linear',
+        id: uniqueId(),
+        url: '/inventario/movimientos',
+        roles: ['admin'],
+      },
+      {
+        name: 'Material del personal',
+        icon: 'solar:users-group-two-rounded-linear',
+        id: uniqueId(),
+        url: '/inventario/personal',
+        roles: ['admin'],
+      },
       {
         name: 'Inventario de ONUs',
         icon: 'solar:cpu-bolt-linear',

@@ -7,7 +7,7 @@ from .config import es_produccion, origenes_cors
 from .routers import (
     clientes, zonas, pagos, gastos, auth, whatsapp, dashboard, planes, admin,
     cliente_app, cajas_nap, onus, averias, ordenes_retiro, evidencias, mufas,
-    jornadas, consultas, permisos,
+    jornadas, consultas, permisos, inventario,
 )
 
 
@@ -88,6 +88,7 @@ app.include_router(evidencias.router, prefix="/api/evidencias", tags=["Evidencia
 app.include_router(jornadas.router, prefix="/api/jornadas", tags=["Jornadas"])
 app.include_router(consultas.router, prefix="/api/consultas", tags=["Consultas"])
 app.include_router(permisos.router, prefix="/api/permisos", tags=["Roles y módulos"])
+app.include_router(inventario.router, prefix="/api/inventario", tags=["Inventario"])
 
 
 @app.get("/api/health")

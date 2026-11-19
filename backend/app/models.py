@@ -713,3 +713,87 @@ class RolModulo(Base):
     modulo_id = Column(Integer, ForeignKey("modulos.id", ondelete="CASCADE"), primary_key=True)
     orden = Column(Integer, nullable=False, default=0)
     es_central = Column(Boolean, nullable=False, default=False)
+
+
+# ── Inventario de materiales ─────────────────────────────────────────────────
+# Las ONUs se siguen una por una por su número de serie (tabla `onus`). Aquí va
+# todo lo que se cuenta por cantidad: switches, routers, cable UTP, conectores
+# RJ45, drop de fibra, conectores SC/APC, splitters, herramientas.
+
+class TipoMovimientoInventario(str, enum.Enum):
+    """Qué le pasó al material. Cada tipo mueve el stock de un modo:
+
+    - entrada:    llega al almacén (compra, donación).        almacén +
+    - salida:     sale del almacén sin volver (venta, merma).  almacén −
+    - asignacion: el almacén se lo entrega a una persona.     almacén −, persona +
+    - devolucion: la persona lo devuelve al almacén.          almacén +, persona −
+    - consumo:    la persona lo gastó en un trabajo.          persona −
+    - ajuste:     el conteo físico corrige el almacén.        almacén ±
+    """
+    entrada = "entrada"
+    salida = "salida"
+    asignacion = "asignacion"
+    devolucion = "devolucion"
+    consumo = "consumo"
+    ajuste = "ajuste"
+
+
+class CategoriaInventario(Base):
+    __tablename__ = "inventario_categorias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(60), nullable=False, unique=True)
+    icono = Column(String(80))
+    orden = Column(Integer, nullable=False, default=0)
+
+
+class ArticuloInventario(Base):
+    """Un material del almacén. `stock` es lo que hay en el almacén; lo que
+    tiene cada técnico o vendedora sale de sumar sus movimientos."""
+    __tablename__ = "inventario_articulos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(40), nullable=False, unique=True, index=True)
+    nombre = Column(String(120), nullable=False)
+    categoria_id = Column(Integer, ForeignKey("inventario_categorias.id", ondelete="RESTRICT"), nullable=False, index=True)
+    marca = Column(String(80))
+    modelo = Column(String(80))
+    unidad = Column(String(20), nullable=False, default="unidad")
+    stock = Column(Integer, nullable=False, default=0)
+    # Por debajo de este número el sistema avisa que hay que reponer.
+    stock_minimo = Column(Integer, nullable=False, default=0)
+    costo_unitario = Column(Float)
+    ubicacion = Column(String(80))
+    descripcion = Column(Text)
+    activo = Column(Boolean, nullable=False, default=True)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+    categoria = relationship("CategoriaInventario")
+
+
+class MovimientoInventario(Base):
+    """Cada entrada o salida, con quién la registró, a quién se le entregó y
+    a qué hora. No se edita ni se borra: un error se corrige con otro
+    movimiento, para que el historial siempre cuadre."""
+    __tablename__ = "inventario_movimientos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    articulo_id = Column(Integer, ForeignKey("inventario_articulos.id", ondelete="RESTRICT"), nullable=False, index=True)
+    tipo = Column(SAEnum(TipoMovimientoInventario, name="tipomovimientoinventario"), nullable=False, index=True)
+    # Siempre positiva, salvo en el ajuste, donde es la diferencia del conteo.
+    cantidad = Column(Integer, nullable=False)
+    stock_resultante = Column(Integer, nullable=False)
+    # A quién se le entrega, quién devuelve o quién lo gastó.
+    persona_id = Column(Integer, ForeignKey("usuarios.id", ondelete="RESTRICT"), index=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="SET NULL"), index=True)
+    motivo = Column(String(255))
+    documento = Column(String(60))
+    # Varias líneas registradas juntas (una entrega de varios materiales).
+    lote = Column(String(36), index=True)
+    registrado_por_id = Column(Integer, ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False, index=True)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    articulo = relationship("ArticuloInventario")
+    persona = relationship("Usuario", foreign_keys=[persona_id])
+    registrado_por = relationship("Usuario", foreign_keys=[registrado_por_id])
+    cliente = relationship("Cliente")

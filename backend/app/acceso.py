@@ -60,6 +60,10 @@ _JORNADAS = _delegar("panel.jornadas")
 _JORNADA_PROPIA = _usar(_m("movil.jornada"))
 _APROBAR = _delegar("panel.clientes_pendientes")
 _CAJA = _delegar("panel.reporte_caja")
+# Quien tenga Stock de materiales lleva el almacén: alta de materiales,
+# entradas, salidas y entregas al personal. El ajuste por conteo es del admin.
+_INVENTARIO = _delegar("panel.inventario")
+INVENTARIO = _m("panel.inventario", "panel.inventario_movimientos", "panel.inventario_personal")
 
 # Endpoints protegidos con require_roles().
 REGLAS: dict[tuple[str, str], Regla] = {
@@ -141,6 +145,10 @@ REGLAS: dict[tuple[str, str], Regla] = {
     ("GET", "/api/planes/perfiles-de-zona/{zona_id}"): _PLANES,
 
     ("POST", "/api/whatsapp/aviso-cobro/{cliente_id}"): _PAGOS,
+
+    ("POST", "/api/inventario/articulos"): _INVENTARIO,
+    ("PUT", "/api/inventario/articulos/{articulo_id}"): _INVENTARIO,
+    ("POST", "/api/inventario/movimientos"): _INVENTARIO,
 }
 
 _LEER_CLIENTES = CLIENTES_PANEL | PAGOS | AVERIAS | RETIROS | CAMPO
@@ -163,6 +171,12 @@ LECTURAS: dict[tuple[str, str], frozenset] = {
     ("GET", "/api/ordenes-retiro/{orden_id}"): _LEER_RETIROS,
     ("GET", "/api/onus"): _LEER_ONUS,
     ("GET", "/api/onus/{onu_id}"): _LEER_ONUS,
+    ("GET", "/api/inventario/categorias"): INVENTARIO,
+    ("GET", "/api/inventario/resumen"): INVENTARIO,
+    ("GET", "/api/inventario/articulos"): INVENTARIO,
+    ("GET", "/api/inventario/articulos/{articulo_id}"): INVENTARIO,
+    ("GET", "/api/inventario/movimientos"): INVENTARIO,
+    ("GET", "/api/inventario/personal"): INVENTARIO,
 }
 
 
@@ -190,6 +204,7 @@ SOLO_ADMINISTRADOR = _m("panel.usuarios", "panel.whatsapp", "panel.roles", "pane
 DELEGABLES = _m(
     "panel.dashboard", "panel.gastos", "panel.planes", "panel.cajas_nap",
     "panel.jornadas", "panel.reporte_caja", "panel.clientes_pendientes",
+    "panel.inventario", "panel.inventario_movimientos", "panel.inventario_personal",
 )
 APP_CLIENTE = _m("movil.inicio", "movil.pagos", "movil.perfil")
 

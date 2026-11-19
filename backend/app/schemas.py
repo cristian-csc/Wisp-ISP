@@ -1220,3 +1220,114 @@ class OrdenModulos(BaseModel):
 
 class OrdenModulosOut(OrdenModulos):
     rol_id: int
+
+
+# ── Inventario de materiales ─────────────────────────────────────────────────
+
+UnidadInventario = Literal["unidad", "metro", "rollo", "caja", "par", "paquete"]
+
+
+class CategoriaInventarioOut(BaseModel):
+    id: int
+    nombre: str
+    icono: Optional[str] = None
+    orden: int
+
+    class Config:
+        from_attributes = True
+
+
+class ArticuloInventarioBase(BaseModel):
+    codigo: str = Field(..., min_length=1, max_length=40)
+    nombre: str = Field(..., min_length=2, max_length=120)
+    categoria_id: int
+    marca: Optional[str] = Field(None, max_length=80)
+    modelo: Optional[str] = Field(None, max_length=80)
+    unidad: UnidadInventario = "unidad"
+    stock_minimo: int = Field(0, ge=0, le=1_000_000)
+    costo_unitario: Optional[float] = Field(None, ge=0)
+    ubicacion: Optional[str] = Field(None, max_length=80)
+    descripcion: Optional[str] = None
+
+    @field_validator("codigo")
+    @classmethod
+    def _codigo(cls, v: str) -> str:
+        return v.strip().upper()
+
+
+class ArticuloInventarioCreate(ArticuloInventarioBase):
+    # Lo que ya hay en el almacén al darlo de alta; queda como una entrada.
+    stock_inicial: int = Field(0, ge=0, le=1_000_000)
+
+
+class ArticuloInventarioUpdate(ArticuloInventarioBase):
+    activo: bool = True
+
+
+class ArticuloInventarioOut(BaseModel):
+    id: int
+    codigo: str
+    nombre: str
+    categoria_id: int
+    categoria: CategoriaInventarioOut
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    unidad: str
+    stock: int
+    stock_minimo: int
+    costo_unitario: Optional[float] = None
+    ubicacion: Optional[str] = None
+    descripcion: Optional[str] = None
+    activo: bool
+    en_personal: int = 0
+    estado: Literal["sin_stock", "bajo", "ok"] = "ok"
+
+    class Config:
+        from_attributes = True
+
+
+class LineaMovimiento(BaseModel):
+    articulo_id: int
+    cantidad: int = Field(..., gt=0, le=1_000_000)
+
+
+class MovimientosCreate(BaseModel):
+    tipo: Literal["entrada", "salida", "asignacion", "devolucion", "consumo"]
+    lineas: List[LineaMovimiento] = Field(..., min_length=1, max_length=50)
+    persona_id: Optional[int] = None
+    cliente_id: Optional[int] = None
+    motivo: Optional[str] = Field(None, max_length=255)
+    documento: Optional[str] = Field(None, max_length=60)
+
+
+class AjusteInventario(BaseModel):
+    stock_contado: int = Field(..., ge=0, le=1_000_000)
+    motivo: str = Field(..., min_length=3, max_length=255)
+
+
+class PersonaBreve(BaseModel):
+    id: int
+    nombre: str
+    rol: str
+
+    class Config:
+        from_attributes = True
+
+
+class MovimientoInventarioOut(BaseModel):
+    id: int
+    articulo_id: int
+    articulo_nombre: str
+    articulo_codigo: str
+    unidad: str
+    tipo: str
+    cantidad: int
+    stock_resultante: int
+    persona: Optional[PersonaBreve] = None
+    cliente_id: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    motivo: Optional[str] = None
+    documento: Optional[str] = None
+    lote: Optional[str] = None
+    registrado_por: PersonaBreve
+    creado_en: datetime

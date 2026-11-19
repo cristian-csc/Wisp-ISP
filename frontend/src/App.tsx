@@ -13,6 +13,9 @@ import ZonaDetail from 'src/views/zonas/ZonaDetail';
 import CajasNap from 'src/views/cajasnap/CajasNap';
 import CajaNapZona from 'src/views/cajasnap/CajaNapZona';
 import Onus from 'src/views/onus/Onus';
+import Stock from 'src/views/inventario/Stock';
+import MovimientosInventario from 'src/views/inventario/Movimientos';
+import PersonalInventario from 'src/views/inventario/Personal';
 import Averias from 'src/views/averias/Averias';
 import AveriaZonaDetail from 'src/views/averias/AveriaZonaDetail';
 import Retiros from 'src/views/retiros/Retiros';
@@ -84,6 +87,9 @@ function App() {
             <Route path="/cajas-nap" element={<CajasNap />} />
             <Route path="/cajas-nap/zona/:zonaId" element={<CajaNapZona />} />
 
+            <Route path="/inventario" element={<Stock />} />
+            <Route path="/inventario/movimientos" element={<MovimientosInventario />} />
+            <Route path="/inventario/personal" element={<PersonalInventario />} />
             <Route path="/onus" element={<Onus />} />
             <Route path="/averias" element={<Averias />} />
             <Route path="/averias/zona/:zonaId" element={<AveriaZonaDetail />} />

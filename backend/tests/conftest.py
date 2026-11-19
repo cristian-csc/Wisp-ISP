@@ -42,7 +42,7 @@ MOCK_USER = models.Usuario(
     nombre="Test Admin",
     email="test@wisp.test",
     hashed_password="x",
-    rol="admin",
+    rol=models.RolUsuario.admin,
     activo=True,
 )
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
+import Cifra from 'src/components/shared/Cifra';
 import SectionCard from 'src/components/shared/SectionCard';
 import EmptyState from 'src/components/shared/EmptyState';
 import LoadingState from 'src/components/shared/LoadingState';
@@ -35,48 +36,6 @@ function saludo(): string {
   const h = new Date().getHours();
   return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
 }
-
-/** Una cifra de la franja de resumen. */
-const Cifra = ({
-  etiqueta,
-  valor,
-  nota,
-  to,
-  delta,
-}: {
-  etiqueta: string;
-  valor: string | number;
-  nota?: string;
-  to?: string;
-  delta?: number | null;
-}) => {
-  const cuerpo = (
-    <div className="flex h-full flex-col gap-1 px-5 py-4">
-      <p className="text-sm text-muted-foreground">{etiqueta}</p>
-      <div className="flex flex-wrap items-baseline gap-2">
-        <span className="text-[28px] font-semibold leading-none tracking-tight">{valor}</span>
-        {delta != null && (
-          <span
-            className={`inline-flex items-center gap-0.5 text-xs font-medium ${
-              delta > 0 ? 'text-success-text' : delta < 0 ? 'text-error-text' : 'text-muted-foreground'
-            }`}
-          >
-            <Icon icon={delta >= 0 ? 'tabler:arrow-up-right' : 'tabler:arrow-down-right'} width={14} />
-            {Math.abs(delta).toFixed(0)}%
-          </span>
-        )}
-      </div>
-      {nota && <p className="text-xs text-muted-foreground">{nota}</p>}
-    </div>
-  );
-  return to ? (
-    <Link to={to} className="block transition-colors duration-150 hover:bg-surface-2">
-      {cuerpo}
-    </Link>
-  ) : (
-    cuerpo
-  );
-};
 
 const Dashboard = () => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
