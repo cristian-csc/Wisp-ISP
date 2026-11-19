@@ -13,6 +13,7 @@ import ZonaDetail from 'src/views/zonas/ZonaDetail';
 import CajasNap from 'src/views/cajasnap/CajasNap';
 import CajaNapZona from 'src/views/cajasnap/CajaNapZona';
 import Onus from 'src/views/onus/Onus';
+import Materiales from 'src/views/materiales/Materiales';
 import Averias from 'src/views/averias/Averias';
 import AveriaZonaDetail from 'src/views/averias/AveriaZonaDetail';
 import Retiros from 'src/views/retiros/Retiros';
@@ -85,6 +86,7 @@ function App() {
             <Route path="/cajas-nap/zona/:zonaId" element={<CajaNapZona />} />
 
             <Route path="/onus" element={<Onus />} />
+            <Route path="/materiales" element={<Materiales />} />
             <Route path="/averias" element={<Averias />} />
             <Route path="/averias/zona/:zonaId" element={<AveriaZonaDetail />} />
             <Route path="/ordenes-retiro" element={<Retiros />} />

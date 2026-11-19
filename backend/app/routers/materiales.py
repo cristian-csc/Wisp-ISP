@@ -1,0 +1,270 @@
+"""Materiales de fibra: qué hay en el almacén y qué se mueve.
+
+Los saldos NO se guardan: se calculan sumando `movimientos_material`. Toda
+consulta de "cuánto queda" pasa por `_saldos()`, de modo que no hay dos
+caminos que puedan dar respuestas distintas.
+
+Qué suma y qué resta en el almacén:
+
+    entrada     +   una compra
+    devolucion  +   roseta o patch cord recuperados de un cliente
+    entrega     −   salió con un técnico
+    ajuste      ±   corrección de un cuadre (lo único que admite negativo)
+
+El `consumo` no toca el almacén: descuenta del saldo del técnico, que es
+quien ya tenía el material encima.
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_, case, func
+from typing import List, Optional
+from decimal import Decimal
+
+from ..database import get_db
+from .. import models, schemas
+from .auth import require_roles
+
+router = APIRouter()
+
+# Quién puede mirar el almacén y quién puede moverlo. De momento ambos son
+# del administrador; el día que haya un encargado de almacén se le delega
+# desde Roles y módulos sin tocar este archivo.
+solo_admin = require_roles(models.RolUsuario.admin)
+
+# El efecto de cada tipo sobre el saldo del ALMACÉN.
+EFECTO_ALMACEN = {
+    "entrada": 1,
+    "devolucion": 1,
+    "entrega": -1,
+    "ajuste": 1,      # ya viene con signo
+    "consumo": 0,     # sale del saldo del técnico, no del almacén
+}
+
+
+def _saldos(db: Session) -> dict[int, Decimal]:
+    """Lo que hay en el almacén, por material. Un único lugar que lo calcula."""
+    signo = case(
+        (models.MovimientoMaterial.tipo.in_(("entrada", "devolucion")), models.MovimientoMaterial.cantidad),
+        (models.MovimientoMaterial.tipo == "entrega", -models.MovimientoMaterial.cantidad),
+        # Un ajuste con tecnico corrige el conteo DE ESE TECNICO, no el del
+        # almacen. Sin esta condicion un cuadre en la camioneta restaba de
+        # los dos sitios a la vez y el almacen perdia material que nunca
+        # salio de ahi.
+        (and_(models.MovimientoMaterial.tipo == "ajuste",
+              models.MovimientoMaterial.tecnico_id.is_(None)),
+         models.MovimientoMaterial.cantidad),
+        else_=0,
+    )
+    filas = (
+        db.query(models.MovimientoMaterial.material_id, func.coalesce(func.sum(signo), 0))
+        .group_by(models.MovimientoMaterial.material_id)
+        .all()
+    )
+    return {material_id: Decimal(total) for material_id, total in filas}
+
+
+def _saldos_tecnico(db: Session) -> dict[tuple[int, int], Decimal]:
+    """Lo que lleva encima cada técnico: {(tecnico_id, material_id): cantidad}."""
+    signo = case(
+        (models.MovimientoMaterial.tipo == "entrega", models.MovimientoMaterial.cantidad),
+        (models.MovimientoMaterial.tipo == "consumo", -models.MovimientoMaterial.cantidad),
+        (models.MovimientoMaterial.tipo == "ajuste", models.MovimientoMaterial.cantidad),
+        else_=0,
+    )
+    filas = (
+        db.query(
+            models.MovimientoMaterial.tecnico_id,
+            models.MovimientoMaterial.material_id,
+            func.coalesce(func.sum(signo), 0),
+        )
+        .filter(models.MovimientoMaterial.tecnico_id.isnot(None))
+        .group_by(models.MovimientoMaterial.tecnico_id, models.MovimientoMaterial.material_id)
+        .all()
+    )
+    return {(t, m): Decimal(total) for t, m, total in filas}
+
+
+def _material_out(material: models.Material, saldo: Decimal) -> dict:
+    return {
+        "id": material.id,
+        "clave": material.clave,
+        "nombre": material.nombre,
+        "unidad": material.unidad,
+        "se_recupera": material.se_recupera,
+        "consumo_estandar": material.consumo_estandar,
+        "activo": material.activo,
+        "en_almacen": saldo,
+        "presentaciones": [
+            {"id": p.id, "nombre": p.nombre, "equivale_a": p.equivale_a, "activo": p.activo}
+            for p in material.presentaciones
+            if p.activo
+        ],
+    }
+
+
+@router.get("", response_model=List[schemas.MaterialOut])
+def listar_materiales(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    saldos = _saldos(db)
+    materiales = (
+        db.query(models.Material)
+        .options(joinedload(models.Material.presentaciones))
+        .filter(models.Material.activo == True)  # noqa: E712
+        .order_by(models.Material.id)
+        .all()
+    )
+    return [_material_out(m, saldos.get(m.id, Decimal(0))) for m in materiales]
+
+
+@router.post("/movimientos", response_model=schemas.MovimientoMaterialOut, status_code=201)
+def registrar_movimiento(
+    data: schemas.MovimientoMaterialCreate,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    """Una entrada de almacén, una entrega a un técnico o un ajuste.
+
+    El consumo no se registra aquí: lo genera el cierre de una instalación,
+    con los datos que el técnico ya da en su app.
+    """
+    material = db.query(models.Material).filter(models.Material.id == data.material_id).first()
+    if not material:
+        raise HTTPException(status_code=404, detail="Material no encontrado")
+
+    if data.tipo not in ("entrada", "entrega", "devolucion", "ajuste"):
+        raise HTTPException(status_code=400, detail="Ese tipo de movimiento no se registra desde aquí.")
+
+    # Cuánto es, en la unidad en que se cuenta. Si vino por presentación se
+    # traduce aquí: "2 bolsas" son 20 unidades.
+    cantidad = Decimal(str(data.cantidad))
+    presentacion = None
+    if data.presentacion_id is not None:
+        presentacion = (
+            db.query(models.MaterialPresentacion)
+            .filter(
+                models.MaterialPresentacion.id == data.presentacion_id,
+                models.MaterialPresentacion.material_id == material.id,
+            )
+            .first()
+        )
+        if not presentacion:
+            raise HTTPException(status_code=400, detail="Esa presentación no es de este material.")
+        cantidad = cantidad * Decimal(presentacion.equivale_a)
+
+    if cantidad == 0:
+        raise HTTPException(status_code=400, detail="La cantidad no puede ser cero.")
+    if cantidad < 0 and data.tipo != "ajuste":
+        raise HTTPException(
+            status_code=400,
+            detail="Solo un ajuste puede restar. Para sacar material del almacén usa una entrega.",
+        )
+
+    if data.tipo in ("entrega",):
+        if data.tecnico_id is None:
+            raise HTTPException(status_code=400, detail="Una entrega necesita decir a qué técnico.")
+        tecnico = db.query(models.Usuario).filter(models.Usuario.id == data.tecnico_id).first()
+        if not tecnico or tecnico.rol != models.RolUsuario.tecnico:
+            raise HTTPException(status_code=400, detail="Ese usuario no es un técnico.")
+        # No se entrega lo que no hay: el almacén quedaría en negativo y el
+        # saldo dejaría de significar algo.
+        disponible = _saldos(db).get(material.id, Decimal(0))
+        if cantidad > disponible:
+            raise HTTPException(
+                status_code=400,
+                detail=f"En almacén solo hay {disponible:g} {material.unidad}(s) de {material.nombre}.",
+            )
+
+    movimiento = models.MovimientoMaterial(
+        material_id=material.id,
+        tipo=data.tipo,
+        cantidad=cantidad,
+        tecnico_id=data.tecnico_id,
+        presentacion_id=presentacion.id if presentacion else None,
+        motivo=(data.motivo or None),
+        registrado_por_id=current_user.id,
+    )
+    db.add(movimiento)
+    db.commit()
+    db.refresh(movimiento)
+    return _movimiento_out(movimiento)
+
+
+def _movimiento_out(m: models.MovimientoMaterial) -> dict:
+    return {
+        "id": m.id,
+        "material_id": m.material_id,
+        "material_nombre": m.material.nombre if m.material else None,
+        "unidad": m.material.unidad if m.material else None,
+        "tipo": m.tipo,
+        "cantidad": m.cantidad,
+        "tecnico_id": m.tecnico_id,
+        "tecnico_nombre": m.tecnico.nombre if m.tecnico else None,
+        "cliente_id": m.cliente_id,
+        "presentacion": m.presentacion.nombre if m.presentacion else None,
+        "motivo": m.motivo,
+        "registrado_por": m.registrado_por.nombre if m.registrado_por else None,
+        "creado_en": m.creado_en,
+    }
+
+
+@router.get("/movimientos", response_model=List[schemas.MovimientoMaterialOut])
+def listar_movimientos(
+    material_id: Optional[int] = None,
+    limite: int = 100,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    query = db.query(models.MovimientoMaterial).options(
+        joinedload(models.MovimientoMaterial.material),
+        joinedload(models.MovimientoMaterial.tecnico),
+        joinedload(models.MovimientoMaterial.registrado_por),
+        joinedload(models.MovimientoMaterial.presentacion),
+    )
+    if material_id is not None:
+        query = query.filter(models.MovimientoMaterial.material_id == material_id)
+    movimientos = query.order_by(models.MovimientoMaterial.creado_en.desc()).limit(min(limite, 300)).all()
+    return [_movimiento_out(m) for m in movimientos]
+
+
+@router.get("/por-tecnico", response_model=List[schemas.SaldoTecnicoOut])
+def saldos_por_tecnico(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    """Qué lleva encima cada técnico. Es la pregunta que este módulo existe
+    para responder: el material no se pierde en el almacén, se pierde en la
+    camioneta."""
+    saldos = _saldos_tecnico(db)
+    if not saldos:
+        return []
+
+    tecnicos = {
+        u.id: u.nombre
+        for u in db.query(models.Usuario)
+        .filter(models.Usuario.id.in_({t for t, _ in saldos}))
+        .all()
+    }
+    materiales = {
+        m.id: m
+        for m in db.query(models.Material)
+        .filter(models.Material.id.in_({mat for _, mat in saldos}))
+        .all()
+    }
+
+    salida = []
+    for (tecnico_id, material_id), cantidad in sorted(saldos.items()):
+        material = materiales.get(material_id)
+        # Un saldo en cero no es noticia: lo entregado ya se gastó entero.
+        if cantidad == 0 or material is None:
+            continue
+        salida.append({
+            "tecnico_id": tecnico_id,
+            "tecnico_nombre": tecnicos.get(tecnico_id, "—"),
+            "material_id": material_id,
+            "material_nombre": material.nombre,
+            "unidad": material.unidad,
+            "cantidad": cantidad,
+        })
+    return salida

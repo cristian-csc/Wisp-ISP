@@ -1220,3 +1220,64 @@ class OrdenModulos(BaseModel):
 
 class OrdenModulosOut(OrdenModulos):
     rol_id: int
+
+
+# ── Materiales de fibra ───────────────────────────────────────────────────────
+
+class MaterialPresentacionOut(BaseModel):
+    id: int
+    nombre: str
+    # Cuantas unidades base trae: una bolsa de tensadores, 10.
+    equivale_a: float
+    activo: bool
+    class Config:
+        from_attributes = True
+
+
+class MaterialOut(BaseModel):
+    id: int
+    clave: str
+    nombre: str
+    unidad: Literal["metro", "unidad"]
+    se_recupera: bool
+    consumo_estandar: Optional[float] = None
+    activo: bool
+    # Calculado sumando movimientos; no existe como columna.
+    en_almacen: float
+    presentaciones: List[MaterialPresentacionOut] = []
+
+
+class MovimientoMaterialCreate(BaseModel):
+    material_id: int
+    tipo: Literal["entrada", "entrega", "devolucion", "ajuste"]
+    # En la presentacion elegida si viene presentacion_id ("2 bolsas"), o en
+    # la unidad del material si no ("45 metros").
+    cantidad: float
+    presentacion_id: Optional[int] = None
+    tecnico_id: Optional[int] = None
+    motivo: Optional[str] = Field(default=None, max_length=200)
+
+
+class MovimientoMaterialOut(BaseModel):
+    id: int
+    material_id: int
+    material_nombre: Optional[str] = None
+    unidad: Optional[str] = None
+    tipo: str
+    cantidad: float
+    tecnico_id: Optional[int] = None
+    tecnico_nombre: Optional[str] = None
+    cliente_id: Optional[int] = None
+    presentacion: Optional[str] = None
+    motivo: Optional[str] = None
+    registrado_por: Optional[str] = None
+    creado_en: Optional[datetime] = None
+
+
+class SaldoTecnicoOut(BaseModel):
+    tecnico_id: int
+    tecnico_nombre: str
+    material_id: int
+    material_nombre: str
+    unidad: str
+    cantidad: float

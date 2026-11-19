@@ -60,6 +60,7 @@ _JORNADAS = _delegar("panel.jornadas")
 _JORNADA_PROPIA = _usar(_m("movil.jornada"))
 _APROBAR = _delegar("panel.clientes_pendientes")
 _CAJA = _delegar("panel.reporte_caja")
+_MATERIALES = _delegar("panel.materiales")
 
 # Endpoints protegidos con require_roles().
 REGLAS: dict[tuple[str, str], Regla] = {
@@ -141,6 +142,11 @@ REGLAS: dict[tuple[str, str], Regla] = {
     ("GET", "/api/planes/perfiles-de-zona/{zona_id}"): _PLANES,
 
     ("POST", "/api/whatsapp/aviso-cobro/{cliente_id}"): _PAGOS,
+
+    ("GET", "/api/materiales"): _MATERIALES,
+    ("GET", "/api/materiales/movimientos"): _MATERIALES,
+    ("GET", "/api/materiales/por-tecnico"): _MATERIALES,
+    ("POST", "/api/materiales/movimientos"): _MATERIALES,
 }
 
 _LEER_CLIENTES = CLIENTES_PANEL | PAGOS | AVERIAS | RETIROS | CAMPO
@@ -190,6 +196,7 @@ SOLO_ADMINISTRADOR = _m("panel.usuarios", "panel.whatsapp", "panel.roles", "pane
 DELEGABLES = _m(
     "panel.dashboard", "panel.gastos", "panel.planes", "panel.cajas_nap",
     "panel.jornadas", "panel.reporte_caja", "panel.clientes_pendientes",
+    "panel.materiales",
 )
 APP_CLIENTE = _m("movil.inicio", "movil.pagos", "movil.perfil")
 

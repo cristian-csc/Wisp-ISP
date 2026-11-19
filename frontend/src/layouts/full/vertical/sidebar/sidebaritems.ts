@@ -101,6 +101,13 @@ const SidebarContent: MenuItem[] = [
         url: '/onus',
         roles: ['admin', 'atencion_cliente'],
       },
+      {
+        name: 'Materiales',
+        icon: 'solar:layers-minimalistic-linear',
+        id: uniqueId(),
+        url: '/materiales',
+        roles: ['admin'],
+      },
     ],
   },
   {
