@@ -125,55 +125,55 @@ body {
   --radius: 10px;
 
   /* ── Superficies ─────────────────────────────────────────────────────── */
-  --background: #f5f5f5;        /* área de trabajo: gris muy claro */
+  --background: #f6f7f9;        /* área de trabajo: gris muy claro */
   --card: #ffffff;
-  --surface-2: #fafafa;         /* cabeceras de tabla, filas alternas */
+  --surface-2: #f1f3f6;         /* cabeceras de tabla, filas alternas */
   --popover: #ffffff;
   --header: #ffffff;            /* el header es blanco en modo claro */
 
-  /* ── El sidebar es negro en LOS DOS temas: es identidad WISP ─────────── */
-  --sidebar: #000000;
-  --sidebar-hover: #1f1f1f;
-  --sidebar-foreground: #b8b8b8;
-  --sidebar-foreground-strong: #ffffff;
-  --sidebar-border: #262626;
+  /* ── El sidebar es azul noche en LOS DOS temas, no cambia con el tema ─────────── */
+  --sidebar: #0b1220;
+  --sidebar-hover: #172033;
+  --sidebar-foreground: #94a3b8;
+  --sidebar-foreground-strong: #f8fafc;
+  --sidebar-border: #293548;
 
   /* ── Tinta ───────────────────────────────────────────────────────────── */
-  --foreground: #0a0a0a;
-  --card-foreground: #0a0a0a;
-  --popover-foreground: #0a0a0a;
-  --muted-foreground: #525252;
-  --bodytext: #525252;
+  --foreground: #111827;
+  --card-foreground: #111827;
+  --popover-foreground: #111827;
+  --muted-foreground: #4b5563;
+  --bodytext: #4b5563;
 
   /* ── Naranja oscuro: botones y enlaces, legible con texto blanco ─────── */
   --primary: #c2410c;
   --primary-foreground: #ffffff;
-  --secondary: #171717;
-  --secondary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
 
   /* ── Naranja WISP: marca y elemento activo ───────────────────────────── */
   --brand: #ff842a;
   /* Sobre el naranja va tinta oscura: el blanco daría 2,45:1 y no se leería */
-  --brand-foreground: #000000;
+  --brand-foreground: #111827;
   --brand-strong: #c2410c;      /* naranja para TEXTO sobre fondo claro */
   --lightbrand: color-mix(in oklab, var(--brand) 16%, transparent);
 
-  --muted: #efefef;
+  --muted: #eef1f5;
   --accent: var(--lightprimary);
   --accent-foreground: var(--primary);
   --destructive: var(--error-solid);
   --destructive-foreground: var(--on-solid);
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: var(--primary);
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: var(--brand);
 
   /* ── Semánticos ──────────────────────────────────────────────────────── */
-  --info: #404040;              /* neutro: negro, naranja y tres colores de estado */
+  --info: #475569;              /* neutro: negro, naranja y tres colores de estado */
   --success: #16a34a;
   --warning: #d97706;
   --error: #dc2626;
   --white: #ffffff;
-  --dark: #000000;
+  --dark: #0b1220;
 
   /* Variantes para TEXTO pequeño sobre tinte claro, donde el color de
      relleno no alcanza por sí solo el contraste mínimo */
@@ -181,7 +181,7 @@ body {
   --success-text: #157a3a;
   --warning-text: #a44a08;
   --error-text: #b91c1c;
-  --info-text: #262626;
+  --info-text: #334155;
 
   /* Rellenos sólidos de estado con su texto: siempre superan 4,5:1 */
   --success-solid: var(--success-text);
@@ -196,8 +196,8 @@ body {
   --chart-3: var(--success);
   --chart-4: var(--warning);
   --chart-5: var(--error);
-  --chart-grid: #e5e5e5;
-  --chart-axis: #d4d4d4;
+  --chart-grid: #e2e8f0;
+  --chart-axis: #cbd5e1;
 
   /* !important porque la librería del menú escribe su azul en <html> al cargar */
   --sidebar-primary: var(--brand) !important;
@@ -222,49 +222,49 @@ body {
 }
 
 .dark {
-  --background: #000000;        /* negro puro */
-  --card: #121212;
-  --surface-2: #1a1a1a;
-  --popover: #1a1a1a;
-  --header: #0a0a0a;
+  --background: #0b1220;        /* azul noche */
+  --card: #172033;
+  --surface-2: #1e293b;
+  --popover: #1e293b;
+  --header: #0f1829;
 
-  --sidebar: #000000;
-  --sidebar-hover: #1f1f1f;
-  --sidebar-foreground: #b8b8b8;
-  --sidebar-foreground-strong: #ffffff;
-  --sidebar-border: #262626;
+  --sidebar: #0b1220;
+  --sidebar-hover: #172033;
+  --sidebar-foreground: #94a3b8;
+  --sidebar-foreground-strong: #f8fafc;
+  --sidebar-border: #293548;
 
-  --foreground: #f5f5f5;
-  --card-foreground: #f5f5f5;
-  --popover-foreground: #f5f5f5;
-  --muted-foreground: #a3a3a3;
-  --bodytext: #a3a3a3;
+  --foreground: #f8fafc;
+  --card-foreground: #f8fafc;
+  --popover-foreground: #f8fafc;
+  --muted-foreground: #94a3b8;
+  --bodytext: #94a3b8;
 
   --primary: #ff842a;
-  --primary-foreground: #000000;
+  --primary-foreground: #111827;
   --secondary: #ffb066;
-  --secondary-foreground: #000000;
+  --secondary-foreground: #111827;
 
   --brand: #ff842a;
-  --brand-foreground: #000000;
+  --brand-foreground: #111827;
   --brand-strong: #ff842a;
   --lightbrand: color-mix(in oklab, var(--brand) 22%, transparent);
 
-  --muted: #1f1f1f;
+  --muted: #1e293b;
   --accent: var(--lightprimary);
   --accent-foreground: var(--primary);
   --destructive: var(--error-solid);
   --destructive-foreground: var(--on-solid);
-  --border: #2e2e2e;
-  --input: #2e2e2e;
-  --ring: var(--primary);
+  --border: #293548;
+  --input: #293548;
+  --ring: var(--brand);
 
-  --info: #a3a3a3;
+  --info: #94a3b8;
   --success: #22c55e;
   --warning: #fbbf24;
   --error: #f87171;
   --white: #ffffff;
-  --dark: #000000;
+  --dark: #0b1220;
 
   /* Sobre fondo oscuro el color de relleno ya contrasta: no se oscurece */
   --primary-text: #ffb066;
@@ -272,15 +272,15 @@ body {
   --warning-text: var(--warning);
   --error-text: var(--error);
   --info-text: var(--info);
-  --on-solid: #000000;
+  --on-solid: #0b1220;
 
   --chart-1: var(--foreground);
   --chart-2: var(--brand);
   --chart-3: var(--success);
   --chart-4: var(--warning);
   --chart-5: var(--error);
-  --chart-grid: #2e2e2e;
-  --chart-axis: #404040;
+  --chart-grid: #293548;
+  --chart-axis: #475569;
 
   --sidebar-primary: var(--brand) !important;
   --sidebar-primary-foreground: var(--brand-foreground);

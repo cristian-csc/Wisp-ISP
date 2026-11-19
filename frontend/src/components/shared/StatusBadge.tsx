@@ -48,10 +48,16 @@ interface Props {
   estado: string;
   /** El icono acompaña al color para que el estado no dependa solo del tono */
   conIcono?: boolean;
+  /** Un punto en lugar del icono. Para las tablas: a tamaño de fila el icono
+   *  compite con el texto y el punto solo apoya al color, que es su trabajo. */
+  punto?: boolean;
   className?: string;
 }
 
-const StatusBadge = ({ estado, conIcono = true, className = '' }: Props) => {
+/** El punto toma el color del texto de la insignia, que ya es el del estado. */
+const PUNTO = 'size-1.5 shrink-0 rounded-full bg-current';
+
+const StatusBadge = ({ estado, conIcono = true, punto = false, className = '' }: Props) => {
   const e = ESTADOS[estado] ?? {
     texto: estado.replace(/_/g, ' '),
     clase: 'bg-muted text-muted-foreground',
@@ -59,9 +65,13 @@ const StatusBadge = ({ estado, conIcono = true, className = '' }: Props) => {
   };
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${e.clase} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${e.clase} ${className}`}
     >
-      {conIcono && <Icon icon={e.icono} width={14} className="shrink-0" />}
+      {punto ? (
+        <span aria-hidden="true" className={PUNTO} />
+      ) : (
+        conIcono && <Icon icon={e.icono} width={14} className="shrink-0" />
+      )}
       {e.texto}
     </span>
   );

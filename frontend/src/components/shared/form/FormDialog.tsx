@@ -29,12 +29,15 @@ export interface FormDialogProps {
   className?: string;
 }
 
+/* El icono va suelto sobre el azul noche, sin recuadro detras. Los cinco
+   tonos se comprobaron sobre #0b1220: el mas flojo es el rojo con 3,83:1,
+   por encima del 3:1 que piden los elementos graficos. */
 const TONOS = {
-  brand: 'bg-lightbrand text-brand-strong',
-  primary: 'bg-lightprimary text-primary-text',
-  success: 'bg-lightsuccess text-success-text',
-  warning: 'bg-lightwarning text-warning-text',
-  error: 'bg-lighterror text-error-text',
+  brand: 'text-brand',
+  primary: 'text-brand',
+  success: 'text-success',
+  warning: 'text-warning',
+  error: 'text-error',
 } as const;
 
 /**
@@ -63,55 +66,30 @@ const FormDialog = ({
         className,
       )}
     >
-      {/* Encabezado */}
-      <div className="relative shrink-0 overflow-hidden border-b border-ld bg-[linear-gradient(100deg,var(--lightprimary)_0%,var(--card)_52%,var(--lightbrand)_100%)] px-6 py-5">
-        {/* Adorno: antena y ondas de señal, puramente decorativo. Solo en las
-            ventanas anchas — en las chicas le quitaría sitio al texto. */}
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 120 120"
-          className={cn(
-            'pointer-events-none absolute right-16 top-1/2 hidden h-20 w-20 -translate-y-1/2',
-            (size === 'lg' || size === 'xl' || size === 'xxl') && 'sm:block',
-          )}
-        >
-          <g fill="none" strokeLinecap="round" strokeWidth="7">
-            <g className="text-brand opacity-30" stroke="currentColor">
-              <path d="M42 74a26 26 0 0136 0" />
-              <path d="M28 58a46 46 0 0164 0" />
-              <path d="M15 43a65 65 0 0190 0" />
-            </g>
-            <g className="text-primary opacity-25" stroke="currentColor">
-              <path d="M60 78v22" />
-              <path d="M40 104h40" strokeWidth="9" />
-            </g>
-          </g>
-        </svg>
-
-        <div className="relative flex items-start gap-4 pr-12">
-          {icon && (
-            <span
-              className={cn(
-                'grid h-12 w-12 shrink-0 place-items-center rounded-2xl',
-                TONOS[tone],
-              )}
-            >
-              <Icon icon={icon} width={24} />
-            </span>
-          )}
+      {/* Encabezado en azul noche.
+          Antes era un degradado claro con una antena dibujada al fondo. El
+          adorno competia con el titulo y, sobre todo, la cabecera clara se
+          confundia con los campos: no se veia donde terminaba el encabezado
+          y empezaba el formulario. En oscuro esa frontera se lee sola. */}
+      <div className="shrink-0 border-b border-sidebar-border bg-sidebar px-6 py-5">
+        <div className="flex items-start gap-3.5 pr-12">
+          {icon && <Icon icon={icon} width={32} className={cn('mt-0.5 shrink-0', TONOS[tone])} />}
           <div className="min-w-0">
-            <DialogTitle className="truncate text-xl font-semibold">{title}</DialogTitle>
-            {subtitle && <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>}
+            <DialogTitle className="truncate text-xl font-semibold text-sidebar-foreground-strong">
+              {title}
+            </DialogTitle>
+            {subtitle && <p className="mt-0.5 text-sm text-sidebar-foreground">{subtitle}</p>}
           </div>
         </div>
       </div>
 
-      {/* Cuerpo */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
+      {/* Cuerpo, sobre el gris del area de trabajo: asi las secciones
+          blancas de dentro se separan del fondo en vez de fundirse con el. */}
+      <div className="min-h-0 flex-1 overflow-y-auto bg-background px-6 py-5">{children}</div>
 
       {/* Botonera */}
       {footer && (
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-ld bg-surface-2 px-6 py-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-ld bg-card px-6 py-4">
           {footer}
         </div>
       )}

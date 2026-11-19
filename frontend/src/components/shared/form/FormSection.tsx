@@ -28,15 +28,17 @@ export interface FormSectionProps {
  * campos ni validaciones.
  */
 const FormSection = ({ title, icon, hint, children, className }: FormSectionProps) => (
-  <div className={cn('overflow-hidden rounded-xl border border-ld md:col-span-2', className)}>
-    <div className="flex items-center gap-2 border-b border-ld bg-lightprimary px-4 py-2.5">
-      {icon && <Icon icon={icon} width={17} className="shrink-0 text-primary-text" />}
-      <h3 className="text-sm font-semibold">{title}</h3>
+  <div className={cn('rounded-xl border border-ld bg-card p-4 md:col-span-2', className)}>
+    {/* Un filete bajo el titulo en vez de una franja de color: separa igual
+        y no mete un bloque de color por cada grupo de campos. */}
+    <div className="mb-4 flex items-center gap-2 border-b border-ld pb-2.5">
+      {icon && (
+        <Icon icon={icon} width={19} className="shrink-0 text-brand-strong dark:text-brand" />
+      )}
+      <h3 className="text-base font-semibold">{title}</h3>
       {hint && <span className="ml-auto text-xs text-muted-foreground">{hint}</span>}
     </div>
-    <div className="bg-surface-2 px-4 py-4">
-      <FormGrid>{children}</FormGrid>
-    </div>
+    <FormGrid>{children}</FormGrid>
   </div>
 );
 

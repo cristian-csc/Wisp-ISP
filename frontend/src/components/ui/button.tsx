@@ -8,11 +8,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primaryemphasis',
+        // La accion principal va en el naranja de marca con tinta oscura.
+        // Sobre naranja el blanco da 2,45:1 y no se lee; la tinta da 7,25:1.
+        default: 'bg-brand text-brand-foreground hover:bg-brand/90',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        // Secundaria: borde neutro. El naranja se reserva para la principal,
+        // para que en una barra de botones se vea cual es cual.
         outline:
-          'border border-primary text-primary bg-transparent hover:bg-primary hover:text-primary-foreground',
+          'border border-ld bg-card text-foreground hover:bg-muted',
         outlinesecondary:
           'border border-secondary text-secondary bg-transparent hover:bg-secondary hover:text-secondary-foreground',
         outlinesuccess:

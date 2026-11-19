@@ -1,3 +1,4 @@
+import { Icon } from '@iconify/react';
 import {
   ESTADOS_CLIENTE,
   type EstadoCliente,
@@ -24,13 +25,22 @@ export const ESTADOS_DESTACADOS: EstadoCliente[] = [
   'no_instalado',
 ];
 
-/** Tarjetas neutras: el estado lo dice un punto de color junto a la etiqueta. */
-const PUNTO: Record<string, string> = {
-  success: 'bg-success',
-  warning: 'bg-warning',
-  error: 'bg-error',
-  primary: 'bg-brand',
-  muted: 'bg-muted-foreground',
+/** Un icono por tarjeta: a un golpe de vista se distingue la fila sin leer. */
+const ICONOS: Record<string, string> = {
+  todos: 'tabler:users',
+  activo: 'tabler:circle-check',
+  pendiente_aprobacion: 'tabler:clock',
+  suspendido: 'tabler:player-pause',
+  no_instalado: 'tabler:tool',
+};
+
+/** El color del icono dice el estado sin depender de la etiqueta. */
+const TONO_ICONO: Record<string, string> = {
+  success: 'text-success-text dark:text-success',
+  warning: 'text-warning-text dark:text-warning',
+  error: 'text-error-text dark:text-error',
+  primary: 'text-brand-strong dark:text-brand',
+  muted: 'text-muted-foreground',
 };
 
 /**
@@ -39,9 +49,9 @@ const PUNTO: Record<string, string> = {
  * Para que queden parejas de verdad hacen falta tres cosas que no se ven pero
  * se notan:
  *
- *   - El número arriba y la etiqueta debajo, con sitio reservado para dos
- *     líneas. Si no, «Pendientes de aprobación» empuja su tarjeta y desalinea
- *     los números de las vecinas.
+ *   - La etiqueta arriba y el número debajo, con sitio reservado para dos
+ *     líneas de etiqueta. Si no, «Pendientes de aprobación» empuja su tarjeta
+ *     y desalinea los números de las vecinas.
  *   - El borde está siempre puesto, transparente cuando la tarjeta no es la
  *     elegida. Si solo apareciera al elegirla, la tarjeta crecería 2 px y la
  *     fila entera daría un salto al pulsar.
@@ -77,15 +87,36 @@ const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
             type="button"
             onClick={() => setFilter(t.valor)}
             aria-pressed={elegida}
-            className={`transition-ui flex min-h-[84px] flex-col justify-center rounded-xl border-2 px-3.5 py-3 text-left ${
-              elegida ? 'border-primary bg-lightprimary' : 'border-border bg-card hover:border-primary/40'
+            className={`transition-ui relative flex min-h-[86px] items-center gap-3 rounded-xl border-2 px-3.5 py-3 text-left ${
+              elegida
+                ? 'border-brand bg-lightbrand'
+                : 'border-border bg-card hover:border-brand/50'
             }`}
           >
-            <span className="text-2xl font-bold leading-none text-foreground">{t.cuenta}</span>
-            <span className="mt-2 flex items-start gap-1.5 text-xs font-medium leading-tight text-muted-foreground">
-              <span aria-hidden="true" className={`mt-1 size-2 shrink-0 rounded-full ${PUNTO[t.tono]}`} />
-              {t.etiqueta}
+            <Icon
+              icon={ICONOS[t.valor] ?? 'tabler:point'}
+              width={25}
+              className={`shrink-0 ${TONO_ICONO[t.tono] ?? TONO_ICONO.muted}`}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-medium leading-tight text-muted-foreground">
+                {t.etiqueta}
+              </span>
+              <span className="mt-1 block text-2xl font-bold leading-none text-foreground">
+                {t.cuenta}
+              </span>
             </span>
+
+            {/* La insignia confirma cuál está puesta sin depender solo del
+                borde naranja, que a cierta distancia se pierde. */}
+            {elegida && (
+              <span
+                aria-hidden="true"
+                className="absolute -right-2 -top-2 grid size-5 place-items-center rounded-full bg-brand text-brand-foreground"
+              >
+                <Icon icon="tabler:check" width={13} />
+              </span>
+            )}
           </button>
         );
       })}

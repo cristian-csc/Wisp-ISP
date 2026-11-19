@@ -228,7 +228,7 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
             onValueChange={(v) => setFilter(v === 'ninguno' ? 'todos' : (v as EstadoCliente))}
           >
             <SelectTrigger
-              className={`w-full sm:w-48 ${enOtros ? 'border-primary text-primary-text' : ''}`}
+              className={`w-full sm:w-48 ${enOtros ? 'border-brand text-brand-strong dark:text-brand' : ''}`}
             >
               <SelectValue placeholder="Otros estados" />
             </SelectTrigger>
