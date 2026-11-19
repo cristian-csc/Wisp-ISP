@@ -1,8 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Link, useParams } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
-import StatCard from 'src/components/shared/StatCard';
+import Cifra from 'src/components/shared/Cifra';
+import Pestanas from 'src/components/shared/Pestanas';
+import SearchInput from 'src/components/shared/SearchInput';
 import EmptyState from 'src/components/shared/EmptyState';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
@@ -23,21 +25,14 @@ import {
 } from 'src/components/shared/form';
 import BorneDots from 'src/components/apps/cajasnap/BorneDots';
 import CajaNapDetailDialog from 'src/components/apps/cajasnap/CajaNapDetailDialog';
-import RingProgress, { toneForPct } from 'src/components/apps/cajasnap/RingProgress';
-import { listCajasNap, createCajaNap, type CajaNap } from 'src/lib/cajasnap';
+import OcupacionBarra from 'src/components/apps/cajasnap/OcupacionBarra';
+import DisponibilidadChip, { coincideFiltro, PESTANAS_DISPONIBILIDAD, type FiltroCajas } from 'src/components/apps/cajasnap/DisponibilidadChip';
+import { listCajasNap, createCajaNap, resumenBornes, type CajaNap } from 'src/lib/cajasnap';
 import { getZona, type Zona } from 'src/lib/zonas';
 import { listMufas, type Mufa } from 'src/lib/mufas';
 
-const STAT_CARDS = [
-  { key: 'cajas', icono: 'tabler:box', etiqueta: 'Cajas NAP', tono: 'primary' },
-  { key: 'libres', icono: 'tabler:circle-check', etiqueta: 'Bornes libres', tono: 'success' },
-  { key: 'ocupados', icono: 'tabler:plug-connected', etiqueta: 'Bornes ocupados', tono: 'info' },
-  { key: 'danados', icono: 'tabler:alert-triangle', etiqueta: 'Bornes dañados', tono: 'error' },
-] as const;
-
 const CajaNapZona = () => {
   const { zonaId } = useParams();
-  const navigate = useNavigate();
   const zid = Number(zonaId);
 
   const [zona, setZona] = useState<Zona | null>(null);
@@ -50,6 +45,8 @@ const CajaNapZona = () => {
   const [capacidad, setCapacidad] = useState('8');
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [filtro, setFiltro] = useState<FiltroCajas>('todas');
+  const [mufaSel, setMufaSel] = useState('todas');
 
   async function reload() {
     setCajas(await listCajasNap(zid));
@@ -62,16 +59,21 @@ const CajaNapZona = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zid]);
 
-  const cajasFiltradas = cajas.filter((c) =>
-    c.codigo.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const cajasFiltradas = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return cajas
+      .filter(
+        (c) =>
+          coincideFiltro(c, filtro) &&
+          (mufaSel === 'todas' || String(c.mufa_id) === mufaSel) &&
+          (!q || [c.codigo, c.mufa_codigo, c.descripcion].some((t) => t?.toLowerCase().includes(q))),
+      )
+      .sort((a, b) => a.codigo.localeCompare(b.codigo, 'es', { numeric: true }));
+  }, [cajas, filtro, mufaSel, search]);
 
-  const statValues: Record<(typeof STAT_CARDS)[number]['key'], number> = {
-    cajas: cajasFiltradas.length,
-    libres: cajasFiltradas.reduce((n, c) => n + c.bornes.filter((b) => b.estado === 'libre').length, 0),
-    ocupados: cajasFiltradas.reduce((n, c) => n + c.bornes.filter((b) => b.estado === 'ocupado').length, 0),
-    danados: cajasFiltradas.reduce((n, c) => n + c.bornes.filter((b) => b.estado === 'danado').length, 0),
-  };
+  const total = resumenBornes(cajas);
+  const cuenta = (f: FiltroCajas) => cajas.filter((c) => coincideFiltro(c, f)).length;
+  const hayFiltros = !!search.trim() || filtro !== 'todas' || mufaSel !== 'todas';
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -94,89 +96,155 @@ const CajaNapZona = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/cajas-nap')}>
-          <Icon icon="tabler:arrow-left" height={20} />
-        </Button>
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold leading-tight truncate">{zona?.nombre ?? 'Cargando…'}</h1>
-          <p className="text-sm text-muted-foreground">Cajas NAP de esta zona</p>
+          <nav aria-label="Ruta" className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Link to="/cajas-nap" className="hover:text-foreground hover:underline">
+              Cajas NAP
+            </Link>
+            <Icon icon="tabler:chevron-right" width={14} aria-hidden="true" />
+          </nav>
+          <h1 className="mt-1 truncate text-[26px] font-semibold leading-tight">{zona?.nombre ?? 'Cargando…'}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {cajas.length} caja{cajas.length === 1 ? '' : 's'} NAP colgando de {mufas.length} mufa{mufas.length === 1 ? '' : 's'}
+          </p>
         </div>
-        <Button onClick={() => setOpen(true)} className="ml-auto whitespace-nowrap">
-          Agregar caja NAP
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link to={`/zonas/${zid}`}>
+              <Icon icon="tabler:map-pin" height={17} /> Ver la zona
+            </Link>
+          </Button>
+          <Button onClick={() => setOpen(true)}>
+            <Icon icon="tabler:plus" height={17} /> Agregar caja NAP
+          </Button>
+        </div>
       </div>
 
-      <div className="relative sm:max-w-60 w-full">
-        <Icon
-          icon="tabler:search"
-          height={18}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+      <CardBox className="gap-0 overflow-hidden !p-0">
+        <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-4 [&>*]:bg-card">
+          <Cifra etiqueta="Bornes libres" icono="solar:plug-circle-linear" tono="marca" valor={total.libres} nota={`de ${total.total} en la zona`} />
+          <Cifra
+            etiqueta="Ocupación"
+            icono="solar:pie-chart-2-linear"
+            tono={total.pct >= 85 ? 'alerta' : 'neutro'}
+            valor={`${total.pct}%`}
+            progreso={{ valor: total.ocupados, total: total.total }}
+            nota={`${total.ocupados} bornes con cliente`}
+          />
+          <Cifra
+            etiqueta="Cajas llenas o casi"
+            icono="solar:box-linear"
+            tono={cuenta('llenas') ? 'alerta' : 'neutro'}
+            valor={cuenta('llenas') + cuenta('casi')}
+            nota={`${cuenta('llenas')} sin ningún borne libre`}
+          />
+          <Cifra
+            etiqueta="Bornes dañados"
+            icono="solar:danger-triangle-linear"
+            tono={total.danados ? 'peligro' : 'neutro'}
+            valor={total.danados}
+            nota={total.danados ? 'Por reparar' : 'Ninguno por reparar'}
+          />
+        </div>
+      </CardBox>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar por código o descripción" className="sm:w-72" />
+          {mufas.length > 1 && (
+            <Select value={mufaSel} onValueChange={setMufaSel}>
+              <SelectTrigger className="h-9 w-full sm:w-52" aria-label="Mufa">
+                <Icon icon="tabler:git-fork" width={16} className="text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas las mufas</SelectItem>
+                {mufas.map((m) => (
+                  <SelectItem key={m.id} value={String(m.id)}>
+                    {m.codigo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        <Pestanas
+          label="Disponibilidad"
+          valor={filtro}
+          onChange={setFiltro}
+          pestanas={PESTANAS_DISPONIBILIDAD.map((p) => ({ ...p, cuenta: cuenta(p.valor) }))}
         />
-        <Input
-          type="text"
-          className="pl-10"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por código…"
-        />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {STAT_CARDS.map((s) => (
-          <StatCard key={s.key} icono={s.icono} etiqueta={s.etiqueta} valor={statValues[s.key]} tono={s.tono} />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cajasFiltradas.length === 0 && (
-          <div className="sm:col-span-2 lg:col-span-3">
-            <EmptyState
-              icono="tabler:box-off"
-              titulo={cajas.length === 0 ? 'Sin cajas NAP registradas' : 'Ninguna caja coincide con la búsqueda'}
-              descripcion={cajas.length === 0 ? 'Todavía no hay cajas NAP en esta zona.' : undefined}
-            />
-          </div>
-        )}
-        {cajasFiltradas.map((c) => {
-          const libres = c.bornes.filter((b) => b.estado === 'libre').length;
-          const ocupados = c.bornes.filter((b) => b.estado === 'ocupado').length;
-          const danados = c.bornes.filter((b) => b.estado === 'danado').length;
-          const pct = c.capacidad_bornes > 0 ? Math.round((ocupados / c.capacidad_bornes) * 100) : 0;
-          const tone = toneForPct(pct);
-          return (
-            <CardBox
-              key={c.id}
-              className="p-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
-              onClick={() => setCajaAbierta(c.id)}
-            >
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide mb-0.5">
-                    <Icon icon="tabler:box" height={12} />
-                    Caja NAP
-                  </div>
-                  <h3 className="text-sm font-semibold truncate">{c.codigo}</h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {mufas.find((m) => m.id === c.mufa_id)?.codigo ?? '—'}
-                  </p>
-                </div>
-                <RingProgress pct={pct} tone={tone} size="sm" />
-              </div>
-
-              <BorneDots bornes={c.bornes} size="sm" />
-
-              <div className="flex justify-between mt-3 pt-3 border-t border-ld text-[11px]">
-                <span className="text-success font-medium">{ocupados} ocup.</span>
-                <span className="text-info font-medium">{libres} libres</span>
-                <span className={danados > 0 ? 'text-error font-medium' : 'text-muted-foreground'}>
-                  {danados} dañ.
+      {cajasFiltradas.length === 0 ? (
+        <CardBox className="!p-0">
+          <EmptyState
+            icono="tabler:box-off"
+            titulo={cajas.length === 0 ? 'Esta zona no tiene cajas NAP' : 'Ninguna caja coincide'}
+            descripcion={
+              cajas.length === 0
+                ? mufas.length
+                  ? 'Agrega la primera caja y elige la mufa de la que sale.'
+                  : 'Primero registra una mufa en la ficha de la zona; las cajas cuelgan de ella.'
+                : 'Prueba con otro código o quita el filtro.'
+            }
+            accion={
+              cajas.length === 0 ? (
+                <Button onClick={() => setOpen(true)} disabled={!mufas.length}>
+                  <Icon icon="tabler:plus" height={17} /> Agregar caja NAP
+                </Button>
+              ) : hayFiltros ? (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearch('');
+                    setFiltro('todas');
+                    setMufaSel('todas');
+                  }}
+                >
+                  Quitar filtros
+                </Button>
+              ) : undefined
+            }
+          />
+        </CardBox>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {cajasFiltradas.map((c) => {
+            const r = resumenBornes([c]);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCajaAbierta(c.id)}
+                className="flex flex-col gap-4 rounded-2xl border border-ld bg-card p-5 text-left transition-[border-color,transform] duration-150 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-brand [@media(hover:hover)]:hover:border-foreground/25"
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-base font-semibold">{c.codigo}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {c.mufa_codigo ? `Mufa ${c.mufa_codigo}` : 'Sin mufa'}
+                      {c.descripcion ? ` · ${c.descripcion}` : ''}
+                    </span>
+                  </span>
+                  <DisponibilidadChip caja={c} />
                 </span>
-              </div>
-            </CardBox>
-          );
-        })}
-      </div>
+                <BorneDots bornes={c.bornes} size="md" />
+                <span className="flex flex-col gap-2">
+                  <OcupacionBarra r={r} />
+                  <span className="flex items-baseline justify-between text-xs text-muted-foreground tabular-nums">
+                    <span>
+                      <span className="text-base font-semibold text-foreground">{r.libres}</span> libre{r.libres === 1 ? '' : 's'} de {r.total}
+                    </span>
+                    <span>{r.pct}% ocupado</span>
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <CajaNapDetailDialog
         cajaId={cajaAbierta}

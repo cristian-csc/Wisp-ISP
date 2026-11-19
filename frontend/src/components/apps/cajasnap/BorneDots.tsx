@@ -1,10 +1,13 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from 'src/components/ui/tooltip';
+import { cn } from 'src/lib/utils';
 import type { Borne } from 'src/lib/cajasnap';
 
-const COLOR: Record<Borne['estado'], string> = {
-  libre: 'bg-info-solid',
-  ocupado: 'bg-success-solid',
-  danado: 'bg-error-solid',
+/** Libre es un aro vacío (un puerto esperando cliente), ocupado va lleno y
+ *  dañado en rojo. Así se lee sin depender solo del color. */
+const ESTILO: Record<Borne['estado'], string> = {
+  libre: 'border-2 border-success-solid bg-transparent text-success-text',
+  ocupado: 'bg-foreground text-background',
+  danado: 'bg-error-solid text-on-solid',
 };
 
 const LABEL: Record<Borne['estado'], string> = {
@@ -13,27 +16,46 @@ const LABEL: Record<Borne['estado'], string> = {
   danado: 'Dañado',
 };
 
+const TAMANO = {
+  sm: 'size-3',
+  md: 'size-5 text-[10px]',
+  lg: 'size-6 text-[10px]',
+} as const;
+
+const BASE = 'flex shrink-0 items-center justify-center rounded-full font-semibold tabular-nums';
+
 interface Props {
   bornes: Borne[];
-  size?: 'sm' | 'lg';
+  size?: keyof typeof TAMANO;
   onClickBorne?: (borne: Borne) => void;
 }
 
-const BorneDots = ({ bornes, size = 'lg', onClickBorne }: Props) => {
-  const dot = size === 'lg' ? 'w-6 h-6' : 'w-3 h-3';
-  return (
-    <TooltipProvider>
-      <div className="flex flex-wrap gap-2">
-        {bornes.map((b) => (
+const BorneDots = ({ bornes, size = 'lg', onClickBorne }: Props) => (
+  <TooltipProvider delayDuration={150}>
+    <div className={cn('flex flex-wrap', size === 'sm' ? 'gap-1.5' : 'gap-2')}>
+      {[...bornes]
+        .sort((a, b) => a.numero - b.numero)
+        .map((b) => (
           <Tooltip key={b.id}>
             <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onClickBorne?.(b)}
-                className={`${dot} rounded-full ${COLOR[b.estado]} ${onClickBorne ? 'cursor-pointer' : 'cursor-default'} flex items-center justify-center text-[10px] text-on-solid font-medium shrink-0`}
-              >
-                {size === 'lg' ? b.numero : ''}
-              </button>
+              {onClickBorne ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClickBorne(b);
+                  }}
+                  aria-label={`Borne ${b.numero}: ${LABEL[b.estado]}`}
+                  className={cn(BASE, TAMANO[size], ESTILO[b.estado], 'cursor-pointer transition-transform duration-150 active:scale-90')}
+                >
+                  {size !== 'sm' ? b.numero : ''}
+                </button>
+              ) : (
+                // Sin acción no es un botón: así puede ir dentro de una fila que sí lo es.
+                <span role="img" aria-label={`Borne ${b.numero}: ${LABEL[b.estado]}`} className={cn(BASE, TAMANO[size], ESTILO[b.estado])}>
+                  {size !== 'sm' ? b.numero : ''}
+                </span>
+              )}
             </TooltipTrigger>
             <TooltipContent>
               <p className="font-medium">
@@ -48,9 +70,8 @@ const BorneDots = ({ bornes, size = 'lg', onClickBorne }: Props) => {
             </TooltipContent>
           </Tooltip>
         ))}
-      </div>
-    </TooltipProvider>
-  );
-};
+    </div>
+  </TooltipProvider>
+);
 
 export default BorneDots;

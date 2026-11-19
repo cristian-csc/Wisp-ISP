@@ -97,3 +97,31 @@ export async function getEstadoPppoeCaja(cajaId: number): Promise<EstadoPppoeBor
   const { data } = await api.get(`/cajas-nap/${cajaId}/estado-pppoe`);
   return data;
 }
+
+/** Cuántos bornes hay en cada estado, para una caja o para varias. */
+export type ResumenBornes = { total: number; libres: number; ocupados: number; danados: number; pct: number };
+
+export function resumenBornes(cajas: CajaNap[]): ResumenBornes {
+  let libres = 0;
+  let ocupados = 0;
+  let danados = 0;
+  for (const c of cajas) {
+    for (const b of c.bornes) {
+      if (b.estado === 'libre') libres++;
+      else if (b.estado === 'ocupado') ocupados++;
+      else danados++;
+    }
+  }
+  const total = libres + ocupados + danados;
+  return { total, libres, ocupados, danados, pct: total ? Math.round((ocupados / total) * 100) : 0 };
+}
+
+/** Qué tan disponible está una caja, para filtrar y avisar. */
+export type Disponibilidad = 'libre' | 'casi_llena' | 'llena';
+
+export function disponibilidad(c: CajaNap): Disponibilidad {
+  const r = resumenBornes([c]);
+  if (r.libres === 0) return 'llena';
+  if (r.libres <= 2 || r.pct >= 75) return 'casi_llena';
+  return 'libre';
+}

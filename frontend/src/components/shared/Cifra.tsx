@@ -66,7 +66,7 @@ const Cifra = ({ etiqueta, valor, nota, to, delta, icono, tono = 'neutro', progr
             <Icon icon={icono} width={17} aria-hidden="true" />
           </span>
         )}
-        <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{etiqueta}</p>
+        <p className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight text-muted-foreground">{etiqueta}</p>
         {to && (
           <Icon
             icon="tabler:arrow-up-right"

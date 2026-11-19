@@ -25,7 +25,7 @@ function Pestanas<T extends string>({ pestanas, valor, onChange, label, classNam
     <div
       role="tablist"
       aria-label={label}
-      className={cn('-mx-1 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-ld px-1 [scrollbar-width:none]', className)}
+      className={cn('-mx-1 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-ld px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}
     >
       {pestanas.map((p) => {
         const elegida = p.valor === valor;

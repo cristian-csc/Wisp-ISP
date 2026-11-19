@@ -1,10 +1,19 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
-import RingProgress from 'src/components/apps/cajasnap/RingProgress';
+import Cifra from 'src/components/shared/Cifra';
+import Pestanas from 'src/components/shared/Pestanas';
+import SearchInput from 'src/components/shared/SearchInput';
+import EmptyState from 'src/components/shared/EmptyState';
+import VistaToggle, { guardarVista, vistaGuardada, type Vista } from 'src/components/shared/VistaToggle';
+import OcupacionBarra from 'src/components/apps/cajasnap/OcupacionBarra';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'src/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'src/components/ui/table';
+import { listCajasNap, resumenBornes, type CajaNap } from 'src/lib/cajasnap';
+import { cn } from 'src/lib/utils';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import {
@@ -45,9 +54,9 @@ const ESTADO_RED: Record<
   conectado: {
     texto: 'En línea',
     icono: 'tabler:router',
-    punto: 'bg-success',
+    punto: 'bg-success-solid',
     chipBg: 'bg-lightsuccess',
-    chipText: 'text-success',
+    chipText: 'text-success-text',
   },
   // Sigue siendo un "sin respuesta" para quien mira la lista, pero el matiz
   // importa a quien va a arreglarlo: el túnel está bien, el que no contesta es
@@ -56,16 +65,16 @@ const ESTADO_RED: Record<
     texto: 'Sin respuesta',
     detalle: 'el túnel está arriba',
     icono: 'tabler:router-off',
-    punto: 'bg-error',
+    punto: 'bg-error-solid',
     chipBg: 'bg-lighterror',
-    chipText: 'text-error',
+    chipText: 'text-error-text',
   },
   sin_respuesta: {
     texto: 'Sin respuesta',
     icono: 'tabler:plug-connected-x',
-    punto: 'bg-error',
+    punto: 'bg-error-solid',
     chipBg: 'bg-lighterror',
-    chipText: 'text-error',
+    chipText: 'text-error-text',
   },
   // muted-foreground es #475569 en claro y #93a4be en oscuro: gris azulado en
   // los dos temas, que es justo lo que se pedía, sin inventar un color nuevo.
@@ -92,45 +101,15 @@ function desdeHandshake(ts: number): string | null {
   return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
 }
 
-/** Una celda de la franja de resumen: etiqueta arriba, número grande debajo.
- *
- *  El punto de color va junto al número y no detrás de la etiqueta, para que
- *  al recorrer la franja de un vistazo lo que se lea sean los números. */
-function ResumenDato({
-  etiqueta,
-  valor,
-  icono,
-  indice,
-  color,
-  nota,
-}: {
-  etiqueta: string;
-  valor: number | string;
-  icono: string;
-  /** Posicion en la franja. Decide los separadores: `divide-x` no sirve sobre
-   *  una rejilla, le pone borde izquierdo tambien al primero de la segunda
-   *  fila, y queda una linea colgando. */
-  indice: number;
-  color?: string;
-  nota?: string;
-}) {
-  const separadores = [
-    'border-ld',
-    indice % 2 === 1 ? 'border-l' : '',      // en dos columnas (telefono)
-    indice >= 2 ? 'border-t sm:border-t-0' : '',
-    indice > 0 ? 'sm:border-l' : '',         // en cuatro columnas
-  ].join(' ');
-  return (
-    <div className={`flex min-w-0 items-center gap-3 px-5 py-4 ${separadores}`}>
-      <Icon icon={icono} height={26} className={`shrink-0 ${color ?? 'text-muted-foreground'}`} />
-      <div className="min-w-0">
-        <p className="truncate text-sm text-muted-foreground">{etiqueta}</p>
-        <p className={`text-2xl font-bold leading-tight ${color ?? 'text-foreground'}`}>{valor}</p>
-        {nota && <p className="truncate text-[11px] text-muted-foreground">{nota}</p>}
-      </div>
-    </div>
-  );
-}
+type FiltroRed = 'todas' | 'conectado' | 'caidas' | 'sin_tunel';
+type Orden = 'nombre' | 'clientes' | 'libres' | 'activos_pct';
+
+const ORDENES: { valor: Orden; etiqueta: string }[] = [
+  { valor: 'nombre', etiqueta: 'Nombre (A-Z)' },
+  { valor: 'clientes', etiqueta: 'Más clientes' },
+  { valor: 'libres', etiqueta: 'Más bornes libres' },
+  { valor: 'activos_pct', etiqueta: 'Menos activos (%)' },
+];
 
 const Zonas = () => {
   const navigate = useNavigate();
@@ -146,6 +125,10 @@ const Zonas = () => {
   const [comprobando, setComprobando] = useState(false);
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const [search, setSearch] = useState('');
+  const [filtroRed, setFiltroRed] = useState<FiltroRed>('todas');
+  const [orden, setOrden] = useState<Orden>('nombre');
+  const [vista, setVista] = useState<Vista>(() => vistaGuardada('zonas', 'tarjetas'));
+  const [cajas, setCajas] = useState<CajaNap[]>([]);
   const [open, setOpen] = useState(false);
   const [nombre, setNombre] = useState('');
   const [ipWireguard, setIpWireguard] = useState('');
@@ -179,6 +162,8 @@ const Zonas = () => {
   useEffect(() => {
     reload();
     getMe().then(setCurrentUser).catch(() => {});
+    // Las cajas dan los bornes libres de cada zona: lo que se puede vender.
+    listCajasNap().then(setCajas).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -241,56 +226,140 @@ const Zonas = () => {
     }
   }
 
-  const zonasFiltradas = zonas.filter((z) =>
-    z.nombre.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const bornesPorZona = useMemo(() => {
+    const m = new Map<number, ReturnType<typeof resumenBornes> & { cajas: number }>();
+    for (const z of zonas) {
+      const deZona = cajas.filter((c) => c.zona_id === z.id);
+      m.set(z.id, { ...resumenBornes(deZona), cajas: deZona.length });
+    }
+    return m;
+  }, [zonas, cajas]);
 
   // Mientras no haya llegado ni un estado se muestra una raya y no un 0:
   // "0 en linea" es una afirmacion, y todavia no se sabe nada.
   const sinComprobar = Object.keys(estados).length === 0;
-  // Si no hay nada y tampoco se esta preguntando, es que la consulta fallo:
-  // decir "comprobando..." para siempre seria mentir.
   const notaSinDatos = comprobando ? 'comprobando…' : 'sin comprobar';
+  const esCaida = (z: Zona) => !!estados[z.id] && !['conectado', 'sin_tunel'].includes(estados[z.id].estado);
   const enLinea = zonas.filter((z) => estados[z.id]?.estado === 'conectado').length;
   const sinTunel = zonas.filter((z) => estados[z.id]?.estado === 'sin_tunel').length;
-  const caidas = zonas.filter(
-    (z) => estados[z.id] && !['conectado', 'sin_tunel'].includes(estados[z.id].estado),
-  ).length;
+  const caidas = zonas.filter(esCaida).length;
+  const totalClientes = zonas.reduce((n, z) => n + z.total_clientes, 0);
+  const totalActivos = zonas.reduce((n, z) => n + z.clientes_activos, 0);
+  const bornesTotales = resumenBornes(cajas);
+
+  const zonasFiltradas = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const lista = zonas.filter((z) => {
+      if (q && ![z.nombre, z.router_mikrotik, z.ip_wireguard].some((t) => t?.toLowerCase().includes(q))) return false;
+      if (filtroRed === 'conectado') return estados[z.id]?.estado === 'conectado';
+      if (filtroRed === 'sin_tunel') return estados[z.id]?.estado === 'sin_tunel';
+      if (filtroRed === 'caidas') return esCaida(z);
+      return true;
+    });
+    const pct = (z: Zona) => (z.total_clientes ? z.clientes_activos / z.total_clientes : 1);
+    const comparar: Record<Orden, (a: Zona, b: Zona) => number> = {
+      nombre: (a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }),
+      clientes: (a, b) => b.total_clientes - a.total_clientes,
+      libres: (a, b) => (bornesPorZona.get(b.id)?.libres ?? 0) - (bornesPorZona.get(a.id)?.libres ?? 0),
+      activos_pct: (a, b) => pct(a) - pct(b),
+    };
+    return [...lista].sort(comparar[orden]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zonas, search, filtroRed, orden, estados, bornesPorZona]);
+
+  function cambiarVista(v: Vista) {
+    setVista(v);
+    guardarVista('zonas', v);
+  }
+
+  const hayFiltros = !!search.trim() || filtroRed !== 'todas';
+
+  /** El estado de red de una zona, igual en tarjeta y en lista. */
+  const EstadoChip = ({ z }: { z: Zona }) => {
+    const red = estados[z.id];
+    const estilo = red ? ESTADO_RED[red.estado] : null;
+    if (!estilo) {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          <Icon icon="tabler:loader-2" width={12} className={comprobando ? 'animate-spin' : undefined} />
+          {comprobando ? 'Comprobando…' : 'Sin comprobar'}
+        </span>
+      );
+    }
+    return (
+      <span
+        className={cn('inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium', estilo.chipBg, estilo.chipText)}
+        title={estilo.detalle ? `${estilo.texto} — ${estilo.detalle}` : estilo.texto}
+      >
+        <span className={cn('size-1.5 shrink-0 rounded-full', estilo.punto)} />
+        <span className="truncate">{estilo.texto}</span>
+      </span>
+    );
+  };
+
+  const Acciones = ({ z }: { z: Zona }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label={`Acciones de ${z.nombre}`} className="size-8">
+          <Icon icon="tabler:dots" height={17} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem onClick={() => navigate(`/zonas/${z.id}`)}>
+          <Icon icon="tabler:eye" height={16} />
+          Ver la zona
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate(`/cajas-nap/zona/${z.id}`)}>
+          <Icon icon="tabler:box" height={16} />
+          Cajas NAP de la zona
+        </DropdownMenuItem>
+        {veRed && (
+          <DropdownMenuItem onClick={() => comprobarUna(z)}>
+            <Icon icon="tabler:plug-connected" height={16} />
+            Comprobar el enlace
+          </DropdownMenuItem>
+        )}
+        {puedeGestionar && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setBorrando(z)} className="text-error-text focus:text-error-text">
+              <Icon icon="tabler:trash" height={16} />
+              Eliminar zona
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  /** Router, IP y pool en una línea. "sin pool" se marca: sin él, los planes
+   *  de esa zona no pueden crear perfiles en el router. */
+  const LineaTecnica = ({ z }: { z: Zona }) => {
+    const handshake = estados[z.id] ? desdeHandshake(estados[z.id].last_handshake_ts) : null;
+    const partes = [z.router_mikrotik, z.ip_wireguard, z.pool_pppoe ? `pool ${z.pool_pppoe}` : null, handshake].filter(Boolean);
+    return (
+      <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+        {!z.pool_pppoe && (
+          <span className="shrink-0 rounded bg-lightwarning px-1.5 py-px text-[11px] font-medium text-warning-text">sin pool</span>
+        )}
+        <span className="truncate tabular-nums">{partes.join(' · ') || 'Router sin configurar'}</span>
+      </p>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-between items-start flex-wrap gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[26px] font-semibold leading-tight">Zonas</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {veRed
-              ? `${zonas.length} ${zonas.length === 1 ? 'zona' : 'zonas'} de cobertura`
-              : 'Selecciona una zona para ver su cobertura'}
+            {veRed ? 'Cobertura, estado de cada router y espacio para nuevos clientes.' : 'Elige una zona para ver su cobertura y sus clientes.'}
           </p>
         </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative sm:max-w-52 w-full">
-            <Icon
-              icon="tabler:search"
-              height={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              type="text"
-              className="pl-10"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar zona…"
-            />
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
           {veRed && (
             <Button variant="outline" onClick={comprobarRed} disabled={comprobando}>
-              <Icon
-                icon={comprobando ? 'tabler:loader-2' : 'tabler:refresh'}
-                height={17}
-                className={comprobando ? 'animate-spin' : undefined}
-              />
+              <Icon icon={comprobando ? 'tabler:loader-2' : 'tabler:refresh'} height={17} className={comprobando ? 'animate-spin' : undefined} />
               {comprobando ? 'Comprobando…' : 'Comprobar routers'}
             </Button>
           )}
@@ -303,217 +372,240 @@ const Zonas = () => {
         </div>
       </div>
 
-      {/* Los cuatro indicadores en una sola franja, separados por una línea
-          fina en vez de por aire: ocupan un tercio del alto que ocupaban en
-          cuatro tarjetas y se leen igual de rápido. En móvil se parten en dos
-          columnas, que es donde cabe un número sin estrujarse. */}
-      {veRed && zonas.length > 0 && (
-        <CardBox className="p-0 overflow-hidden">
-          <div className="grid grid-cols-2 sm:grid-cols-4">
-            <ResumenDato
-              etiqueta="Total de zonas"
-              valor={zonas.length}
-              icono="tabler:stack-2"
-              indice={0}
+      {zonas.length > 0 && (
+        <CardBox className="gap-0 overflow-hidden !p-0">
+          <div
+            className={cn(
+              'grid grid-cols-2 gap-px bg-border [&>*]:bg-card',
+              veRed ? 'lg:grid-cols-4' : 'lg:grid-cols-3',
+              !veRed && '[&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1',
+            )}
+          >
+            <Cifra
+              etiqueta="Clientes activos"
+              icono="solar:users-group-rounded-linear"
+              valor={totalActivos}
+              progreso={{ valor: totalActivos, total: totalClientes }}
+              nota={`de ${totalClientes} en ${zonas.length} zonas`}
             />
-            <ResumenDato
-              etiqueta="En línea"
-              indice={1}
-              valor={sinComprobar ? '—' : enLinea}
-              icono="tabler:wifi"
-              nota={sinComprobar ? notaSinDatos : undefined}
+            {veRed && (
+              <Cifra
+                etiqueta="Routers en línea"
+                icono="solar:wi-fi-router-minimalistic-linear"
+                tono={!sinComprobar && enLinea === zonas.length ? 'ok' : 'neutro'}
+                valor={sinComprobar ? '—' : `${enLinea}/${zonas.length}`}
+                nota={sinComprobar ? notaSinDatos : enLinea === zonas.length ? 'Todos contestan' : `${sinTunel} sin túnel configurado`}
+              />
+            )}
+            {veRed && (
+              <Cifra
+                etiqueta="Sin respuesta"
+                icono="solar:danger-triangle-linear"
+                tono={!sinComprobar && caidas > 0 ? 'peligro' : 'neutro'}
+                valor={sinComprobar ? '—' : caidas}
+                nota={sinComprobar ? notaSinDatos : caidas ? 'Revisa el enlace o el router' : 'Ninguna zona caída'}
+              />
+            )}
+            <Cifra
+              etiqueta="Bornes libres"
+              icono="solar:plug-circle-linear"
+              tono="marca"
+              valor={bornesTotales.libres}
+              progreso={{ valor: bornesTotales.ocupados, total: bornesTotales.total }}
+              nota={`${bornesTotales.pct}% ocupado en ${cajas.length} cajas NAP`}
+              to="/cajas-nap"
             />
-            <ResumenDato
-              etiqueta="Sin respuesta"
-              indice={2}
-              valor={sinComprobar ? '—' : caidas}
-              icono="tabler:alert-circle"
-              color={!sinComprobar && caidas > 0 ? 'text-error-text' : undefined}
-              nota={sinComprobar ? notaSinDatos : undefined}
-            />
-            {/* Ámbar y no gris: aquí no es el estado de una zona, es el trabajo
-                que queda por hacer. En la tarjeta de cada zona sí va en gris,
-                porque ahí es un hecho y no una tarea pendiente. */}
-            <ResumenDato
-              etiqueta="Sin túnel"
-              indice={3}
-              valor={sinComprobar ? '—' : sinTunel}
-              icono="tabler:unlink"
-              nota={sinComprobar ? notaSinDatos : undefined}
-            />
+            {!veRed && (
+              <Cifra etiqueta="Zonas" icono="solar:map-point-linear" valor={zonas.length} nota="con cobertura" />
+            )}
           </div>
         </CardBox>
       )}
 
-      {zonasFiltradas.length === 0 && (
-        <CardBox>
-          <p className="text-center text-muted-foreground py-6">
-            {zonas.length === 0
-              ? 'No hay zonas registradas.'
-              : 'Ninguna zona coincide con la búsqueda.'}
-          </p>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar zona, router o IP" className="lg:w-72" />
+          <div className="flex flex-1 items-center gap-2 lg:justify-end">
+            <Select value={orden} onValueChange={(v) => setOrden(v as Orden)}>
+              <SelectTrigger className="h-9 w-full sm:w-52" aria-label="Ordenar">
+                <Icon icon="tabler:arrows-sort" width={16} className="text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ORDENES.map((o) => (
+                  <SelectItem key={o.valor} value={o.valor}>
+                    {o.etiqueta}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <VistaToggle valor={vista} onChange={cambiarVista} />
+          </div>
+        </div>
+        {veRed && (
+          <Pestanas
+            label="Estado de la red"
+            valor={filtroRed}
+            onChange={setFiltroRed}
+            pestanas={[
+              { valor: 'todas', etiqueta: 'Todas', cuenta: zonas.length },
+              { valor: 'conectado', etiqueta: 'En línea', cuenta: enLinea, punto: 'bg-success-solid' },
+              { valor: 'caidas', etiqueta: 'Sin respuesta', cuenta: caidas, punto: 'bg-error-solid' },
+              { valor: 'sin_tunel', etiqueta: 'Sin túnel', cuenta: sinTunel, punto: 'bg-muted-foreground' },
+            ]}
+          />
+        )}
+      </div>
+
+      {zonasFiltradas.length === 0 ? (
+        <CardBox className="!p-0">
+          <EmptyState
+            icono="tabler:map-pin-off"
+            titulo={zonas.length === 0 ? 'Aún no hay zonas' : 'Ninguna zona coincide'}
+            descripcion={
+              zonas.length === 0
+                ? 'Crea la primera zona de cobertura para registrar su router y sus cajas NAP.'
+                : filtroRed !== 'todas' && sinComprobar
+                  ? 'Todavía no se comprobó el estado de los routers.'
+                  : 'Prueba con otro nombre o quita el filtro.'
+            }
+            accion={
+              zonas.length === 0 && puedeGestionar ? (
+                <Button onClick={() => setOpen(true)}>
+                  <Icon icon="tabler:map-pin-plus" height={17} /> Agregar zona
+                </Button>
+              ) : hayFiltros ? (
+                <Button variant="outline" onClick={() => { setSearch(''); setFiltroRed('todas'); }}>
+                  Quitar filtros
+                </Button>
+              ) : undefined
+            }
+          />
+        </CardBox>
+      ) : vista === 'tarjetas' ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+          {zonasFiltradas.map((z) => {
+            const b = bornesPorZona.get(z.id);
+            const pctActivos = z.total_clientes ? Math.round((z.clientes_activos / z.total_clientes) * 100) : 0;
+            return (
+              <article
+                key={z.id}
+                className="group relative flex flex-col rounded-2xl border border-ld bg-card transition-[border-color,transform] duration-150 active:scale-[0.995] [@media(hover:hover)]:hover:border-foreground/25"
+              >
+                <div className="flex items-start justify-between gap-3 px-5 pt-4">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-semibold leading-tight">
+                      {/* El enlace cubre toda la tarjeta; el menú queda por encima. */}
+                      <Link to={`/zonas/${z.id}`} className="outline-none after:absolute after:inset-0 after:rounded-2xl focus-visible:after:outline-2 focus-visible:after:outline-brand">
+                        {z.nombre}
+                      </Link>
+                    </h3>
+                    {veRed && <div className="mt-1.5"><EstadoChip z={z} /></div>}
+                  </div>
+                  <div className="relative z-10 -mr-2 -mt-1">
+                    <Acciones z={z} />
+                  </div>
+                </div>
+
+                <dl className="mx-5 mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-ld bg-border [&>div]:bg-card">
+                  <div className="px-3.5 py-3">
+                    <dt className="text-xs text-muted-foreground">Clientes activos</dt>
+                    <dd className="mt-1 flex items-baseline gap-1 tabular-nums">
+                      <span className="text-xl font-semibold leading-none">{z.clientes_activos}</span>
+                      <span className="text-xs text-muted-foreground">de {z.total_clientes}</span>
+                    </dd>
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                      <div className="h-full rounded-full bg-foreground/70" style={{ width: `${pctActivos}%` }} />
+                    </div>
+                  </div>
+                  <div className="px-3.5 py-3">
+                    <dt className="text-xs text-muted-foreground">Bornes libres</dt>
+                    <dd className="mt-1 flex items-baseline gap-1 tabular-nums">
+                      <span className="text-xl font-semibold leading-none">{b?.libres ?? 0}</span>
+                      <span className="text-xs text-muted-foreground">
+                        en {b?.cajas ?? 0} caja{b?.cajas === 1 ? '' : 's'}
+                      </span>
+                    </dd>
+                    {b && <OcupacionBarra r={b} className="mt-2 h-1" />}
+                  </div>
+                </dl>
+
+                <div className="mt-auto px-5 pb-4 pt-3">
+                  {veRed ? <LineaTecnica z={z} /> : <p className="text-xs text-muted-foreground">{z.descripcion || 'Ver clientes y cobertura'}</p>}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <CardBox className="gap-0 overflow-hidden !p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Zona</TableHead>
+                {veRed && <TableHead>Estado</TableHead>}
+                <TableHead>Clientes activos</TableHead>
+                <TableHead className="hidden md:table-cell">Bornes libres</TableHead>
+                {veRed && <TableHead className="hidden xl:table-cell">Router</TableHead>}
+                <TableHead className="text-end">
+                  <span className="sr-only">Acciones</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {zonasFiltradas.map((z) => {
+                const b = bornesPorZona.get(z.id);
+                const pctActivos = z.total_clientes ? Math.round((z.clientes_activos / z.total_clientes) * 100) : 0;
+                return (
+                  <TableRow key={z.id} className="cursor-pointer" onClick={() => navigate(`/zonas/${z.id}`)}>
+                    <TableCell>
+                      <Link to={`/zonas/${z.id}`} className="font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
+                        {z.nombre}
+                      </Link>
+                    </TableCell>
+                    {veRed && (
+                      <TableCell>
+                        <EstadoChip z={z} />
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <span className="w-14 shrink-0 tabular-nums">
+                          <span className="font-semibold">{z.clientes_activos}</span>
+                          <span className="text-xs text-muted-foreground">/{z.total_clientes}</span>
+                        </span>
+                        <div className="hidden h-1 w-24 overflow-hidden rounded-full bg-muted sm:block" aria-hidden="true">
+                          <div className="h-full rounded-full bg-foreground/70" style={{ width: `${pctActivos}%` }} />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 shrink-0 font-semibold tabular-nums">{b?.libres ?? 0}</span>
+                        {b && <OcupacionBarra r={b} className="h-1 w-24" />}
+                      </div>
+                    </TableCell>
+                    {veRed && (
+                      <TableCell className="hidden max-w-72 xl:table-cell">
+                        <LineaTecnica z={z} />
+                      </TableCell>
+                    )}
+                    <TableCell className="text-end" onClick={(e) => e.stopPropagation()}>
+                      <Acciones z={z} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </CardBox>
       )}
 
-      <h2 className="-mb-2 text-xl font-bold">Zonas registradas</h2>
-
-      {/* Tres columnas cuando hay sitio, dos en tableta, una en el teléfono. */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {zonasFiltradas.map((z) => {
-          const red = estados[z.id];
-          const estilo = red ? ESTADO_RED[red.estado] : null;
-          const handshake = red ? desdeHandshake(red.last_handshake_ts) : null;
-          const pct =
-            z.total_clientes > 0
-              ? Math.round((z.clientes_activos / z.total_clientes) * 100)
-              : 0;
-
-          return (
-            <CardBox
-              key={z.id}
-              className="p-3.5 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
-              onClick={() => navigate(`/zonas/${z.id}`)}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Icon icon="tabler:map-pin" height={18} className="shrink-0 text-primary" />
-                  <h3 className="truncate text-base font-bold leading-tight">{z.nombre}</h3>
-                </div>
-
-                <div className="-mr-1 -mt-1 flex shrink-0 items-center">
-                  {/* El menú vive dentro de una tarjeta que navega al hacer
-                      clic: sin frenar el evento, abrir el menú se llevaría a
-                      la ficha de la zona. */}
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" title="Acciones" className="size-8">
-                          <Icon icon="tabler:dots-vertical" height={17} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem onClick={() => navigate(`/zonas/${z.id}`)}>
-                          <Icon icon="tabler:eye" height={16} />
-                          Ver la zona
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/cajas-nap/zona/${z.id}`)}>
-                          <Icon icon="tabler:box" height={16} />
-                          Cajas NAP de la zona
-                        </DropdownMenuItem>
-                        {veRed && (
-                          <DropdownMenuItem onClick={() => comprobarUna(z)}>
-                            <Icon icon="tabler:plug-connected" height={16} />
-                            Comprobar el enlace
-                          </DropdownMenuItem>
-                        )}
-                        {puedeGestionar && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setBorrando(z)}
-                              className="text-error focus:text-error"
-                            >
-                              <Icon icon="tabler:trash" height={16} />
-                              Eliminar zona
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </div>
-
-              {/* El estado, en una pastilla con su punto de color. */}
-              {veRed && (
-                <div className="mt-2">
-                  {estilo ? (
-                    <span
-                      className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-semibold ${estilo.chipBg} ${estilo.chipText}`}
-                      title={estilo.detalle ? `${estilo.texto} — ${estilo.detalle}` : estilo.texto}
-                    >
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${estilo.punto}`} />
-                      <span className="truncate">{estilo.texto}</span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-[13px] font-semibold text-muted-foreground">
-                      <Icon
-                        icon="tabler:loader-2"
-                        height={13}
-                        className={comprobando ? 'animate-spin' : undefined}
-                      />
-                      {comprobando ? 'Comprobando…' : 'Sin comprobar'}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Activos y total: etiqueta arriba, número debajo, en color
-                  neutro. Un cero aquí no es una alarma, es una zona que
-                  todavía no tiene clientes. */}
-              <div className="mt-2 flex items-center gap-3">
-                <div className="grid min-w-0 flex-1 grid-cols-2">
-                  <div className="flex min-w-0 items-center gap-2 pr-3">
-                    <Icon icon="tabler:users" height={18} className="shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <p className="truncate text-xs text-muted-foreground">Activos</p>
-                      <p className="text-lg font-bold leading-tight">{z.clientes_activos}</p>
-                    </div>
-                  </div>
-                  <div className="flex min-w-0 items-center gap-2 border-l border-ld pl-3">
-                    <Icon icon="tabler:stack-2" height={18} className="shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <p className="truncate text-xs text-muted-foreground">Total</p>
-                      <p className="text-lg font-bold leading-tight">{z.total_clientes}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* El aro ocupa el hueco que quedaba a la derecha y dice de un
-                    vistazo que parte de la zona esta activa — el mismo que se
-                    usa en Cajas NAP, con la diferencia de que aqui lleno es
-                    bueno y alli lleno avisa de que no quedan bornes.
-                    Sin clientes todavia no se dibuja un 0%, que seria afirmar
-                    algo: se dibuja el circulo punteado. */}
-                <div
-                  className="shrink-0"
-                  title={
-                    z.total_clientes > 0
-                      ? `${z.clientes_activos} de ${z.total_clientes} clientes de esta zona están activos`
-                      : 'Todavía no hay clientes en esta zona'
-                  }
-                >
-                  {z.total_clientes > 0 ? (
-                    <RingProgress pct={pct} tone="success" size="sm" />
-                  ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-ld">
-                      <Icon icon="tabler:user-off" height={18} className="text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Donde iba "Ver detalle" van los datos técnicos del router, que
-                  si no se quedarían sin sitio. Solo para quien ve la red; la
-                  tarjeta entera sigue llevando a la ficha al pulsarla. */}
-              {veRed && (
-                <p className="mt-2 truncate border-t border-ld pt-1.5 text-[11px] leading-tight text-muted-foreground">
-                  {[
-                    z.router_mikrotik,
-                    z.ip_wireguard,
-                    // "sin pool" se dice en voz alta: sin él, los planes de
-                    // esa zona no pueden crear perfiles en el router.
-                    z.pool_pppoe ? `pool ${z.pool_pppoe}` : 'sin pool',
-                    handshake,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-              )}
-            </CardBox>
-          );
-        })}
-      </div>
+      {zonasFiltradas.length > 0 && hayFiltros && (
+        <p className="-mt-2 text-sm text-muted-foreground">
+          {zonasFiltradas.length} de {zonas.length} zonas
+        </p>
+      )}
 
       <FormDialog
         open={open}
