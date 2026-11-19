@@ -93,7 +93,7 @@ const CajasNap = () => {
               </div>
 
               <div className="flex justify-between mt-4 pt-4 border-t border-ld text-xs">
-                <span className="text-success font-medium">{ocupados} ocupados</span>
+                <span className="text-foreground font-medium">{ocupados} ocupados</span>
                 <span className="text-info font-medium">{libres} libres</span>
                 <span className={danados > 0 ? 'text-error font-medium' : 'text-muted-foreground'}>
                   {danados} dañados

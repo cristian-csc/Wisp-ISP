@@ -59,14 +59,14 @@ const ESTADO_LABEL: Record<EstadoCliente, string> = {
 };
 
 const ESTADO_BADGE: Record<EstadoCliente, string> = {
-  pendiente_aprobacion: 'bg-lightwarning text-warning',
+  pendiente_aprobacion: 'bg-lightwarning text-warning-text',
   rechazado: 'bg-muted text-muted-foreground',
-  aprobado: 'bg-lightinfo text-info',
+  aprobado: 'bg-lightinfo text-info-text',
   no_instalado: 'bg-muted text-muted-foreground',
-  activo: 'bg-lightsuccess text-success',
+  activo: 'bg-lightsuccess text-success-text',
   anulado: 'bg-muted text-muted-foreground',
-  suspendido: 'bg-lighterror text-error',
-  pausado: 'bg-lightinfo text-info',
+  suspendido: 'bg-lighterror text-error-text',
+  pausado: 'bg-lightinfo text-info-text',
 };
 
 const ClientesSatelital = () => {

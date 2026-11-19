@@ -13,7 +13,7 @@ const PASOS: { texto: string; icono: string }[] = [
 const InstruccionesVinculacion = () => (
   <CardBox className="flex h-full flex-col overflow-hidden !p-0">
     <div className="flex items-center gap-3 border-b border-ld px-5 py-4">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lightsuccess text-success">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lightsuccess text-success-text">
         <Icon icon="tabler:brand-whatsapp" width={21} />
       </span>
       <div className="min-w-0">
@@ -25,7 +25,7 @@ const InstruccionesVinculacion = () => (
     <ol className="flex flex-1 flex-col gap-1 px-5 py-4">
       {PASOS.map((paso, i) => (
         <li key={paso.texto} className="flex items-start gap-3 py-2">
-          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-lightprimary text-xs font-bold text-primary">
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-lightprimary text-xs font-bold text-primary-text">
             {i + 1}
           </span>
           <div className="flex min-w-0 flex-1 items-start gap-2 pt-0.5">

@@ -23,6 +23,8 @@ import Pagos from 'src/views/pagos/Pagos';
 import Gastos from 'src/views/gastos/Gastos';
 import GastoZonaDetail from 'src/views/gastos/GastoZonaDetail';
 import ConfiguracionWhatsapp from 'src/views/configuracion/ConfiguracionWhatsapp';
+import RolesModulos from 'src/views/configuracion/RolesModulos';
+import ModulosPadre from 'src/views/configuracion/ModulosPadre';
 import ReporteCaja from 'src/views/finanzas/ReporteCaja';
 import Perfil from 'src/views/perfil/Perfil';
 import Jornadas from 'src/views/jornadas/Jornadas';
@@ -93,6 +95,8 @@ function App() {
             <Route path="/gastos" element={<Gastos />} />
             <Route path="/gastos/zona/:zonaId" element={<GastoZonaDetail />} />
             <Route path="/configuracion/whatsapp" element={<ConfiguracionWhatsapp />} />
+            <Route path="/configuracion/roles" element={<RolesModulos />} />
+            <Route path="/configuracion/modulos-padre" element={<ModulosPadre />} />
             <Route path="/finanzas/reporte-caja" element={<ReporteCaja />} />
             <Route path="/jornadas" element={<Jornadas />} />
             <Route path="/perfil" element={<Perfil />} />

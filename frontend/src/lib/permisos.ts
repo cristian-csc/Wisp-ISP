@@ -1,4 +1,5 @@
 import SidebarContent from 'src/layouts/full/vertical/sidebar/sidebaritems';
+import { rutasDeMisModulos } from './modulos';
 
 /** Cómo se le dice a cada rol en pantalla. Vive acá para que el recibo, el
  *  panel y la ficha del usuario digan todos lo mismo. */
@@ -12,6 +13,11 @@ export const ROL_LABEL: Record<string, string> = {
 /** Los cuatro roles son planos: ninguno hereda de otro. Cada lista de
  * sidebaritems.ts y cada entrada de ACCIONES dice exactamente quién entra,
  * igual que require_roles() en el backend. */
+/** El nombre del rol de una cuenta, incluidos los roles creados en el panel. */
+export function nombreDeRol(usuario: { rol: string; rol_nombre?: string | null }): string {
+  return usuario.rol_nombre ?? ROL_LABEL[usuario.rol] ?? usuario.rol;
+}
+
 export function puedeVer(roles: string[] | undefined, rol?: string): boolean {
   if (!roles) return true;
   if (!rol) return false;
@@ -65,15 +71,18 @@ const ROLES_POR_URL = recolectar(SidebarContent as ItemConRoles[], new Map());
 /** ¿Este rol tiene permitida la página del menú que vive en `url`?
  * El dashboard enlaza a otros módulos, y no debe ofrecer atajos a pantallas
  * que el menú le esconde a ese rol — la lista de roles sale del propio menú
- * para que no haya dos fuentes de verdad. */
+ * para que no haya dos fuentes de verdad. Manda lo configurado en Roles y
+ * módulos; la lista escrita solo se usa mientras eso no se haya podido leer. */
 export function puedeVerUrl(url: string, rol?: string): boolean {
+  const rutas = rutasDeMisModulos();
+  if (rutas && ROLES_POR_URL.has(url)) return rutas.has(url);
   return puedeVer(ROLES_POR_URL.get(url), rol);
 }
 
 /** Páginas que no están en el menú porque se llega a ellas desde otra:
  *  la ficha de un cliente, el detalle de una zona, etc. Cada una hereda los
  *  permisos de la sección a la que pertenece. */
-const SECCION_DE_RUTA: { patron: RegExp; seccion: string | null }[] = [
+const SECCION_DE_RUTA: { patron: RegExp; seccion: string | string[] | null }[] = [
   { patron: /^\/perfil$/, seccion: null },                       // null = cualquiera con sesión
   { patron: /^\/dashboard$/, seccion: null },
   { patron: /^\/clientes-satelital(\/.*)?$/, seccion: '/clientes-satelital' },
@@ -81,7 +90,7 @@ const SECCION_DE_RUTA: { patron: RegExp; seccion: string | null }[] = [
   { patron: /^\/clientes\/fibra$/, seccion: '/clientes/fibra' },
   { patron: /^\/clientes\/inalambricos$/, seccion: '/clientes/inalambricos' },
   // La ficha de un cliente y el listado heredado: valen para quien ve clientes.
-  { patron: /^\/clientes(\/.*)?$/, seccion: '/clientes/fibra' },
+  { patron: /^\/clientes(\/.*)?$/, seccion: ['/clientes/fibra', '/clientes/inalambricos', '/clientes/pendientes'] },
   { patron: /^\/zonas(\/.*)?$/, seccion: '/zonas' },
   { patron: /^\/cajas-nap(\/.*)?$/, seccion: '/cajas-nap' },
   { patron: /^\/onus(\/.*)?$/, seccion: '/onus' },
@@ -91,6 +100,8 @@ const SECCION_DE_RUTA: { patron: RegExp; seccion: string | null }[] = [
   { patron: /^\/pagos(\/.*)?$/, seccion: '/pagos' },
   { patron: /^\/finanzas\/reporte-caja$/, seccion: '/finanzas/reporte-caja' },
   { patron: /^\/configuracion\/whatsapp$/, seccion: '/configuracion/whatsapp' },
+  { patron: /^\/configuracion\/roles$/, seccion: '/configuracion/roles' },
+  { patron: /^\/configuracion\/modulos-padre$/, seccion: '/configuracion/modulos-padre' },
   { patron: /^\/usuarios(\/.*)?$/, seccion: '/usuarios' },
   { patron: /^\/planes(\/.*)?$/, seccion: '/planes' },
   { patron: /^\/jornadas(\/.*)?$/, seccion: '/jornadas' },
@@ -109,5 +120,5 @@ export function puedeAbrirRuta(pathname: string, rol?: string): boolean {
   const encontrada = SECCION_DE_RUTA.find((r) => r.patron.test(limpio));
   if (!encontrada) return false;
   if (encontrada.seccion === null) return true;
-  return puedeVerUrl(encontrada.seccion, rol);
+  return [encontrada.seccion].flat().some((seccion) => puedeVerUrl(seccion, rol));
 }

@@ -386,7 +386,7 @@ export const ESTADOS_CLIENTE: {
   { valor: 'activo', etiqueta: 'Activos', tono: 'success' },
   { valor: 'pendiente_aprobacion', etiqueta: 'Pendientes de aprobacion', tono: 'warning' },
   { valor: 'aprobado', etiqueta: 'Aprobados, sin instalar', tono: 'primary' },
-  { valor: 'no_instalado', etiqueta: 'No instalados', tono: 'error' },
+  { valor: 'no_instalado', etiqueta: 'No instalados', tono: 'muted' },
   { valor: 'suspendido', etiqueta: 'Suspendidos', tono: 'error' },
   { valor: 'pausado', etiqueta: 'Pausados', tono: 'warning' },
   { valor: 'rechazado', etiqueta: 'Rechazados', tono: 'muted' },

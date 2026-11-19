@@ -69,15 +69,15 @@ const Retiros = () => {
                   </div>
                   <h3 className="text-lg font-semibold truncate mb-3">{z.nombre}</h3>
                   <div className="flex items-center gap-2">
-                    <span className={`rounded-full p-1 flex items-center justify-center ${pendientes > 0 ? 'bg-warning/15' : 'bg-success/15'}`}>
-                      <Icon icon="solar:box-minimalistic-linear" height={14} className={pendientes > 0 ? 'text-warning' : 'text-success'} />
+                    <span className={`rounded-full p-1 flex items-center justify-center ${pendientes > 0 ? 'bg-warning/15' : 'bg-muted'}`}>
+                      <Icon icon="solar:box-minimalistic-linear" height={14} className={pendientes > 0 ? 'text-warning-text' : 'text-muted-foreground'} />
                     </span>
                     <p className="text-sm text-muted-foreground">
                       {pendientes} {pendientes === 1 ? 'retiro pendiente' : 'retiros pendientes'}
                     </p>
                   </div>
                 </div>
-                <div className={`h-14 w-14 shrink-0 rounded-full flex items-center justify-center text-lg font-bold ${pendientes > 0 ? 'bg-warning/15 text-warning' : 'bg-success/15 text-success'}`}>
+                <div className={`h-14 w-14 shrink-0 rounded-full flex items-center justify-center text-lg font-bold ${pendientes > 0 ? 'bg-warning/15 text-warning-text' : 'bg-muted text-muted-foreground'}`}>
                   {pendientes}
                 </div>
               </div>

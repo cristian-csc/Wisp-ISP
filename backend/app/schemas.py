@@ -1,6 +1,6 @@
 import re
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field, StrictBool, field_validator, model_validator
+from typing import Literal, Optional, List
 from datetime import date, datetime
 from .models import (
     EstadoCliente, EstadoPago, TipoHistorial, TipoConexion, EstadoEquipo,
@@ -36,14 +36,25 @@ class UsuarioBase(BaseModel):
     rol: RolUsuario
 
 class UsuarioCreate(UsuarioBase):
+    # Se indica uno de los dos: rol_id es el rol elegido en pantalla.
+    rol: Optional[RolUsuario] = None
+    rol_id: Optional[int] = None
     password: str
     telefono: Optional[str] = None
     dni: Optional[str] = None
     direccion: Optional[str] = None
     fecha_ingreso: Optional[date] = None
 
+    @model_validator(mode="after")
+    def exige_un_rol(self):
+        if self.rol is None and self.rol_id is None:
+            raise ValueError("Selecciona un rol")
+        return self
+
 class UsuarioOut(UsuarioBase):
     id: int
+    rol_id: Optional[int] = None
+    rol_nombre: Optional[str] = None
     activo: bool
     creado_en: datetime
     # Al LEER se relaja: la cuenta `admin` que crea el sistema en el primer
@@ -60,6 +71,7 @@ class UsuarioOut(UsuarioBase):
 class UsuarioUpdate(BaseModel):
     nombre: Optional[str] = None
     rol: Optional[RolUsuario] = None
+    rol_id: Optional[int] = None
     activo: Optional[bool] = None
     telefono: Optional[str] = None
     dni: Optional[str] = None
@@ -1041,3 +1053,170 @@ class ResumenPasajeVendedor(BaseModel):
     nombre: str
     total_jornadas: int
     total_pasajes: float
+
+
+# ── Roles y módulos ──────────────────────────────────────────────────────────
+
+class RolResumenOut(BaseModel):
+    id: int
+    clave: str
+    nombre: str
+    es_superadmin: bool
+    class Config:
+        from_attributes = True
+
+
+class MiModuloOut(BaseModel):
+    clave: str
+    nombre: str
+    grupo: str
+    grupo_id: int
+    grupo_icono: Optional[str] = None
+    plataforma: str
+    ruta: Optional[str] = None
+    icono: Optional[str] = None
+    es_central: bool
+
+
+class MisModulosOut(BaseModel):
+    rol: RolResumenOut
+    modulos: List[MiModuloOut]
+
+
+class RolConCuentasOut(RolResumenOut):
+    descripcion: Optional[str] = None
+    es_sistema: bool
+    perfil_base: Optional[str] = None
+    # None en el rol cliente: los clientes no son cuentas del personal.
+    cuentas_activas: Optional[int] = None
+    total_modulos: int
+
+
+class AsignacionModuloOut(BaseModel):
+    rol_id: int
+    orden: int
+    es_central: bool
+    class Config:
+        from_attributes = True
+
+
+class ModuloConRolesOut(BaseModel):
+    id: int
+    clave: str
+    nombre: str
+    grupo: str
+    modulo_padre_id: int
+    plataforma: str
+    audiencia: str
+    ruta: Optional[str] = None
+    icono: Optional[str] = None
+    orden: int
+    asignaciones: List[AsignacionModuloOut]
+    roles_disponibles: List[int]
+    roles_fijos: List[int]
+
+
+class CambioModulo(BaseModel):
+    activo: StrictBool
+
+
+class CambioModuloOut(BaseModel):
+    rol_id: int
+    modulo_id: int
+    activo: bool
+
+
+class ModuloDelPadreOut(BaseModel):
+    id: int
+    clave: str
+    nombre: str
+    icono: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+
+class ModuloPadreOut(BaseModel):
+    id: int
+    nombre: str
+    icono: Optional[str] = None
+    plataforma: str
+    orden: int
+    modulos: List[ModuloDelPadreOut]
+    class Config:
+        from_attributes = True
+
+
+class ModuloPadreCrear(BaseModel):
+    nombre: str = Field(min_length=3, max_length=60)
+    icono: Optional[str] = Field(default=None, max_length=80, pattern=r"^[a-z0-9:-]+$")
+    plataforma: Literal["panel", "movil"] = "panel"
+
+    @field_validator("nombre")
+    @classmethod
+    def nombre_limpio(cls, valor: str) -> str:
+        valor = " ".join(valor.split())
+        if len(valor) < 3:
+            raise ValueError("El nombre debe tener al menos 3 letras")
+        return valor
+
+
+class ModuloPadreEditar(BaseModel):
+    nombre: Optional[str] = Field(default=None, min_length=3, max_length=60)
+    icono: Optional[str] = Field(default=None, max_length=80, pattern=r"^[a-z0-9:-]+$")
+
+    @field_validator("nombre")
+    @classmethod
+    def nombre_limpio(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None:
+            return valor
+        valor = " ".join(valor.split())
+        if len(valor) < 3:
+            raise ValueError("El nombre debe tener al menos 3 letras")
+        return valor
+
+
+class OrdenPadres(BaseModel):
+    plataforma: Literal["panel", "movil"] = "panel"
+    padre_ids: List[int]
+
+
+class MoverModulo(BaseModel):
+    modulo_padre_id: int
+
+
+class RolCrear(BaseModel):
+    nombre: str = Field(min_length=3, max_length=60)
+    descripcion: Optional[str] = Field(default=None, max_length=255)
+    perfil_base: Literal["atencion_cliente", "tecnico", "vendedor_campo"]
+
+    @field_validator("nombre")
+    @classmethod
+    def nombre_limpio(cls, valor: str) -> str:
+        valor = " ".join(valor.split())
+        if len(valor) < 3:
+            raise ValueError("El nombre debe tener al menos 3 letras")
+        return valor
+
+
+class RolEditar(BaseModel):
+    nombre: Optional[str] = Field(default=None, min_length=3, max_length=60)
+    descripcion: Optional[str] = Field(default=None, max_length=255)
+
+    @field_validator("nombre")
+    @classmethod
+    def nombre_limpio(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None:
+            return valor
+        valor = " ".join(valor.split())
+        if len(valor) < 3:
+            raise ValueError("El nombre debe tener al menos 3 letras")
+        return valor
+
+
+class OrdenModulos(BaseModel):
+    plataforma: Literal["panel", "movil"]
+    modulo_ids: List[int]
+
+
+class OrdenModulosOut(OrdenModulos):
+    rol_id: int

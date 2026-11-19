@@ -39,11 +39,8 @@ import {
   restablecerPassword,
 } from 'src/lib/usuarios';
 import type { Usuario } from 'src/lib/api';
-import { ROL_LABEL } from 'src/lib/permisos';
-
-// Los cuatro roles del sistema, todos asignables desde aquí. No hay más ni
-// hay jerarquía entre ellos: Administrador es el más alto y puede todo.
-const ROLES: Usuario['rol'][] = ['admin', 'tecnico', 'vendedor_campo', 'atencion_cliente'];
+import { nombreDeRol } from 'src/lib/permisos';
+import { listRolesConfigurables, type RolConfigurable } from 'src/lib/modulos';
 
 function antiguedad(fechaIngreso: string | null): string | null {
   if (!fechaIngreso) return null;
@@ -59,11 +56,12 @@ function antiguedad(fechaIngreso: string | null): string | null {
 
 const Usuarios = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [roles, setRoles] = useState<RolConfigurable[]>([]);
   const [open, setOpen] = useState(false);
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rol, setRol] = useState<Usuario['rol'] | ''>('');
+  const [rol, setRol] = useState('');
   const [telefono, setTelefono] = useState('');
   const [dni, setDni] = useState('');
   const [direccion, setDireccion] = useState('');
@@ -72,7 +70,7 @@ const Usuarios = () => {
 
   const [editando, setEditando] = useState<Usuario | null>(null);
   const [eNombre, setENombre] = useState('');
-  const [eRol, setERol] = useState<Usuario['rol']>('tecnico');
+  const [eRol, setERol] = useState('');
   const [eTelefono, setETelefono] = useState('');
   const [eDni, setEDni] = useState('');
   const [eDireccion, setEDireccion] = useState('');
@@ -92,6 +90,10 @@ const Usuarios = () => {
 
   useEffect(() => {
     reload();
+    // El cliente entra con su DNI: no es una cuenta del personal.
+    listRolesConfigurables()
+      .then((lista) => setRoles(lista.filter((r) => r.perfil_base)))
+      .catch(() => toast.error('No se pudieron cargar los roles.'));
   }, []);
 
   function resetForm() {
@@ -109,7 +111,7 @@ const Usuarios = () => {
     }
     try {
       await createUsuario({
-        nombre, email, password, rol,
+        nombre, email, password, rol_id: Number(rol),
         telefono: telefono || undefined,
         dni: dni || undefined,
         direccion: direccion || undefined,
@@ -131,7 +133,7 @@ const Usuarios = () => {
   function abrirEditar(u: Usuario) {
     setEditando(u);
     setENombre(u.nombre);
-    setERol(u.rol);
+    setERol(u.rol_id ? String(u.rol_id) : '');
     setETelefono(u.telefono ?? '');
     setEDni(u.dni ?? '');
     setEDireccion(u.direccion ?? '');
@@ -146,7 +148,7 @@ const Usuarios = () => {
     }
     await updateUsuario(editando.id, {
       nombre: eNombre.trim(),
-      rol: eRol,
+      ...(eRol ? { rol_id: Number(eRol) } : {}),
       telefono: eTelefono || undefined,
       dni: eDni || undefined,
       direccion: eDireccion || undefined,
@@ -226,7 +228,7 @@ const Usuarios = () => {
                 <p className="text-xs text-muted-foreground">DNI {u.dni ?? '—'}</p>
               </TableCell>
               <TableCell>
-                <Badge className="bg-lightprimary text-primary rounded-md">{ROL_LABEL[u.rol]}</Badge>
+                <Badge className="bg-lightprimary text-primary-text rounded-md">{nombreDeRol(u)}</Badge>
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {antiguedad(u.fecha_ingreso) ?? '—'}
@@ -324,14 +326,14 @@ const Usuarios = () => {
               </FormField>
               <FormField label="Rol" htmlFor="rolUsuario">
                 <FieldIcon icon="tabler:shield-check">
-                  <Select value={rol} onValueChange={(v) => setRol(v as Usuario['rol'])}>
+                  <Select value={rol} onValueChange={setRol}>
                     <SelectTrigger id="rolUsuario" className="w-full">
                       <SelectValue placeholder="Selecciona un rol" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {ROL_LABEL[r]}
+                      {roles.map((r) => (
+                        <SelectItem key={r.id} value={String(r.id)}>
+                          {r.nombre}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -412,14 +414,14 @@ const Usuarios = () => {
 
           <FormField label="Rol" icon="tabler:shield-check" htmlFor="eRol" wide>
             <FieldIcon icon="tabler:shield-check">
-              <Select value={eRol} onValueChange={(v) => setERol(v as Usuario['rol'])}>
+              <Select value={eRol} onValueChange={setERol}>
                 <SelectTrigger id="eRol" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {ROL_LABEL[r]}
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.nombre}
                     </SelectItem>
                   ))}
                 </SelectContent>

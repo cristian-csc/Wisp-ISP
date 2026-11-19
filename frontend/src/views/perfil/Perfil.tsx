@@ -7,7 +7,7 @@ import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import { FieldIcon, FormField, FormGrid } from 'src/components/shared/form';
 import { getMe, updateMiPerfil, cambiarPassword, type Usuario } from 'src/lib/api';
-import { ROL_LABEL } from 'src/lib/permisos';
+import { nombreDeRol } from 'src/lib/permisos';
 
 function antiguedad(fechaIngreso: string | null): string {
   if (!fechaIngreso) return 'Sin registrar';
@@ -105,7 +105,7 @@ const Perfil = () => {
             <p className="text-sm text-white/80">{usuario.email}</p>
           </div>
           <Badge className="ml-auto bg-white/20 text-white rounded-md border-0">
-            {ROL_LABEL[usuario.rol]}
+            {nombreDeRol(usuario)}
           </Badge>
         </div>
       </CardBox>

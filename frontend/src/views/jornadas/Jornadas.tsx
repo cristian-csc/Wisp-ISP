@@ -117,7 +117,7 @@ function ReclamoCell({ jornada, onReintegrado }: { jornada: Jornada; onReintegra
 
   if (jornada.reclamo_reintegrado) {
     return (
-      <Badge className="bg-lightsuccess text-success rounded-md border-0">
+      <Badge className="bg-lightsuccess text-success-text rounded-md border-0">
         Reintegrado — S/ {jornada.monto_reclamado.toFixed(2)}
       </Badge>
     );
@@ -138,7 +138,7 @@ function ReclamoCell({ jornada, onReintegrado }: { jornada: Jornada; onReintegra
 
   return (
     <div className="flex flex-col gap-1">
-      <Badge className="bg-lightwarning text-warning rounded-md border-0 w-fit">
+      <Badge className="bg-lightwarning text-warning-text rounded-md border-0 w-fit">
         Pendiente — S/ {jornada.monto_reclamado.toFixed(2)}
       </Badge>
       {jornada.nota_reclamo && <span className="text-xs text-muted-foreground">{jornada.nota_reclamo}</span>}
@@ -430,7 +430,7 @@ const Jornadas = () => {
                   <TableCell>{duracion(j)}</TableCell>
                   <TableCell>
                     {j.estado === 'activa' ? (
-                      <Badge className="bg-lightsuccess text-success rounded-md border-0">En ruta</Badge>
+                      <Badge className="bg-lightsuccess text-success-text rounded-md border-0">En ruta</Badge>
                     ) : (
                       <Badge className="bg-lightsecondary text-secondary rounded-md border-0">Finalizada</Badge>
                     )}

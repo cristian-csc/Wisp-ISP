@@ -1,10 +1,10 @@
 :root {
-  --bg: #0b0d13;
-  --surface: #141721;
+  --bg: #000000;
+  --surface: #121212;
   --orange: #ff791b;
   --amber: #ffb13b;
   --text: #fff;
-  --muted: #a4a7b4;
+  --muted: #a8a8a8;
 }
 * {
   box-sizing: border-box;
@@ -70,7 +70,7 @@ select {
 }
 .header.scrolled {
   height: 72px;
-  background: #0b0d13ee;
+  background: #000000ee;
   backdrop-filter: blur(18px);
   border-bottom: 1px solid #ffffff12;
 }
@@ -297,7 +297,7 @@ select {
 .benefit {
   display: flex;
   flex-direction: column;
-  background: #141a26;
+  background: #121212;
   border: 1px solid #ffffff17;
   border-radius: 22px;
   overflow: hidden;
@@ -319,7 +319,7 @@ select {
   height: clamp(196px, 21vw, 232px);
   flex: none;
   overflow: hidden;
-  background: #0e1420;
+  background: #0a0a0a;
 }
 .benefit-foto img {
   display: block;
@@ -337,7 +337,7 @@ select {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(0deg, #141a26 0%, rgba(20, 26, 38, 0) 58%);
+  background: linear-gradient(0deg, #121212 0%, rgba(18, 18, 18, 0) 58%);
 }
 
 .benefit-texto {
@@ -366,8 +366,8 @@ select {
   background: radial-gradient(
     ellipse at 50% 15%,
     #3c211e 0%,
-    #13141c 47%,
-    #0d0f16 100%
+    #101010 47%,
+    #0a0a0a 100%
   );
 }
 .section-heading {
@@ -386,7 +386,7 @@ select {
   margin-top: 55px;
 }
 .plan {
-  background: #191b25;
+  background: #171717;
   border: 1px solid #ffffff19;
   border-radius: 25px;
   padding: 35px;
@@ -398,7 +398,7 @@ select {
 }
 .plan.featured {
   border-color: var(--orange);
-  background: linear-gradient(160deg, #37241f, #171921);
+  background: linear-gradient(160deg, #37241f, #121212);
   box-shadow: 0 0 50px #ff791b18;
 }
 /* La cinta se define una sola vez, junto al resto de la tarjeta de plan. */
@@ -481,15 +481,15 @@ select {
 }
 .life-one {
   background: radial-gradient(circle at 70% 20%, #ed7a2360, transparent 45%),
-    linear-gradient(145deg, #382119, #15141d);
+    linear-gradient(145deg, #382119, #121212);
 }
 .life-two {
   background: radial-gradient(circle at 70% 20%, #4d71ff66, transparent 45%),
-    linear-gradient(145deg, #19294a, #15141d);
+    linear-gradient(145deg, #2a1a10, #121212);
 }
 .life-three {
   background: radial-gradient(circle at 70% 20%, #ff397166, transparent 45%),
-    linear-gradient(145deg, #412039, #15141d);
+    linear-gradient(145deg, #2a1a10, #121212);
 }
 .life-card span {
   font-size: 11px;
@@ -505,7 +505,7 @@ select {
   margin: 0;
 }
 .coverage {
-  background: linear-gradient(125deg, #1b1417, #111622);
+  background: linear-gradient(125deg, #141414, #0a0a0a);
   overflow: hidden;
 }
 .coverage-grid {
@@ -620,7 +620,7 @@ select {
   margin: 16px 0 0;
 }
 .contact {
-  background: radial-gradient(ellipse at 0 70%, #542616, #17151c 60%);
+  background: radial-gradient(ellipse at 0 70%, #542616, #121212 60%);
 }
 .contact-grid {
   display: grid;
@@ -634,7 +634,7 @@ select {
   margin-top: 35px;
 }
 .contact form {
-  background: #1c1c25;
+  background: #1a1a1a;
   border: 1px solid #ffffff24;
   border-radius: 24px;
   padding: 35px;
@@ -650,7 +650,7 @@ select {
 .contact select {
   padding: 16px;
   border: 1px solid #ffffff22;
-  background: #101119;
+  background: #0f0f0f;
   color: white;
   border-radius: 11px;
   outline: none;
@@ -670,7 +670,7 @@ select {
 }
 footer {
   padding: 65px 0 25px;
-  background: #090a0f;
+  background: #000000;
 }
 .footer-grid {
   display: grid;
@@ -1028,7 +1028,7 @@ footer {
   --orange2: #ff4d00;
 }
 body {
-  background: #080c13;
+  background: #000000;
   color: #f8f9fc;
 }
 .header {
@@ -1036,8 +1036,8 @@ body {
   padding-right: max(4vw, 22px);
   background: linear-gradient(
     180deg,
-    rgba(5, 8, 14, 0.84),
-    rgba(5, 8, 14, 0.15)
+    rgba(0, 0, 0, 0.84),
+    rgba(0, 0, 0, 0.15)
   );
   backdrop-filter: blur(15px);
 }
@@ -1104,7 +1104,7 @@ body {
       rgba(6, 10, 20, 0.2) 74%,
       rgba(6, 10, 20, 0.04) 100%
     ),
-    linear-gradient(0deg, #0b0d13 0%, transparent 26%);
+    linear-gradient(0deg, #000000 0%, transparent 26%);
 }
 
 /* ── Logo grande ───────────────────────────────────────────────────────────
@@ -1215,7 +1215,7 @@ body {
         rgba(4, 8, 18, 0.84) 40%,
         rgba(5, 9, 19, 0.6) 100%
       ),
-      linear-gradient(0deg, #0b0d13 0%, transparent 28%);
+      linear-gradient(0deg, #000000 0%, transparent 28%);
   }
 }
 
@@ -1240,7 +1240,7 @@ body {
         rgba(4, 8, 18, 0.82) 45%,
         rgba(5, 9, 19, 0.72) 100%
       ),
-      linear-gradient(0deg, #0b0d13 0%, transparent 32%);
+      linear-gradient(0deg, #000000 0%, transparent 32%);
   }
 }
 
@@ -1269,7 +1269,7 @@ body {
    aplicara nunca. */
 .plan,
 .faq details {
-  background: #141a26 !important;
+  background: #121212 !important;
   border: 1px solid rgba(255, 255, 255, 0.09) !important;
   color: #f8f9ff !important;
 }
@@ -1281,7 +1281,7 @@ body {
 .section-heading p,
 .intro p,
 .faq p {
-  color: #b7c0d0 !important;
+  color: #bdbdbd !important;
 }
 .plans {
   background: radial-gradient(
@@ -1289,7 +1289,7 @@ body {
       rgba(255, 119, 13, 0.09),
       transparent 65%
     ),
-    #0c111b !important;
+    #0a0a0a !important;
 }
 .plans-grid {
   display: grid !important;
@@ -1313,16 +1313,16 @@ body {
   color: white;
 }
 .plan-red {
-  --plan-color: #e8272b;
+  --plan-color: #ff842a;
 }
 .plan-orange {
-  --plan-color: #d54509;
+  --plan-color: #ff842a;
 }
 .plan-green {
-  --plan-color: #168647;
+  --plan-color: #ff842a;
 }
 .plan-blue {
-  --plan-color: #2453e8;
+  --plan-color: #ff842a;
 }
 .plan-body {
   padding: 28px 22px 24px;
@@ -1363,7 +1363,7 @@ body {
 }
 .plan ul li {
   margin: 12px 0;
-  color: #dbe2ed;
+  color: #e0e0e0;
   font-size: 14px;
 }
 .plan ul li:before {
@@ -1396,7 +1396,7 @@ body {
 }
 .plan-buy {
   display: block;
-  background: #080d16;
+  background: #000000;
   color: white;
   text-decoration: none;
   border-radius: 14px;
@@ -1450,15 +1450,15 @@ body {
   background-size: cover !important;
 }
 .life-one {
-  background-image: linear-gradient(0deg, #080c13e8, transparent),
+  background-image: linear-gradient(0deg, #000000e8, transparent),
     url("assets/juega.webp") !important;
 }
 .life-two {
-  background-image: linear-gradient(0deg, #080c13e8, transparent),
+  background-image: linear-gradient(0deg, #000000e8, transparent),
     url("assets/oficina.webp") !important;
 }
 .life-three {
-  background-image: linear-gradient(0deg, #080c13e8, transparent),
+  background-image: linear-gradient(0deg, #000000e8, transparent),
     url("assets/fam.webp") !important;
 }
 @keyframes fadeIn {
@@ -1503,4 +1503,14 @@ body.modal-open {
   .nav-cta {
     display: none !important;
   }
+}
+
+/* Sobre el naranja va tinta negra: el blanco no alcanza el contraste mínimo. */
+.btn:not(.btn-ghost):not(.btn-outline),
+.plan-top,
+.plan-price,
+.plan-price small,
+.coverage-center,
+.coverage-center small {
+  color: #000000 !important;
 }

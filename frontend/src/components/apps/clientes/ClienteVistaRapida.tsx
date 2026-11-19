@@ -139,7 +139,7 @@ const ClienteVistaRapida = ({
           {dias !== null && (
             <span
               className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
-                debe ? 'bg-lighterror text-error' : 'bg-lightsuccess text-success'
+                debe ? 'bg-lighterror text-error-text' : 'bg-lightsuccess text-success-text'
               }`}
             >
               {debe

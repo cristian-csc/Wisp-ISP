@@ -24,12 +24,13 @@ export const ESTADOS_DESTACADOS: EstadoCliente[] = [
   'no_instalado',
 ];
 
-const TONO_TARJETA: Record<string, { caja: string; texto: string }> = {
-  success: { caja: 'bg-lightsuccess', texto: 'text-success' },
-  warning: { caja: 'bg-lightwarning', texto: 'text-warning' },
-  error: { caja: 'bg-lighterror', texto: 'text-error' },
-  primary: { caja: 'bg-lightprimary', texto: 'text-primary' },
-  muted: { caja: 'bg-muted', texto: 'text-muted-foreground' },
+/** Tarjetas neutras: el estado lo dice un punto de color junto a la etiqueta. */
+const PUNTO: Record<string, string> = {
+  success: 'bg-success',
+  warning: 'bg-warning',
+  error: 'bg-error',
+  primary: 'bg-brand',
+  muted: 'bg-muted-foreground',
 };
 
 /**
@@ -51,7 +52,7 @@ const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
   const tarjetas: {
     valor: EstadoCliente | 'todos';
     etiqueta: string;
-    tono: keyof typeof TONO_TARJETA;
+    tono: string;
     cuenta: number;
   }[] = [
     { valor: 'todos', etiqueta: 'Todos', tono: 'primary', cuenta: resumen?.total ?? 0 },
@@ -69,7 +70,6 @@ const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
   return (
     <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {tarjetas.map((t) => {
-        const tono = TONO_TARJETA[t.tono];
         const elegida = filter === t.valor;
         return (
           <button
@@ -77,16 +77,13 @@ const ClienteFilter = ({ filter, setFilter, resumen }: Props) => {
             type="button"
             onClick={() => setFilter(t.valor)}
             aria-pressed={elegida}
-            className={`transition-ui flex min-h-[94px] flex-col items-center rounded-xl border-2 px-3 py-4 text-center ${
-              tono.caja
-            } ${elegida ? 'border-primary shadow-sm' : 'border-transparent hover:shadow-md'}`}
+            className={`transition-ui flex min-h-[84px] flex-col justify-center rounded-xl border-2 px-3.5 py-3 text-left ${
+              elegida ? 'border-primary bg-lightprimary' : 'border-border bg-card hover:border-primary/40'
+            }`}
           >
-            <span className={`text-3xl font-bold leading-none ${tono.texto}`}>
-              {t.cuenta}
-            </span>
-            <span
-              className={`mt-2 flex min-h-[2.1rem] items-start justify-center text-xs font-semibold leading-tight ${tono.texto}`}
-            >
+            <span className="text-2xl font-bold leading-none text-foreground">{t.cuenta}</span>
+            <span className="mt-2 flex items-start gap-1.5 text-xs font-medium leading-tight text-muted-foreground">
+              <span aria-hidden="true" className={`mt-1 size-2 shrink-0 rounded-full ${PUNTO[t.tono]}`} />
               {t.etiqueta}
             </span>
           </button>

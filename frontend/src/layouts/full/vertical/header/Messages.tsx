@@ -21,12 +21,12 @@ const TIPO_ICONO: Record<Notificacion['tipo'], string> = {
 };
 
 const TIPO_COLOR: Record<Notificacion['tipo'], string> = {
-  pendiente_aprobacion: 'bg-lightwarning text-warning',
-  instalado: 'bg-lightsuccess text-success',
-  no_instalado: 'bg-lightwarning text-warning',
-  averia_demorada: 'bg-lighterror text-error',
-  jornada_iniciada: 'bg-lightinfo text-info',
-  whatsapp_desconectado: 'bg-lighterror text-error',
+  pendiente_aprobacion: 'bg-lightwarning text-warning-text',
+  instalado: 'bg-lightsuccess text-success-text',
+  no_instalado: 'bg-lightwarning text-warning-text',
+  averia_demorada: 'bg-lighterror text-error-text',
+  jornada_iniciada: 'bg-lightinfo text-info-text',
+  whatsapp_desconectado: 'bg-lighterror text-error-text',
 };
 
 function tiempoRelativo(fecha: string): string {
@@ -67,7 +67,7 @@ const Messages = () => {
             <span className="relative after:absolute after:w-10 after:h-10 after:rounded-full hover:text-primary after:-top-1/2 hover:after:bg-lightprimary text-foreground dark:text-muted-foreground rounded-full flex justify-center items-center cursor-pointer group-hover/menu:after:bg-lightprimary group-hover/menu:!text-primary">
               <Icon icon="tabler:bell-ringing" height={20} />
               {notificaciones.length > 0 && (
-                <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[10px] font-bold text-white">
+                <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-error-solid text-[10px] font-bold text-on-solid">
                   {notificaciones.length > 9 ? '9+' : notificaciones.length}
                 </span>
               )}

@@ -45,10 +45,10 @@ const ESTADO_LABEL: Record<Onu['estado'], string> = {
 };
 
 const ESTADO_BADGE: Record<Onu['estado'], string> = {
-  en_almacen: 'bg-lightinfo text-info',
-  asignado_tecnico: 'bg-lightwarning text-warning',
-  instalado: 'bg-lightsuccess text-success',
-  danado: 'bg-lighterror text-error',
+  en_almacen: 'bg-lightinfo text-info-text',
+  asignado_tecnico: 'bg-lightwarning text-warning-text',
+  instalado: 'bg-lightsuccess text-success-text',
+  danado: 'bg-lighterror text-error-text',
   perdido: 'bg-muted text-muted-foreground',
 };
 
@@ -76,7 +76,8 @@ const Onus = () => {
 
   useEffect(() => {
     reload();
-    listUsuarios().then((all) => setTecnicos(all.filter((u) => u.rol === 'tecnico')));
+    // La lista de técnicos solo la recibe quien puede asignar equipos.
+    listUsuarios().then((all) => setTecnicos(all.filter((u) => u.rol === 'tecnico'))).catch(() => setTecnicos([]));
   }, []);
 
   async function handleCreate(e: FormEvent) {
@@ -217,7 +218,7 @@ const Onus = () => {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={() => handleMarcar(o, 'danado')}>
-                            <Icon icon="tabler:alert-triangle" height={18} className="text-error" />
+                            <Icon icon="tabler:alert-triangle" height={18} className="text-muted-foreground" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>

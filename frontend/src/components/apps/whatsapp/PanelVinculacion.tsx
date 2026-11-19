@@ -14,10 +14,10 @@ interface Props {
 }
 
 const CABECERA: Record<DescripcionEstado['estado'], string> = {
-  conectado: 'bg-success',
-  desconectado: 'bg-error',
-  error: 'bg-error',
-  conectando: 'bg-warning',
+  conectado: 'bg-success-solid',
+  desconectado: 'bg-error-solid',
+  error: 'bg-error-solid',
+  conectando: 'bg-warning-solid',
 };
 
 /** Tarjeta de vinculación: cabecera de color según el estado, el código QR
@@ -29,14 +29,14 @@ const PanelVinculacion = ({ estado, qr, pidiendoQr, onGenerarQr, telefono }: Pro
   return (
     <CardBox className="flex h-full flex-col overflow-hidden !p-0">
       <div className={`flex flex-wrap items-center gap-3 px-5 py-4 ${CABECERA[estado.estado]}`}>
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/20 text-white">
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/20 text-on-solid">
           <Icon icon={conectado ? 'tabler:brand-whatsapp' : estado.icono} width={23} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-white">{estado.titulo}</p>
-          <p className="truncate text-xs text-white/85">{estado.detalle}</p>
+          <p className="text-sm font-bold text-on-solid">{estado.titulo}</p>
+          <p className="truncate text-xs text-on-solid/85">{estado.detalle}</p>
         </div>
-        <span className="rounded-md bg-white/20 px-2.5 py-1 text-xs font-semibold text-white">
+        <span className="rounded-md bg-white/20 px-2.5 py-1 text-xs font-semibold text-on-solid">
           {conectado ? 'Activo' : 'Pendiente'}
         </span>
       </div>
@@ -44,7 +44,7 @@ const PanelVinculacion = ({ estado, qr, pidiendoQr, onGenerarQr, telefono }: Pro
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-5 py-6">
         {conectado && (
           <div className="flex flex-col items-center gap-3 text-center">
-            <span className="grid size-16 place-items-center rounded-full bg-lightsuccess text-success">
+            <span className="grid size-16 place-items-center rounded-full bg-lightsuccess text-success-text">
               <Icon icon="tabler:circle-check" width={34} />
             </span>
             <div>

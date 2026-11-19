@@ -31,7 +31,7 @@ import type { CajaNap } from 'src/lib/cajasnap';
 const serverIcon = L.divIcon({
   html: `<div style="position:relative;width:30px;height:30px;">
     <div style="position:absolute;inset:-7px;border-radius:50%;background:rgba(93,135,255,0.35);animation:napServerPulse 2s ease-out infinite;"></div>
-    <div style="position:relative;background:#5d87ff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">
+    <div style="position:relative;background:#000000;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M4 1h16a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm0 10h16a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6a1 1 0 011-1zm2 2v2h2v-2H6zm0-9v2h2V4H6z"/></svg>
     </div>
     <style>@keyframes napServerPulse { 0% { transform: scale(0.6); opacity: 0.8; } 100% { transform: scale(1.6); opacity: 0; } }</style>
@@ -42,14 +42,14 @@ const serverIcon = L.divIcon({
 });
 
 const mufaIcon = L.divIcon({
-  html: `<div style="background:#8754ec;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);color:white;font-size:11px;font-weight:800">M</div>`,
+  html: `<div style="background:#C2410C;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);color:white;font-size:11px;font-weight:800">M</div>`,
   className: '',
   iconSize: [24, 24],
   iconAnchor: [12, 12],
 });
 
 const cajaIcon = L.divIcon({
-  html: `<div style="background:#13deb9;width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);color:white;font-size:9px;font-weight:800">N</div>`,
+  html: `<div style="background:#404040;width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);color:white;font-size:9px;font-weight:800">N</div>`,
   className: '',
   iconSize: [20, 20],
   iconAnchor: [10, 10],
@@ -224,9 +224,9 @@ export default function MapaZona({
 
   /** Solo se nombra lo que de verdad está en el mapa. */
   const itemsLeyenda: ItemLeyenda[] = [
-    ...(serverLat != null ? [{ color: '#5d87ff', texto: 'Servidor' }] : []),
-    ...(mufas.length > 0 ? [{ color: '#8754ec', texto: 'Mufa' }] : []),
-    ...(cajas.length > 0 ? [{ color: '#13deb9', texto: 'Caja NAP' }] : []),
+    ...(serverLat != null ? [{ color: '#000000', texto: 'Servidor' }] : []),
+    ...(mufas.length > 0 ? [{ color: '#C2410C', texto: 'Mufa' }] : []),
+    ...(cajas.length > 0 ? [{ color: '#404040', texto: 'Caja NAP' }] : []),
   ];
 
   function handleMapClick(lat: number, lng: number) {
@@ -244,19 +244,19 @@ export default function MapaZona({
     // caja NAP" sobre este mismo mapa, tapándolos o mezclándose con ellos.
     <MapaShell alto={alto}>
       {dibujandoTrazadoMufa ? (
-        <div className="bg-lightinfo text-info text-sm font-medium px-3 py-2 flex items-center gap-2">
+        <div className="bg-lightinfo text-info-text text-sm font-medium px-3 py-2 flex items-center gap-2">
           <Icon icon="tabler:route" height={16} />
           Toca las cajas NAP en el orden en que las une el cable — o un punto libre del mapa
           para un tramo intermedio ({puntosTrazado.length} punto
           {puntosTrazado.length !== 1 ? 's' : ''})
         </div>
       ) : modoColocar === 'servidor' ? (
-        <div className="bg-lightprimary text-primary text-sm font-medium px-3 py-2 flex items-center gap-2">
+        <div className="bg-lightprimary text-primary-text text-sm font-medium px-3 py-2 flex items-center gap-2">
           <Icon icon="tabler:map-pin" height={16} />
           Toca el mapa para marcar dónde está el servidor
         </div>
       ) : arrastrando ? (
-        <div className="bg-lightwarning text-warning text-sm font-medium px-3 py-2 flex items-center gap-2">
+        <div className="bg-lightwarning text-warning-text text-sm font-medium px-3 py-2 flex items-center gap-2">
           <Icon icon="tabler:drag-drop" height={16} />
           Arrastra el servidor, las mufas o las cajas para corregir su sitio — se guarda al soltar
         </div>
@@ -284,7 +284,7 @@ export default function MapaZona({
                 aria-label={serverLat != null ? 'Reubicar servidor' : 'Marcar servidor'}
                 title={serverLat != null ? 'Reubicar servidor' : 'Marcar servidor'}
                 aria-pressed={modoColocar === 'servidor'}
-                className={`${BOTON} ${modoColocar === 'servidor' ? '!bg-primary !text-white hover:!bg-primary' : ''}`}
+                className={`${BOTON} ${modoColocar === 'servidor' ? '!bg-primary !text-primary-foreground hover:!bg-primary' : ''}`}
               >
                 <Icon icon="tabler:server-2" width={16} />
               </button>
@@ -298,7 +298,7 @@ export default function MapaZona({
                 aria-label="Agregar mufa"
                 title="Agregar mufa"
                 aria-pressed={modoColocar === 'mufa'}
-                className={`${BOTON} ${modoColocar === 'mufa' ? '!bg-primary !text-white hover:!bg-primary' : ''}`}
+                className={`${BOTON} ${modoColocar === 'mufa' ? '!bg-primary !text-primary-foreground hover:!bg-primary' : ''}`}
               >
                 <Icon icon="tabler:plus" width={16} />
               </button>
@@ -313,7 +313,7 @@ export default function MapaZona({
                 aria-label={modoMover ? 'Dejar de mover' : 'Mover lo que ya está puesto'}
                 title={modoMover ? 'Dejar de mover' : 'Mover lo que ya está puesto'}
                 aria-pressed={modoMover}
-                className={`${BOTON} ${modoMover ? '!bg-warning !text-white hover:!bg-warning' : ''}`}
+                className={`${BOTON} ${modoMover ? '!bg-warning-solid !text-on-solid hover:!bg-warning-solid' : ''}`}
               >
                 <Icon icon="tabler:drag-drop" width={16} />
               </button>
@@ -397,10 +397,10 @@ export default function MapaZona({
                 <Popup>
                   <div className="flex flex-col gap-1.5 min-w-[150px]">
                     <div className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-info/10 text-info text-xs font-bold">M</span>
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-info/10 text-info-text text-xs font-bold">M</span>
                       <b className="text-sm">{m.codigo}</b>
                     </div>
-                    <span className="inline-flex w-fit items-center rounded-full bg-lightinfo text-info text-[11px] font-medium px-2 py-0.5">
+                    <span className="inline-flex w-fit items-center rounded-full bg-lightinfo text-info-text text-[11px] font-medium px-2 py-0.5">
                       {m.total_cajas} caja{m.total_cajas === 1 ? '' : 's'} NAP
                     </span>
                     {m.descripcion && <span className="text-xs text-muted-foreground">{m.descripcion}</span>}
@@ -440,7 +440,7 @@ export default function MapaZona({
         {dibujandoTrazadoMufa && puntosTrazado.length > 0 && (
           <Polyline
             positions={puntosTrazado.map((p) => [p.lat, p.lng] as [number, number])}
-            pathOptions={{ color: '#5d87ff', weight: 3, dashArray: '4 8' }}
+            pathOptions={{ color: '#000000', weight: 3, dashArray: '4 8' }}
           />
         )}
 
@@ -470,13 +470,13 @@ export default function MapaZona({
                 <Popup>
                   <div className="flex flex-col gap-1.5 min-w-[150px]">
                     <div className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-success/10 text-success text-xs font-bold">N</span>
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-success/10 text-success-text text-xs font-bold">N</span>
                       <b className="text-sm">{c.codigo}</b>
                     </div>
                     {(() => {
                       const libres = c.bornes.filter((b) => b.estado === 'libre').length;
                       return (
-                        <span className={`inline-flex w-fit items-center rounded-full text-[11px] font-medium px-2 py-0.5 ${libres > 0 ? 'bg-lightsuccess text-success' : 'bg-lighterror text-error'}`}>
+                        <span className={`inline-flex w-fit items-center rounded-full text-[11px] font-medium px-2 py-0.5 ${libres > 0 ? 'bg-lightsuccess text-success-text' : 'bg-lighterror text-error-text'}`}>
                           {libres} borne{libres === 1 ? '' : 's'} libre{libres === 1 ? '' : 's'}
                         </span>
                       );
@@ -510,7 +510,7 @@ export default function MapaZona({
               <div key={m.id} className="flex items-center gap-1.5 px-2.5 py-1">
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: '#8754ec' }}
+                  style={{ background: '#C2410C' }}
                 />
                 <button
                   type="button"
@@ -526,7 +526,7 @@ export default function MapaZona({
                     onClick={() => onDibujarCorridaMufa(m)}
                     aria-label={`Dibujar una corrida de ${m.codigo}`}
                     title={`Dibujar una corrida de ${m.codigo}`}
-                    className="transition-ui grid size-6 shrink-0 place-items-center rounded-md bg-lightinfo text-info hover:bg-info hover:text-white"
+                    className="transition-ui grid size-6 shrink-0 place-items-center rounded-md bg-lightinfo text-info-text hover:bg-info-solid hover:text-on-solid"
                   >
                     <Icon icon="tabler:route" width={13} />
                   </button>
@@ -536,7 +536,7 @@ export default function MapaZona({
                   onClick={() => onAgregarCajaAMufa(m)}
                   aria-label={`Agregar caja NAP a ${m.codigo}`}
                   title={`Agregar caja NAP a ${m.codigo}`}
-                  className="transition-ui grid size-6 shrink-0 place-items-center rounded-md bg-lightsuccess text-success hover:bg-success hover:text-white"
+                  className="transition-ui grid size-6 shrink-0 place-items-center rounded-md bg-lightsuccess text-success-text hover:bg-success-solid hover:text-on-solid"
                 >
                   <Icon icon="tabler:plus" width={13} />
                 </button>

@@ -25,6 +25,7 @@ import {
   FormDialog,
   FormField,
 } from 'src/components/shared/form';
+import ConfirmDialog from 'src/components/shared/ConfirmDialog';
 import { Textarea } from 'src/components/ui/textarea';
 import {
   Select,
@@ -64,14 +65,14 @@ const ESTADO_LABEL: Record<EstadoCliente, string> = {
 };
 
 const ESTADO_BADGE: Record<EstadoCliente, string> = {
-  pendiente_aprobacion: 'bg-lightwarning text-warning',
+  pendiente_aprobacion: 'bg-lightwarning text-warning-text',
   rechazado: 'bg-muted text-muted-foreground',
-  aprobado: 'bg-lightinfo text-info',
+  aprobado: 'bg-lightinfo text-info-text',
   no_instalado: 'bg-muted text-muted-foreground',
-  activo: 'bg-lightsuccess text-success',
+  activo: 'bg-lightsuccess text-success-text',
   anulado: 'bg-muted text-muted-foreground',
-  suspendido: 'bg-lighterror text-error',
-  pausado: 'bg-lightinfo text-info',
+  suspendido: 'bg-lighterror text-error-text',
+  pausado: 'bg-lightinfo text-info-text',
 };
 
 interface Props {
@@ -105,6 +106,8 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
   const [rechazando, setRechazando] = useState<ClienteListItem | null>(null);
   const [motivo, setMotivo] = useState('');
   const [pausando, setPausando] = useState<ClienteListItem | null>(null);
+  /** Cortar deja a una persona sin internet: siempre se confirma antes. */
+  const [cortando, setCortando] = useState<ClienteListItem | null>(null);
   const [mesesPausa, setMesesPausa] = useState('1');
   const [crearOpen, setCrearOpen] = useState(false);
   /** El cliente que se está mirando por encima. Tocar el nombre abre esto y
@@ -172,11 +175,15 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
     }
   }
 
-  async function handleCortar(c: ClienteListItem) {
+  async function handleCortar() {
+    if (!cortando) return;
+    const c = cortando;
     try {
       await cortarCliente(c.id);
       reload();
-      toast.success(`Servicio de ${c.nombre} cortado`);
+      toast.success(`Servicio de ${c.nombre} cortado`, {
+        action: { label: 'Reactivar', onClick: () => handleReactivar(c) },
+      });
     } catch (err: any) {
       toast.error(err?.response?.data?.detail ?? 'No se pudo cortar el servicio');
     }
@@ -339,7 +346,7 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
                           {c.nombre}
                         </h6>
                         {!tipo && (
-                          <Badge className={`rounded-md text-[10px] ${c.tipo_conexion === 'fibra_optica' ? 'bg-lightprimary text-primary' : 'bg-lightinfo text-info'}`}>
+                          <Badge className={`rounded-md text-[10px] ${c.tipo_conexion === 'fibra_optica' ? 'bg-lightprimary text-primary-text' : 'bg-lightinfo text-info-text'}`}>
                             {c.tipo_conexion === 'fibra_optica' ? 'Fibra' : 'Inalámbrico'}
                           </Badge>
                         )}
@@ -348,7 +355,7 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
                             usa para cosas que no son culpa de nadie. */}
                         {c.faltan_datos && (
                           <Badge
-                            className="rounded-md bg-lightwarning text-warning text-[10px]"
+                            className="rounded-md bg-lightwarning text-warning-text text-[10px]"
                             title="Ya instalado pero sin caja, borne o equipo registrado"
                           >
                             Faltan datos
@@ -429,8 +436,13 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
                         <>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={() => handleCortar(c)}>
-                                <Icon icon="tabler:player-pause" height={18} className="text-error" />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Cortar servicio de ${c.nombre}`}
+                                onClick={() => setCortando(c)}
+                              >
+                                <Icon icon="tabler:plug-off" height={18} className="text-error-text" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -442,9 +454,10 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label={`Pausar servicio de ${c.nombre}`}
                                 onClick={() => { setPausando(c); setMesesPausa('1'); }}
                               >
-                                <Icon icon="tabler:clock-pause" height={18} className="text-info" />
+                                <Icon icon="tabler:player-pause" height={18} className="text-info-text" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -457,8 +470,13 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
                       {(c.estado === 'suspendido' || c.estado === 'pausado') && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => handleReactivar(c)}>
-                              <Icon icon="tabler:player-play" height={18} className="text-success" />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Reactivar servicio de ${c.nombre}`}
+                              onClick={() => handleReactivar(c)}
+                            >
+                              <Icon icon="tabler:player-play" height={18} className="text-success-text" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
@@ -490,6 +508,22 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!cortando}
+        onOpenChange={(abierto) => !abierto && setCortando(null)}
+        title="¿Cortar el servicio?"
+        description={
+          cortando
+            ? `${cortando.nombre}${cortando.zona ? `, de ${cortando.zona.nombre},` : ''} se quedará sin internet hasta que reactives su servicio.`
+            : undefined
+        }
+        confirmText="Sí, cortar servicio"
+        loadingText="Cortando…"
+        cancelText="No, mantener activo"
+        icon="tabler:plug-off"
+        onConfirm={handleCortar}
+      />
 
       <AprobarClienteDialog
         cliente={aprobando}

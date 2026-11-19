@@ -24,6 +24,8 @@ interface ConfirmDialogProps {
   title: string;
   description?: string;
   confirmText?: string;
+  /** Lo que dice el botón mientras se ejecuta la acción. */
+  loadingText?: string;
   cancelText?: string;
   /** Color e icono del aviso. Por omisión, el de borrar. */
   tone?: keyof typeof TONOS;
@@ -37,6 +39,7 @@ export default function ConfirmDialog({
   title,
   description,
   confirmText = 'Eliminar',
+  loadingText = 'Eliminando…',
   cancelText = 'Cancelar',
   tone = 'error',
   icon,
@@ -78,7 +81,7 @@ export default function ConfirmDialog({
           </AlertDialogCancel>
           <AlertDialogAction
             disabled={loading}
-            className={cn('gap-2', tone === 'error' && 'bg-error hover:bg-error/90')}
+            className={cn('gap-2', tone === 'error' && 'bg-destructive text-destructive-foreground hover:bg-destructive/90')}
             onClick={(e) => {
               e.preventDefault();
               handleConfirm();
@@ -89,7 +92,7 @@ export default function ConfirmDialog({
               width={17}
               className={loading ? 'animate-spin' : ''}
             />
-            {loading ? 'Eliminando…' : confirmText}
+            {loading ? loadingText : confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

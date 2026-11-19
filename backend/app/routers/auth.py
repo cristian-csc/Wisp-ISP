@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from ..database import get_db
-from .. import models, schemas
+from .. import acceso, models, schemas
 from ..config import settings
 
 router = APIRouter()
@@ -122,7 +122,32 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def rol_de_la_cuenta(db: Session, usuario: models.Usuario) -> Optional[models.Rol]:
+    """El rol asignado; una cuenta sin asignar usa el de su tipo de cuenta."""
+    consulta = db.query(models.Rol)
+    if usuario.rol_id is not None:
+        return consulta.filter(models.Rol.id == usuario.rol_id).first()
+    return consulta.filter(models.Rol.clave == usuario.rol.value).first()
+
+
+def modulos_del_rol(db: Session, rol_id: int) -> set[str]:
+    filas = (
+        db.query(models.Modulo.clave)
+        .join(models.RolModulo, models.RolModulo.modulo_id == models.Modulo.id)
+        .filter(models.RolModulo.rol_id == rol_id, models.Modulo.activo.is_(True))
+        .all()
+    )
+    return {clave for clave, in filas}
+
+
+def _sin_permiso() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="No tiene permisos para esta acción",
+    )
+
+
+def usuario_del_token(token: str, db: Session) -> models.Usuario:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No autenticado",
@@ -142,6 +167,22 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
+def get_current_user(
+    request: Request,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    user = usuario_del_token(token, db)
+    ruta = getattr(request.scope.get("route"), "path", "")
+    if (request.method, ruta) in acceso.LECTURAS:
+        rol = rol_de_la_cuenta(db, user)
+        if rol is not None and not acceso.permite_lectura(
+            rol.es_superadmin, modulos_del_rol(db, rol.id), request.method, ruta,
+        ):
+            raise _sin_permiso()
+    return user
+
+
 def require_roles(*roles: models.RolUsuario):
     """Dependencia que exige que el usuario autenticado tenga uno de los roles dados.
     Uso: current_user: models.Usuario = Depends(require_roles(RolUsuario.admin))
@@ -149,16 +190,45 @@ def require_roles(*roles: models.RolUsuario):
     Hasta el 2026-11-10 existía `super_admin`, que pasaba cualquier chequeo
     que incluyera `admin`. Se eliminó junto con `subadmin`: ahora `admin` es
     el rol más alto y no hay herencia entre roles, cada endpoint lista
-    exactamente quién entra."""
-    def dependency(current_user: models.Usuario = Depends(get_current_user)) -> models.Usuario:
-        allowed = set(roles)
-        if current_user.rol not in allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tiene permisos para esta acción",
+    exactamente quién entra. Los módulos del rol se suman a esa lista según
+    las reglas de app/acceso.py."""
+    def dependency(
+        request: Request,
+        current_user: models.Usuario = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> models.Usuario:
+        permitidos = {r.value for r in roles}
+        rol = rol_de_la_cuenta(db, current_user)
+        if rol is None:
+            permitido = current_user.rol.value in permitidos
+        else:
+            permitido = acceso.permite_con_roles(
+                current_user.rol.value,
+                rol.es_superadmin,
+                modulos_del_rol(db, rol.id),
+                permitidos,
+                request.method,
+                getattr(request.scope.get("route"), "path", ""),
             )
+        if not permitido:
+            raise _sin_permiso()
         return current_user
     return dependency
+
+
+def _resolver_rol(
+    db: Session,
+    rol_id: Optional[int],
+    tipo: Optional[models.RolUsuario],
+) -> tuple[models.RolUsuario, Optional[int]]:
+    """El tipo de cuenta y el rol que le corresponden a un usuario."""
+    if rol_id is None:
+        rol = db.query(models.Rol).filter(models.Rol.clave == tipo.value).first()
+        return tipo, rol.id if rol else None
+    rol = db.query(models.Rol).filter(models.Rol.id == rol_id).first()
+    if rol is None or rol.perfil_base is None:
+        raise HTTPException(status_code=400, detail="Ese rol no se puede asignar a una cuenta del personal")
+    return models.RolUsuario(rol.perfil_base), rol.id
 
 
 def zonas_asignadas(db: Session, usuario: models.Usuario) -> list[int]:
@@ -317,11 +387,13 @@ def create_usuario(
 ):
     if db.query(models.Usuario).filter(models.Usuario.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email ya registrado")
+    tipo, rol_id = _resolver_rol(db, data.rol_id, data.rol)
     user = models.Usuario(
         nombre=data.nombre,
         email=data.email,
         hashed_password=get_password_hash(data.password),
-        rol=data.rol,
+        rol=tipo,
+        rol_id=rol_id,
         telefono=data.telefono,
         dni=data.dni,
         direccion=data.direccion,
@@ -346,7 +418,11 @@ def update_usuario(
     user = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    for key, value in data.model_dump(exclude_unset=True).items():
+    cambios = data.model_dump(exclude_unset=True)
+    rol_id, tipo = cambios.pop("rol_id", None), cambios.pop("rol", None)
+    if rol_id is not None or tipo is not None:
+        user.rol, user.rol_id = _resolver_rol(db, rol_id, tipo)
+    for key, value in cambios.items():
         setattr(user, key, value)
     db.commit()
     db.refresh(user)

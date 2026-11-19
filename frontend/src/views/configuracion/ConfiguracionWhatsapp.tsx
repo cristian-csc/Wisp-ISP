@@ -65,8 +65,8 @@ const ESTADO_CAMPANIA_LABEL: Record<MensajeMasivo['estado'], string> = {
 };
 
 const ESTADO_CAMPANIA_BADGE: Record<MensajeMasivo['estado'], string> = {
-  en_progreso: 'bg-lightwarning text-warning',
-  completado: 'bg-lightsuccess text-success',
+  en_progreso: 'bg-lightwarning text-warning-text',
+  completado: 'bg-lightsuccess text-success-text',
   cancelado: 'bg-lightsecondary text-secondary',
 };
 
@@ -283,7 +283,7 @@ const ConfiguracionWhatsapp = () => {
       <CardBox className="overflow-hidden border-l-4 border-l-warning !p-0">
         <div className="flex flex-wrap items-center justify-between gap-4 p-5">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lightwarning text-warning">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lightwarning text-warning-text">
               <Icon icon="tabler:calendar-dollar" width={21} />
             </span>
             <div className="min-w-0">

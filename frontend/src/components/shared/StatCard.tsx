@@ -4,14 +4,17 @@ import CardBox from './CardBox';
 
 export type TonoStat = 'primary' | 'brand' | 'success' | 'warning' | 'error' | 'info';
 
-/** Cada tono usa un color semántico del sistema; nada escrito a mano. */
+const NEUTRO = { tile: 'bg-muted', icono: 'text-foreground' };
+
+/** Las tarjetas son neutras: el verde y el rojo se reservan para los estados
+ *  y avisos, donde sí significan algo. Solo el dinero lleva el naranja. */
 const TONOS: Record<TonoStat, { tile: string; icono: string }> = {
-  primary: { tile: 'bg-lightprimary', icono: 'text-primary' },
+  primary: NEUTRO,
   brand: { tile: 'bg-lightbrand', icono: 'text-brand-strong dark:text-brand' },
-  success: { tile: 'bg-lightsuccess', icono: 'text-success' },
-  warning: { tile: 'bg-lightwarning', icono: 'text-warning' },
-  error: { tile: 'bg-lighterror', icono: 'text-error' },
-  info: { tile: 'bg-lightinfo', icono: 'text-info' },
+  success: NEUTRO,
+  warning: NEUTRO,
+  error: NEUTRO,
+  info: NEUTRO,
 };
 
 interface Props {
@@ -43,7 +46,7 @@ const StatCard = ({ icono, etiqueta, valor, nota, delta, tono = 'primary', to }:
             {delta !== null && delta !== undefined && (
               <span
                 className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                  sube ? 'bg-lightsuccess text-success' : 'bg-lighterror text-error'
+                  sube ? 'bg-lightsuccess text-success-text' : 'bg-lighterror text-error-text'
                 }`}
               >
                 <Icon icon={sube ? 'tabler:trending-up' : 'tabler:trending-down'} width={13} />

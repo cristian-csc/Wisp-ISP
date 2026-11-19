@@ -69,7 +69,7 @@ const Header = () => {
           isSticky ? 'border-ld shadow-sm' : 'border-transparent'
         }`}
       >
-        <nav className="flex !max-w-full items-center gap-3 rounded-none bg-transparent px-4 py-3 dark:bg-transparent sm:px-6">
+        <nav className="flex !max-w-full flex-wrap items-center gap-3 rounded-none bg-transparent px-4 py-3 dark:bg-transparent sm:px-6">
           {/* Abrir el menú lateral en pantallas sin sidebar fijo */}
           <BotonIcono
             icono="tabler:menu-2"
@@ -83,8 +83,9 @@ const Header = () => {
             <FullLogo ancho={96} />
           </div>
 
-          {/* Buscador: ocupa el espacio disponible en escritorio */}
-          <div className="hidden flex-1 items-center xl:flex">
+          {/* Buscador: en su propia fila en teléfono y tableta, donde más se atiende
+              en mostrador; ocupa el espacio disponible en escritorio. */}
+          <div className="order-last flex w-full items-center xl:order-none xl:w-auto xl:flex-1">
             <Search />
           </div>
 

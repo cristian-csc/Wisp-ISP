@@ -1,5 +1,6 @@
 export const RING_TONE = {
-  success: { ring: 'text-success', chipBg: 'bg-lightsuccess', chipText: 'text-success' },
+  // Lo normal va en el naranja de la marca: el verde en un aro al 25 % no dice nada.
+  success: { ring: 'text-brand', chipBg: 'bg-muted', chipText: 'text-foreground' },
   warning: { ring: 'text-warning', chipBg: 'bg-lightwarning', chipText: 'text-warning' },
   error: { ring: 'text-error', chipBg: 'bg-lighterror', chipText: 'text-error' },
 } as const;

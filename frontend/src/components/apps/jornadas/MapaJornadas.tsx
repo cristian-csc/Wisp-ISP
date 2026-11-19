@@ -41,14 +41,14 @@ const vendedorIcon = L.divIcon({
 });
 
 const inicioIcon = L.divIcon({
-  html: `<div style="background:#5d87ff;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+  html: `<div style="background:#000000;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
   className: '',
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 });
 
 const finIcon = L.divIcon({
-  html: `<div style="background:#64748B;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+  html: `<div style="background:#737373;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
   className: '',
   iconSize: [18, 18],
   iconAnchor: [9, 9],
@@ -150,8 +150,8 @@ export default function MapaJornadas({
   /** Lo que explica la leyenda según lo que se esté mirando. */
   const itemsLeyenda: ItemLeyenda[] = jornadaSeleccionada
     ? [
-        { color: '#5d87ff', texto: 'Inicio' },
-        { color: '#64748B', texto: 'Fin' },
+        { color: '#000000', texto: 'Inicio' },
+        { color: '#737373', texto: 'Fin' },
         { color: '#FF842A', texto: `Recorrido · ${distanciaTexto}`, linea: true },
       ]
     : [{ color: '#10B981', texto: 'Vendedora en ruta' }];

@@ -137,7 +137,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
               <div className="flex justify-between items-center flex-wrap gap-3">
                 <div className="flex gap-2.5 flex-wrap">
                   <div className="flex items-center gap-2.5 rounded-xl bg-lightprimary px-3.5 py-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary-text">
                       <Icon icon="tabler:plug-connected" height={17} />
                     </span>
                     <div className="leading-none">
@@ -146,7 +146,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5 rounded-xl bg-lightsuccess px-3.5 py-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/15 text-success">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/15 text-success-text">
                       <Icon icon="tabler:wifi" height={17} />
                     </span>
                     <div className="leading-none">
@@ -155,7 +155,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5 rounded-xl bg-lighterror px-3.5 py-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-error/15 text-error">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-error/15 text-error-text">
                       <Icon icon="tabler:alert-triangle-filled" height={17} />
                     </span>
                     <div className="leading-none">
@@ -230,7 +230,7 @@ const CajaNapDetailDialog = ({ cajaId, onOpenChange, onChanged }: Props) => {
                                 {b.codigo_precinto ? (
                                   <span className="text-sm">{b.codigo_precinto}</span>
                                 ) : (
-                                  <Badge className="bg-lightwarning text-warning rounded-md text-[10px]">Falta precinto</Badge>
+                                  <Badge className="bg-lightwarning text-warning-text rounded-md text-[10px]">Falta precinto</Badge>
                                 )}
                               </TableCell>
                               <TableCell>
