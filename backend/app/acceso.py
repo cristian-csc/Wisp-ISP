@@ -147,6 +147,10 @@ REGLAS: dict[tuple[str, str], Regla] = {
     ("GET", "/api/materiales/movimientos"): _MATERIALES,
     ("GET", "/api/materiales/por-tecnico"): _MATERIALES,
     ("POST", "/api/materiales/movimientos"): _MATERIALES,
+    ("POST", "/api/materiales"): _MATERIALES,
+    ("PUT", "/api/materiales/{material_id}"): _MATERIALES,
+    ("POST", "/api/materiales/{material_id}/presentaciones"): _MATERIALES,
+    ("DELETE", "/api/materiales/presentaciones/{presentacion_id}"): _MATERIALES,
 }
 
 _LEER_CLIENTES = CLIENTES_PANEL | PAGOS | AVERIAS | RETIROS | CAMPO

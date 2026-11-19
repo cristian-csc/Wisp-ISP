@@ -19,6 +19,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, case, func
 from typing import List, Optional
 from decimal import Decimal
+import re
+import unicodedata
 
 from ..database import get_db
 from .. import models, schemas
@@ -116,6 +118,140 @@ def listar_materiales(
         .all()
     )
     return [_material_out(m, saldos.get(m.id, Decimal(0))) for m in materiales]
+
+
+def _clave_desde(nombre: str) -> str:
+    """Un identificador estable a partir del nombre escrito.
+
+    La clave no se le pide a nadie: se deduce. Es lo que usan el codigo y los
+    informes, asi que no debe llevar tildes ni espacios, y no cambia aunque
+    luego se corrija el nombre visible.
+    """
+    base = unicodedata.normalize("NFKD", nombre.strip().lower())
+    base = base.encode("ascii", "ignore").decode("ascii")
+    base = re.sub(r"[^a-z0-9]+", "_", base).strip("_")
+    return base[:40] or "material"
+
+
+@router.post("", response_model=schemas.MaterialOut, status_code=201)
+def crear_material(
+    data: schemas.MaterialCreate,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    clave = _clave_desde(data.nombre)
+    if db.query(models.Material).filter(models.Material.clave == clave).first():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ya existe un material que se llama asi ({data.nombre}).",
+        )
+
+    nombres = [p.nombre.strip().lower() for p in data.presentaciones]
+    if len(nombres) != len(set(nombres)):
+        raise HTTPException(status_code=400, detail="Hay dos presentaciones con el mismo nombre.")
+
+    material = models.Material(
+        clave=clave,
+        nombre=data.nombre.strip(),
+        unidad=data.unidad,
+        se_recupera=data.se_recupera,
+        consumo_estandar=data.consumo_estandar,
+        activo=True,
+    )
+    material.presentaciones = [
+        models.MaterialPresentacion(nombre=p.nombre.strip(), equivale_a=p.equivale_a, activo=True)
+        for p in data.presentaciones
+    ]
+    db.add(material)
+    db.commit()
+    db.refresh(material)
+    return _material_out(material, Decimal(0))
+
+
+@router.put("/{material_id}", response_model=schemas.MaterialOut)
+def editar_material(
+    material_id: int,
+    data: schemas.MaterialUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    material = db.query(models.Material).filter(models.Material.id == material_id).first()
+    if not material:
+        raise HTTPException(status_code=404, detail="Material no encontrado")
+
+    campos = data.model_dump(exclude_unset=True)
+    if "nombre" in campos and campos["nombre"]:
+        material.nombre = campos["nombre"].strip()
+    if "se_recupera" in campos:
+        material.se_recupera = campos["se_recupera"]
+    if "consumo_estandar" in campos:
+        material.consumo_estandar = campos["consumo_estandar"]
+    if "activo" in campos:
+        # Desactivar no borra: los movimientos viejos siguen contando y el
+        # historial se sigue leyendo. Solo deja de ofrecerse al registrar.
+        material.activo = campos["activo"]
+
+    db.commit()
+    db.refresh(material)
+    return _material_out(material, _saldos(db).get(material.id, Decimal(0)))
+
+
+@router.post("/{material_id}/presentaciones", response_model=schemas.MaterialPresentacionOut, status_code=201)
+def agregar_presentacion(
+    material_id: int,
+    data: schemas.PresentacionInput,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    material = db.query(models.Material).filter(models.Material.id == material_id).first()
+    if not material:
+        raise HTTPException(status_code=404, detail="Material no encontrado")
+
+    nombre = data.nombre.strip()
+    if any(p.nombre.strip().lower() == nombre.lower() for p in material.presentaciones):
+        raise HTTPException(status_code=400, detail=f"«{nombre}» ya existe en este material.")
+
+    presentacion = models.MaterialPresentacion(
+        material_id=material.id, nombre=nombre, equivale_a=data.equivale_a, activo=True,
+    )
+    db.add(presentacion)
+    db.commit()
+    db.refresh(presentacion)
+    return presentacion
+
+
+@router.delete("/presentaciones/{presentacion_id}")
+def quitar_presentacion(
+    presentacion_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    """Quita una presentacion. Si ya se uso en alguna compra, se desactiva en
+    vez de borrarse: el historial debe seguir pudiendo decir «entraron 2
+    bobinas», y borrarla dejaria esas lineas sin explicacion."""
+    presentacion = (
+        db.query(models.MaterialPresentacion)
+        .filter(models.MaterialPresentacion.id == presentacion_id)
+        .first()
+    )
+    if not presentacion:
+        raise HTTPException(status_code=404, detail="Presentación no encontrada")
+
+    usada = (
+        db.query(models.MovimientoMaterial)
+        .filter(models.MovimientoMaterial.presentacion_id == presentacion_id)
+        .count()
+    )
+    if usada:
+        presentacion.activo = False
+        db.commit()
+        return {"ok": True, "desactivada": True,
+                "detalle": f"Se usó en {usada} movimiento(s), así que se guarda para el historial "
+                           "y deja de ofrecerse."}
+
+    db.delete(presentacion)
+    db.commit()
+    return {"ok": True, "desactivada": False}
 
 
 @router.post("/movimientos", response_model=schemas.MovimientoMaterialOut, status_code=201)

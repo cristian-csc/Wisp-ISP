@@ -31,11 +31,14 @@ import {
   FormField,
   FormGrid,
 } from 'src/components/shared/form';
+import { Switch } from 'src/components/ui/switch';
 import {
   listMateriales,
   listMovimientos,
   listSaldosTecnico,
   registrarMovimiento,
+  crearMaterial,
+  editarMaterial,
   cantidad as fmt,
   type Material,
   type Movimiento,
@@ -73,6 +76,20 @@ const Materiales = () => {
   const [porTecnico, setPorTecnico] = useState<SaldoTecnico[]>([]);
   const [tecnicos, setTecnicos] = useState<Usuario[]>([]);
   const [cargando, setCargando] = useState(true);
+  // Que la carga falle tiene que verse. Antes se quedaba en silencio con las
+  // tarjetas vacias y no habia forma de saber si era un fallo o es que no
+  // habia nada.
+  const [fallo, setFallo] = useState<string | null>(null);
+
+  const [materialOpen, setMaterialOpen] = useState(false);
+  const [editando, setEditando] = useState<Material | null>(null);
+  const [guardandoMaterial, setGuardandoMaterial] = useState(false);
+  const [errorMaterial, setErrorMaterial] = useState<string | null>(null);
+  const [mNombre, setMNombre] = useState('');
+  const [mUnidad, setMUnidad] = useState<'metro' | 'unidad'>('unidad');
+  const [mRecupera, setMRecupera] = useState(false);
+  const [mEstandar, setMEstandar] = useState('');
+  const [mPres, setMPres] = useState<{ nombre: string; equivale: string }[]>([]);
 
   const [open, setOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -89,13 +106,75 @@ const Materiales = () => {
   const presentacion = material?.presentaciones.find((p) => String(p.id) === presentacionId) ?? null;
 
   function reload() {
+    setFallo(null);
     Promise.all([listMateriales(), listMovimientos(), listSaldosTecnico()])
       .then(([ms, mv, st]) => {
         setMateriales(ms);
         setMovimientos(mv);
         setPorTecnico(st);
       })
+      .catch((err: any) => {
+        setFallo(
+          err?.response?.data?.detail ??
+            'No se pudieron cargar los materiales. Revisa que el servidor esté respondiendo.',
+        );
+      })
       .finally(() => setCargando(false));
+  }
+
+  function abrirMaterial(material?: Material) {
+    setEditando(material ?? null);
+    setMNombre(material?.nombre ?? '');
+    setMUnidad(material?.unidad ?? 'unidad');
+    setMRecupera(material?.se_recupera ?? false);
+    setMEstandar(material?.consumo_estandar != null ? String(material.consumo_estandar) : '');
+    setMPres([]);
+    setErrorMaterial(null);
+    setMaterialOpen(true);
+  }
+
+  async function handleGuardarMaterial() {
+    const nombre = mNombre.trim();
+    if (nombre.length < 2) {
+      setErrorMaterial('Escribe el nombre del material.');
+      return;
+    }
+    const presentaciones = mPres
+      .filter((p) => p.nombre.trim() && Number(p.equivale) > 0)
+      .map((p) => ({ nombre: p.nombre.trim(), equivale_a: Number(p.equivale) }));
+    if (mPres.length > presentaciones.length) {
+      setErrorMaterial('Alguna presentación está a medias: le falta el nombre o cuántas trae.');
+      return;
+    }
+
+    setGuardandoMaterial(true);
+    setErrorMaterial(null);
+    try {
+      const estandar = mEstandar.trim() ? Number(mEstandar) : null;
+      if (editando) {
+        await editarMaterial(editando.id, {
+          nombre,
+          se_recupera: mRecupera,
+          consumo_estandar: estandar,
+        });
+        toast.success('Material actualizado');
+      } else {
+        await crearMaterial({
+          nombre,
+          unidad: mUnidad,
+          se_recupera: mRecupera,
+          consumo_estandar: estandar,
+          presentaciones,
+        });
+        toast.success('Material creado');
+      }
+      setMaterialOpen(false);
+      reload();
+    } catch (err: any) {
+      setErrorMaterial(err?.response?.data?.detail ?? 'No se pudo guardar el material');
+    } finally {
+      setGuardandoMaterial(false);
+    }
   }
 
   useEffect(() => {
@@ -167,12 +246,35 @@ const Materiales = () => {
         descripcion="Lo que se instala en fibra y no tiene número de serie"
         icono="solar:layers-minimalistic-linear"
         acciones={
-          <Button onClick={abrir}>
-            <Icon icon="tabler:plus" height={17} className="mr-1" />
-            Registrar movimiento
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => abrirMaterial()}>
+              <Icon icon="tabler:box" height={17} className="mr-1" />
+              Nuevo material
+            </Button>
+            <Button onClick={abrir} disabled={materiales.length === 0}>
+              <Icon icon="tabler:plus" height={17} className="mr-1" />
+              Registrar movimiento
+            </Button>
+          </div>
         }
       />
+
+      {fallo && (
+        <FormCallout tone="error">
+          {fallo}{' '}
+          <button type="button" onClick={reload} className="underline underline-offset-2">
+            Reintentar
+          </button>
+        </FormCallout>
+      )}
+
+      {!fallo && materiales.length === 0 && (
+        <EmptyState
+          icono="tabler:box-off"
+          titulo="Todavía no hay materiales"
+          descripcion="Crea el primero con «Nuevo material» y luego registra su entrada al almacén."
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {materiales.map((m) => (
@@ -184,13 +286,23 @@ const Materiales = () => {
                   Se cuenta por {m.unidad === 'metro' ? 'metro' : 'unidad'}
                 </p>
               </div>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                  m.se_recupera ? 'bg-lightsuccess text-success-text' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {m.se_recupera ? 'Se recupera' : 'No vuelve'}
-              </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    m.se_recupera ? 'bg-lightsuccess text-success-text' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {m.se_recupera ? 'Se recupera' : 'No vuelve'}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Editar ${m.nombre}`}
+                  onClick={() => abrirMaterial(m)}
+                >
+                  <Icon icon="tabler:pencil" height={16} />
+                </Button>
+              </div>
             </div>
 
             <p className="mt-3 text-2xl font-bold leading-none">
@@ -458,6 +570,154 @@ const Materiales = () => {
               />
             </FieldIcon>
           </FormField>
+        </FormGrid>
+      </FormDialog>
+
+      <FormDialog
+        open={materialOpen}
+        onOpenChange={setMaterialOpen}
+        title={editando ? editando.nombre : 'Nuevo material'}
+        subtitle={
+          editando
+            ? 'Corrige su nombre y sus reglas'
+            : 'Algo que se instala en fibra y no tiene número de serie'
+        }
+        icon="tabler:box"
+        tone="brand"
+        size="lg"
+        footer={
+          <FormActions
+            onCancel={() => setMaterialOpen(false)}
+            submitLabel={editando ? 'Guardar cambios' : 'Crear material'}
+            submitIcon="tabler:device-floppy"
+            onSubmit={handleGuardarMaterial}
+            submitting={guardandoMaterial}
+          />
+        }
+      >
+        {errorMaterial && <FormCallout tone="error">{errorMaterial}</FormCallout>}
+
+        <FormGrid>
+          <FormField label="Nombre" icon="tabler:tag" htmlFor="matNombre">
+            <FieldIcon icon="tabler:tag">
+              <Input
+                id="matNombre"
+                value={mNombre}
+                onChange={(e) => setMNombre(e.target.value)}
+                placeholder="Abrazadera, cinta aislante…"
+              />
+            </FieldIcon>
+          </FormField>
+
+          <FormField label="Cómo se cuenta" icon="tabler:ruler-2">
+            <Select
+              value={mUnidad}
+              onValueChange={(v) => setMUnidad(v as 'metro' | 'unidad')}
+              disabled={!!editando}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unidad">Por unidad</SelectItem>
+                <SelectItem value="metro">Por metro</SelectItem>
+              </SelectContent>
+            </Select>
+            {editando && (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                No se cambia: ya hay movimientos contados en esta unidad, y cambiarla convertiría
+                1.800 metros en 1.800 unidades.
+              </p>
+            )}
+          </FormField>
+
+          <FormField label="¿Vuelve al retirar a un cliente?" icon="tabler:arrow-back-up" wide>
+            <div className="flex items-start gap-3 rounded-lg border border-ld p-3">
+              <Switch checked={mRecupera} onCheckedChange={setMRecupera} />
+              <p className="text-sm text-muted-foreground">
+                {mRecupera
+                  ? 'El técnico lo recupera y vuelve al almacén, como la roseta y el patch cord.'
+                  : 'Se queda puesto para siempre, como el cable tendido y los tensadores. Se da de baja el día de la instalación.'}
+              </p>
+            </div>
+          </FormField>
+
+          <FormField
+            label="Cuánto se gasta en una instalación normal"
+            icon="tabler:calculator"
+            hint="Opcional"
+            wide
+            htmlFor="matEstandar"
+          >
+            <FieldIcon icon="tabler:calculator">
+              <Input
+                id="matEstandar"
+                inputMode="decimal"
+                value={mEstandar}
+                onChange={(e) => setMEstandar(e.target.value)}
+                placeholder="Déjalo vacío si varía en cada instalación"
+              />
+            </FieldIcon>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Solo cuando siempre es la misma cantidad: una roseta, dos conectores. Los metros de
+              cable y los tensadores varían, y esos los dice el técnico.
+            </p>
+          </FormField>
+
+          {!editando && (
+            <FormField label="Cómo se compra" icon="tabler:package" wide>
+              <div className="flex flex-col gap-2">
+                {mPres.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Si viene en bultos —bolsa de 10, bobina de 1000 m— agrégalos aquí. Así al
+                    registrar una compra escribes «2 bolsas» y el sistema traduce a unidades.
+                  </p>
+                )}
+                {mPres.map((p, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      value={p.nombre}
+                      onChange={(e) =>
+                        setMPres((prev) =>
+                          prev.map((x, j) => (j === i ? { ...x, nombre: e.target.value } : x)),
+                        )
+                      }
+                      placeholder="Bolsa de 50"
+                      aria-label={`Nombre de la presentación ${i + 1}`}
+                    />
+                    <Input
+                      className="w-28 shrink-0"
+                      inputMode="decimal"
+                      value={p.equivale}
+                      onChange={(e) =>
+                        setMPres((prev) =>
+                          prev.map((x, j) => (j === i ? { ...x, equivale: e.target.value } : x)),
+                        )
+                      }
+                      placeholder="50"
+                      aria-label={`Cuántas trae la presentación ${i + 1}`}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Quitar esta presentación"
+                      onClick={() => setMPres((prev) => prev.filter((_, j) => j !== i))}
+                    >
+                      <Icon icon="tabler:trash" height={16} className="text-error" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  className="self-start"
+                  onClick={() => setMPres((prev) => [...prev, { nombre: '', equivale: '' }])}
+                >
+                  <Icon icon="tabler:plus" height={16} className="mr-1" />
+                  Agregar presentación
+                </Button>
+              </div>
+            </FormField>
+          )}
         </FormGrid>
       </FormDialog>
     </div>

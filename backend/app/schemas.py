@@ -1281,3 +1281,26 @@ class SaldoTecnicoOut(BaseModel):
     material_nombre: str
     unidad: str
     cantidad: float
+
+
+class PresentacionInput(BaseModel):
+    """Como se compra un material: un nombre y cuantas unidades base trae."""
+    nombre: str = Field(min_length=1, max_length=60)
+    equivale_a: float = Field(gt=0)
+
+
+class MaterialCreate(BaseModel):
+    nombre: str = Field(min_length=2, max_length=80)
+    unidad: Literal["metro", "unidad"]
+    se_recupera: bool = False
+    consumo_estandar: Optional[float] = Field(default=None, ge=0)
+    presentaciones: List[PresentacionInput] = []
+
+
+class MaterialUpdate(BaseModel):
+    """La unidad NO se puede cambiar: hay movimientos contados en ella, y
+    pasar de metro a unidad convertiria 1800 metros en 1800 rosetas."""
+    nombre: Optional[str] = Field(default=None, min_length=2, max_length=80)
+    se_recupera: Optional[bool] = None
+    consumo_estandar: Optional[float] = Field(default=None, ge=0)
+    activo: Optional[bool] = None

@@ -91,3 +91,43 @@ export function cantidad(valor: number, unidad?: string | null): string {
   if (!unidad) return n;
   return unidad === 'metro' ? `${n} m` : n;
 }
+
+export type MaterialInput = {
+  nombre: string;
+  unidad: 'metro' | 'unidad';
+  se_recupera: boolean;
+  consumo_estandar?: number | null;
+  presentaciones?: { nombre: string; equivale_a: number }[];
+};
+
+/** La unidad no viaja: una vez hay movimientos contados en ella, cambiarla
+ *  convertiría 1.800 metros en 1.800 rosetas. */
+export type MaterialPatch = {
+  nombre?: string;
+  se_recupera?: boolean;
+  consumo_estandar?: number | null;
+  activo?: boolean;
+};
+
+export async function crearMaterial(input: MaterialInput): Promise<Material> {
+  const { data } = await api.post('/materiales', input);
+  return data;
+}
+
+export async function editarMaterial(id: number, input: MaterialPatch): Promise<Material> {
+  const { data } = await api.put(`/materiales/${id}`, input);
+  return data;
+}
+
+export async function agregarPresentacion(
+  materialId: number,
+  input: { nombre: string; equivale_a: number },
+): Promise<Presentacion> {
+  const { data } = await api.post(`/materiales/${materialId}/presentaciones`, input);
+  return data;
+}
+
+export async function quitarPresentacion(presentacionId: number): Promise<{ desactivada: boolean; detalle?: string }> {
+  const { data } = await api.delete(`/materiales/presentaciones/${presentacionId}`);
+  return data;
+}
