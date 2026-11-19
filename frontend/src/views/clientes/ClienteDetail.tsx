@@ -1052,6 +1052,16 @@ const ClienteDetail = () => {
                   {onuAsignada?.marca && (
                     <p className="mt-0.5 text-xs text-muted-foreground">{onuAsignada.marca}</p>
                   )}
+                  {onuAsignada && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      MAC{' '}
+                      {onuAsignada.mac ? (
+                        <span className="font-mono">{onuAsignada.mac}</span>
+                      ) : (
+                        'sin registrar'
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1209,7 +1219,26 @@ const ClienteDetail = () => {
                     <p className="font-semibold">
                       {onuAsignada.marca ? `ONU ${onuAsignada.marca}` : 'ONU asignada'}
                     </p>
-                    <Field label="Número de serie" value={onuAsignada.numero_serie} />
+                    <Field
+                      label="Número de serie"
+                      value={<span className="font-mono">{onuAsignada.numero_serie}</span>}
+                    />
+                    {/* Serie y MAC van en monoespaciada: se leen caracter a
+                        caracter contra la etiqueta del equipo, y en una letra
+                        proporcional el 0 y la O se confunden.
+                        Cuando falta se dice, en vez de un guion: en un cliente
+                        migrado la MAC es justo el dato que hay que ir a buscar,
+                        y un guion no distingue «no tiene» de «no se anotó». */}
+                    <Field
+                      label="MAC"
+                      value={
+                        onuAsignada.mac ? (
+                          <span className="font-mono">{onuAsignada.mac}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Falta registrar</span>
+                        )
+                      }
+                    />
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">Sin ONU asignada</p>
