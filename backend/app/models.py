@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, Float, Boolean, DateTime, Date,
+    Column, Integer, String, Float, Boolean, DateTime, Date, Numeric,
     ForeignKey, Text, Enum as SAEnum, UniqueConstraint, JSON
 )
 from sqlalchemy.orm import relationship
@@ -713,3 +713,87 @@ class RolModulo(Base):
     modulo_id = Column(Integer, ForeignKey("modulos.id", ondelete="CASCADE"), primary_key=True)
     orden = Column(Integer, nullable=False, default=0)
     es_central = Column(Boolean, nullable=False, default=False)
+
+
+# ── Materiales de fibra ───────────────────────────────────────────────────────
+# Lo que sale a campo en una instalacion y no es un equipo con numero de serie.
+# Los equipos (la ONU) viven en `onus`, uno por uno; esto se cuenta por
+# cantidad.
+
+
+class Material(Base):
+    """Cable drop, tensadores, conectores, rosetas, patch cords."""
+    __tablename__ = "materiales"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clave = Column(String(40), unique=True, nullable=False, index=True)
+    nombre = Column(String(80), nullable=False)
+    # metro | unidad. Como se cuenta lo que queda.
+    unidad = Column(String(10), nullable=False)
+    # Si vuelve cuando se retira a un cliente. La roseta y el patch cord si;
+    # el cable tendido y los tensadores se quedan en el poste para siempre.
+    se_recupera = Column(Boolean, nullable=False, default=False)
+    # Cuanto se gasta en una instalacion normal, cuando siempre es igual: una
+    # roseta, un patch cord, dos conectores. Vacio = lo dice el tecnico.
+    consumo_estandar = Column(Numeric(10, 2))
+    activo = Column(Boolean, nullable=False, default=True, index=True)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+    presentaciones = relationship(
+        "MaterialPresentacion",
+        back_populates="material",
+        cascade="all, delete-orphan",
+        order_by="MaterialPresentacion.equivale_a.desc()",
+    )
+
+
+class MaterialPresentacion(Base):
+    """Como se compra: bobina de 1000 m, rollo de 200, bolsa de 10.
+
+    Se gasta por metro y por unidad, pero se compra por bulto. Sin esto habria
+    que traducir a mano cada compra, que es justo donde se cuelan los errores.
+    """
+    __tablename__ = "material_presentaciones"
+
+    id = Column(Integer, primary_key=True, index=True)
+    material_id = Column(Integer, ForeignKey("materiales.id", ondelete="CASCADE"),
+                         nullable=False, index=True)
+    nombre = Column(String(60), nullable=False)
+    equivale_a = Column(Numeric(10, 2), nullable=False)
+    activo = Column(Boolean, nullable=False, default=True)
+
+    material = relationship("Material", back_populates="presentaciones")
+
+
+class MovimientoMaterial(Base):
+    """Todo lo que entra, sale, se gasta o se corrige.
+
+    NINGUN saldo se guarda en una columna: ni el del almacen ni el de cada
+    tecnico. Se calculan sumando esta tabla. Un saldo guardado junto a su
+    historial son dos numeros que tarde o temprano se contradicen, y entonces
+    no se sabe cual creer.
+
+        entrada     proveedor -> almacen    (una compra)
+        entrega     almacen   -> tecnico
+        consumo     tecnico   -> cliente    (se gasto en una instalacion)
+        devolucion  cliente   -> almacen    (roseta y patch cord recuperados)
+        ajuste      correccion de un cuadre; el unico que admite negativo
+    """
+    __tablename__ = "movimientos_material"
+
+    id = Column(Integer, primary_key=True, index=True)
+    material_id = Column(Integer, ForeignKey("materiales.id", ondelete="RESTRICT"),
+                         nullable=False, index=True)
+    tipo = Column(String(12), nullable=False, index=True)
+    cantidad = Column(Numeric(10, 2), nullable=False)
+    tecnico_id = Column(Integer, ForeignKey("usuarios.id"), index=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), index=True)
+    presentacion_id = Column(Integer, ForeignKey("material_presentaciones.id"))
+    motivo = Column(String(200))
+    registrado_por_id = Column(Integer, ForeignKey("usuarios.id"))
+    creado_en = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    material = relationship("Material")
+    tecnico = relationship("Usuario", foreign_keys=[tecnico_id])
+    registrado_por = relationship("Usuario", foreign_keys=[registrado_por_id])
+    presentacion = relationship("MaterialPresentacion")
