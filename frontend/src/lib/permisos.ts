@@ -94,6 +94,7 @@ const SECCION_DE_RUTA: { patron: RegExp; seccion: string | string[] | null }[] =
   { patron: /^\/zonas(\/.*)?$/, seccion: '/zonas' },
   { patron: /^\/cajas-nap(\/.*)?$/, seccion: '/cajas-nap' },
   { patron: /^\/onus(\/.*)?$/, seccion: '/onus' },
+  { patron: /^\/materiales(\/.*)?$/, seccion: '/materiales' },
   { patron: /^\/averias(\/.*)?$/, seccion: '/averias' },
   { patron: /^\/ordenes-retiro(\/.*)?$/, seccion: '/ordenes-retiro' },
   { patron: /^\/gastos(\/.*)?$/, seccion: '/gastos' },
@@ -118,7 +119,20 @@ export function puedeAbrirRuta(pathname: string, rol?: string): boolean {
   const limpio = pathname.replace(/\/+$/, '') || '/';
   if (limpio === '/' || limpio === '/login') return true;
   const encontrada = SECCION_DE_RUTA.find((r) => r.patron.test(limpio));
-  if (!encontrada) return false;
-  if (encontrada.seccion === null) return true;
-  return [encontrada.seccion].flat().some((seccion) => puedeVerUrl(seccion, rol));
+  if (encontrada) {
+    if (encontrada.seccion === null) return true;
+    return [encontrada.seccion].flat().some((seccion) => puedeVerUrl(seccion, rol));
+  }
+  // Una pantalla que ya está en el menú se gobierna por su propio permiso,
+  // sin tener que repetirla aquí. Esta tabla queda para lo que NO sale en el
+  // menú: fichas, detalles y demás pantallas a las que se llega desde otra.
+  //
+  // Hacía falta porque registrar un módulo nuevo exigía acordarse de tres
+  // sitios a la vez, y olvidarse de este no rompía la compilación: la opción
+  // aparecía en el menú y al pulsarla decía «esta sección no es para tu
+  // cuenta», incluso al administrador. Pasó con Materiales.
+  if (ROLES_POR_URL.has(limpio)) return puedeVerUrl(limpio, rol);
+  // Lo desconocido se sigue negando: mejor que una pantalla nueva empiece
+  // cerrada y haya que abrirla a propósito.
+  return false;
 }
