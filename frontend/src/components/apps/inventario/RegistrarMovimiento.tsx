@@ -22,6 +22,7 @@ import {
 } from 'src/lib/inventario';
 import type { Etiqueta } from 'src/lib/etiquetas';
 import ImprimirEtiquetas from './ImprimirEtiquetas';
+import BuscarCliente, { type ClienteElegido } from 'src/components/shared/BuscarCliente';
 
 type Tipo = NuevoMovimiento['tipo'];
 
@@ -69,6 +70,7 @@ const RegistrarMovimiento = ({ open, onOpenChange, articulos, personal, inicial,
   const [lineas, setLineas] = useState<Linea[]>([lineaVacia()]);
   const [motivo, setMotivo] = useState('');
   const [documento, setDocumento] = useState('');
+  const [cliente, setCliente] = useState<ClienteElegido | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hora, setHora] = useState(() => new Date());
@@ -86,6 +88,7 @@ const RegistrarMovimiento = ({ open, onOpenChange, articulos, personal, inicial,
     setLineas([lineaVacia(inicial?.articulo_id ? String(inicial.articulo_id) : '')]);
     setMotivo('');
     setDocumento('');
+    setCliente(null);
     setError(null);
     setCodigo('');
     setAviso(null);
@@ -243,6 +246,7 @@ const RegistrarMovimiento = ({ open, onOpenChange, articulos, personal, inicial,
       const hechos = await registrarMovimientos({
         tipo,
         persona_id: conPersona ? Number(personaId) : null,
+        cliente_id: (tipo === 'consumo' || tipo === 'salida') && cliente ? cliente.id : null,
         lineas: revision.map((r) =>
           r.porPieza
             ? tipo === 'entrada'
@@ -567,6 +571,17 @@ const RegistrarMovimiento = ({ open, onOpenChange, articulos, personal, inicial,
               </Button>
             </div>
           </section>
+
+          {(tipo === 'consumo' || tipo === 'salida') && (
+            <FormField
+              label={tipo === 'consumo' ? '¿En qué cliente se usó?' : '¿Para qué cliente? (si es una venta)'}
+              icon="tabler:home"
+              htmlFor="mov-cliente"
+              hint={tipo === 'consumo' ? 'Opcional. Queda en el historial del material y enlaza a la ficha del cliente.' : 'Opcional.'}
+            >
+              <BuscarCliente id="mov-cliente" valor={cliente} onChange={setCliente} />
+            </FormField>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField

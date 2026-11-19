@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from 'src/components/ui/sheet';
@@ -352,6 +353,14 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
                           {fechaHora(m.creado_en)} · registró {m.registrado_por.nombre}
                           {m.documento && <> · {m.documento}</>}
                         </p>
+                        {m.cliente_id && (
+                          <p className="mt-1 text-xs">
+                            En{' '}
+                            <Link to={`/clientes/${m.cliente_id}`} className="font-medium hover:underline">
+                              {m.cliente_nombre}
+                            </Link>
+                          </p>
+                        )}
                         {m.motivo && <p className="mt-1 text-xs text-foreground/80">{m.motivo}</p>}
                       </div>
                       <div className="shrink-0 text-right">

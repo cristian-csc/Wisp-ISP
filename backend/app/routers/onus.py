@@ -222,6 +222,37 @@ def asignar_onu(
     return _buscar(db, onu.id)
 
 
+@router.put("/{onu_id}", response_model=schemas.OnuOut)
+def editar_onu(
+    onu_id: int,
+    data: schemas.OnuEditar,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    """Corrige MAC, marca o WiFi. Lo que cambió queda en el historial con el
+    valor anterior, para que una corrección nunca borre lo que había."""
+    onu = _buscar(db, onu_id)
+    errores = _repetidas(db, None, data.mac, propia=onu.id)
+    if errores:
+        raise HTTPException(status_code=400, detail=next(iter(errores.values())))
+    nombres = {"mac": "MAC", "marca": "marca", "wifi_version": "WiFi"}
+    cambios = []
+    for campo in ("mac", "marca", "wifi_version"):
+        antes = getattr(onu, campo)
+        despues = getattr(data, campo)
+        a = antes.value if hasattr(antes, "value") else antes
+        d = despues.value if hasattr(despues, "value") else despues
+        if a != d:
+            cambios.append(f"{nombres[campo]}: {a or 'vacía'} → {d or 'vacía'}")
+            setattr(onu, campo, despues)
+    if not cambios:
+        raise HTTPException(status_code=400, detail="No cambiaste ningún dato")
+    nota = "; ".join(cambios) + (f". {data.nota.strip()}" if data.nota and data.nota.strip() else "")
+    anotar(db, onu, "correccion", current_user, onu.estado, nota=nota)
+    db.commit()
+    return _buscar(db, onu.id)
+
+
 @router.delete("/{onu_id}")
 def delete_onu(
     onu_id: int,

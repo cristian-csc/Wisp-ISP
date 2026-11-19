@@ -27,7 +27,8 @@ export type TipoMovimientoOnu =
   | 'retiro'
   | 'danada'
   | 'perdida'
-  | 'recuperada';
+  | 'recuperada'
+  | 'correccion';
 
 export type MovimientoOnu = {
   id: number;
@@ -117,6 +118,14 @@ export async function historialOnu(id: number): Promise<MovimientoOnu[]> {
 export async function asignarOnu(id: number, tecnicoId: number, nota?: string): Promise<Onu> {
   const { data } = await api.post(`/onus/${id}/asignar`, { tecnico_id: tecnicoId, nota: nota || undefined });
   return data;
+}
+
+export async function editarOnu(
+  id: number,
+  data: { mac?: string | null; marca?: string | null; wifi_version?: 'wifi5' | 'wifi6' | null; nota?: string },
+): Promise<Onu> {
+  const { data: out } = await api.put<Onu>(`/onus/${id}`, data);
+  return out;
 }
 
 export async function marcarOnu(id: number, estado: EstadoOnu, nota?: string): Promise<Onu> {

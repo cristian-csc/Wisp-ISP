@@ -675,6 +675,25 @@ class OnuAsignarRequest(BaseModel):
     tecnico_id: int
     nota: Optional[str] = Field(None, max_length=255)
 
+class OnuEditar(BaseModel):
+    """Corregir los datos de una ONU ya registrada. La serie no se cambia:
+    identifica al equipo en la OLT; si está mal, la ONU se registró mal."""
+    mac: Optional[str] = Field(None, max_length=50)
+    marca: Optional[str] = Field(None, max_length=100)
+    wifi_version: Optional[WifiVersion] = None
+    nota: Optional[str] = Field(None, max_length=255)
+
+    @field_validator("mac")
+    @classmethod
+    def _mac(cls, v: Optional[str]) -> Optional[str]:
+        from .onus_historial import normalizar_mac
+        return normalizar_mac(v)
+
+    @field_validator("marca")
+    @classmethod
+    def _marca(cls, v: Optional[str]) -> Optional[str]:
+        return (v or "").strip() or None
+
 class OnuMarcarRequest(BaseModel):
     estado: EstadoOnu  # danado | perdido | en_almacen (devolución)
     nota: Optional[str] = Field(None, max_length=255)

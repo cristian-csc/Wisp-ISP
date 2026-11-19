@@ -65,6 +65,7 @@ const TIPO: Record<MovimientoOnu['tipo'], { icono: string; clase: string }> = {
   danada: { icono: 'tabler:alert-triangle', clase: 'bg-lighterror text-error-text' },
   perdida: { icono: 'tabler:help-hexagon', clase: 'bg-foreground text-background' },
   recuperada: { icono: 'tabler:rotate-clockwise', clase: 'bg-lightsuccess text-success-text' },
+  correccion: { icono: 'tabler:pencil', clase: 'bg-muted text-foreground' },
 };
 
 /** Lo que pasó, dicho como lo diría una persona. */
@@ -94,6 +95,8 @@ export function textoMovimiento(m: MovimientoOnu) {
       return <>Marcada como perdida</>;
     case 'recuperada':
       return <>Recuperada: vuelve al almacén</>;
+    case 'correccion':
+      return <>Se corrigieron sus datos</>;
   }
 }
 

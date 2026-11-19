@@ -113,6 +113,23 @@ def test_recorrido_completo_queda_en_el_historial(api, tecnicos):
     assert hist[1]["nota"] == "No enciende" and hist[1]["persona"]["nombre"] == "Luis"
 
 
+def test_corregir_mac_queda_en_el_historial(api, tecnicos):
+    a = api.post("/onus", json={"numero_serie": "ASKY10790001", "mac": "A4:B1:C2:3D:4E:5F"}).json()
+    b = api.post("/onus", json={"numero_serie": "ASKY10790002"}).json()
+    # La MAC de otra ONU no se puede repetir.
+    assert api.put(f"/onus/{b['id']}", json={"mac": "a4b1c23d4e5f"}).status_code == 400
+    assert api.put(f"/onus/{b['id']}", json={"mac": "123"}).status_code == 422
+    r = api.put(f"/onus/{b['id']}", json={"mac": "a4b1c23d4e60", "marca": "Askey", "nota": "Etiqueta de la caja"})
+    assert r.status_code == 200 and r.json()["mac"] == "A4:B1:C2:3D:4E:60"
+    hist = api.get(f"/onus/{b['id']}/historial").json()
+    assert hist[0]["tipo"] == "correccion"
+    assert "MAC: vacía → A4:B1:C2:3D:4E:60" in hist[0]["nota"] and "Etiqueta de la caja" in hist[0]["nota"]
+    # Sin cambios no se anota nada.
+    assert api.put(f"/onus/{b['id']}", json={"mac": "A4:B1:C2:3D:4E:60", "marca": "Askey"}).status_code == 400
+    # La propia MAC no cuenta como repetida.
+    assert api.put(f"/onus/{a['id']}", json={"mac": "A4:B1:C2:3D:4E:5F", "marca": "Otra"}).status_code == 200
+
+
 def test_no_se_borra_con_movimientos(api, tecnicos):
     rosa, _ = tecnicos
     limpia = api.post("/onus", json={"numero_serie": "ASKY10790001"}).json()

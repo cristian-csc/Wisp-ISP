@@ -8,10 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 's
 import ConfirmDialog from 'src/components/shared/ConfirmDialog';
 import LoadingState from 'src/components/shared/LoadingState';
 import type { Usuario } from 'src/lib/api';
-import { asignarOnu, deleteOnu, historialOnu, macValida, marcarOnu, mensajeDeError, type EstadoOnu, type MovimientoOnu, type Onu } from 'src/lib/onus';
+import { asignarOnu, deleteOnu, editarOnu, formatearMac, historialOnu, macValida, marcarOnu, mensajeDeError, type EstadoOnu, type MovimientoOnu, type Onu } from 'src/lib/onus';
 import { DondeEsta, EstadoOnuChip, LineaDeTiempo } from './piezasOnu';
 
-type Accion = 'entregar' | 'danado' | 'perdido' | null;
+type Accion = 'entregar' | 'danado' | 'perdido' | 'editar' | null;
 
 interface Props {
   onu: Onu | null;
@@ -33,12 +33,18 @@ const DetalleOnu = ({ onu, onClose, puedeGestionar, tecnicos, macRepetida, accio
   const [nota, setNota] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  const [mac, setMac] = useState('');
+  const [marca, setMarca] = useState('');
+  const [wifi, setWifi] = useState<'wifi5' | 'wifi6' | ''>('');
 
   useEffect(() => {
     setHistorial(null);
     setAccion(onu ? accionInicial : null);
     setTecnico('');
     setNota('');
+    setMac(onu?.mac ?? '');
+    setMarca(onu?.marca ?? '');
+    setWifi(onu?.wifi_version ?? '');
     if (!onu) return;
     let vigente = true;
     historialOnu(onu.id)
@@ -48,7 +54,7 @@ const DetalleOnu = ({ onu, onClose, puedeGestionar, tecnicos, macRepetida, accio
       vigente = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onu?.id, onu?.estado, onu?.tecnico_id]);
+  }, [onu?.id, onu?.estado, onu?.tecnico_id, onu?.mac, onu?.marca, onu?.wifi_version]);
 
   if (!onu) return <Sheet open={false} />;
 
@@ -88,10 +94,67 @@ const DetalleOnu = ({ onu, onClose, puedeGestionar, tecnicos, macRepetida, accio
             {onu.marca ?? 'Marca sin registrar'} · MAC <span className="font-mono">{onu.mac ?? 'sin registrar'}</span>
           </SheetDescription>
           {(!macValida(onu.mac) || macRepetida) && (
-            <p className="mt-2 inline-flex items-center gap-1 rounded-md bg-lightwarning px-2 py-1 text-xs font-medium text-warning-text">
+            <p className="mt-2 inline-flex flex-wrap items-center gap-1 rounded-md bg-lightwarning px-2 py-1 text-xs font-medium text-warning-text">
               <Icon icon="tabler:alert-triangle" width={13} />
               {!macValida(onu.mac) ? 'La MAC guardada no es válida: se cargó antes de que se validara' : 'Otra ONU tiene la misma MAC: revisa cuál es la correcta'}
+              {puedeGestionar && accion !== 'editar' && (
+                <button type="button" className="ms-1 underline underline-offset-2" onClick={() => setAccion('editar')}>
+                  Corregir
+                </button>
+              )}
             </p>
+          )}
+          {puedeGestionar && (
+            <div className="mt-3">
+              <Button size="sm" variant="ghost" className="-ml-2" onClick={() => setAccion(accion === 'editar' ? null : 'editar')} aria-expanded={accion === 'editar'}>
+                <Icon icon="tabler:pencil" width={15} /> Corregir datos
+              </Button>
+            </div>
+          )}
+          {accion === 'editar' && (
+            <form
+              className="mt-3 flex flex-col gap-3 rounded-xl border border-ld bg-surface-2 p-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                ejecutar(
+                  () => editarOnu(onu.id, { mac: mac || null, marca: marca.trim() || null, wifi_version: wifi || null, nota: nota.trim() }),
+                  'Datos corregidos',
+                );
+              }}
+            >
+              <p className="text-sm font-medium">Corregir datos</p>
+              <p className="-mt-2 text-xs text-muted-foreground">La serie no se cambia. El valor anterior queda en el recorrido.</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Input
+                  aria-label="MAC"
+                  value={mac}
+                  onChange={(e) => setMac(formatearMac(e.target.value))}
+                  placeholder="A4:B1:C2:3D:4E:5F"
+                  className="bg-card font-mono"
+                  aria-invalid={mac.length > 0 && mac.length < 17 ? true : undefined}
+                />
+                <Input aria-label="Marca" value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Marca" maxLength={100} className="bg-card" />
+              </div>
+              <Select value={wifi || 'nose'} onValueChange={(v) => setWifi(v === 'nose' ? '' : (v as 'wifi5' | 'wifi6'))}>
+                <SelectTrigger className="w-full bg-card" aria-label="WiFi">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="wifi6">WiFi 6</SelectItem>
+                  <SelectItem value="wifi5">WiFi 5</SelectItem>
+                  <SelectItem value="nose">Sin indicar</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input aria-label="Nota" value={nota} onChange={(e) => setNota(e.target.value)} maxLength={255} className="bg-card" placeholder="Por qué (opcional): estaba en la etiqueta de la caja…" />
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={guardando || (mac.length > 0 && mac.length < 17)}>
+                  {guardando ? 'Guardando…' : 'Guardar corrección'}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setAccion(null)}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
           )}
         </header>
 
@@ -137,7 +200,7 @@ const DetalleOnu = ({ onu, onClose, puedeGestionar, tecnicos, macRepetida, accio
             </div>
           )}
 
-          {accion && (
+          {accion && accion !== 'editar' && (
             <form
               className="mt-4 flex flex-col gap-3 rounded-xl border border-ld bg-surface-2 p-4"
               onSubmit={(e) => {

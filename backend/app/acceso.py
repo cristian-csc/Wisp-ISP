@@ -135,6 +135,7 @@ REGLAS: dict[tuple[str, str], Regla] = {
     ),
     ("POST", "/api/onus"): Regla(amplia=_GESTION_ONUS),
     ("POST", "/api/onus/{onu_id}/asignar"): Regla(amplia=_GESTION_ONUS),
+    ("PUT", "/api/onus/{onu_id}"): Regla(amplia=_GESTION_ONUS),
     ("DELETE", "/api/onus/{onu_id}"): Regla(amplia=_GESTION_ONUS),
 
     ("POST", "/api/ordenes-retiro"): _usar(RETIROS, CLIENTES_PANEL),
