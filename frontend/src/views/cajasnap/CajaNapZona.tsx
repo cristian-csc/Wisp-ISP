@@ -126,16 +126,22 @@ const CajaNapZona = () => {
         ))}
       </div>
 
-      {/* Una fila por caja, no una rejilla de tarjetas: con trece cajas lo
-          que se hace aquí es recorrerlas buscando dónde queda sitio, y en
-          columna se comparan de un barrido vertical. */}
-      <div className="flex flex-col gap-3">
+      {/* Dos columnas donde cabe, una cuando no.
+          El corte es xl y no lg a propósito: con el menú lateral puesto, a
+          1024 px cada columna queda en unos 350 px y la fila de la tarjeta
+          —código, ocupación y «Ver detalle»— se parte en tres líneas. A
+          partir de 1280 px entra entera.
+          Con un número impar de cajas, la última cae sola en la primera
+          columna y conserva el mismo ancho: lo hace la rejilla, sin ayuda. */}
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         {cajasFiltradas.length === 0 && (
-          <EmptyState
-            icono="tabler:box-off"
-            titulo={cajas.length === 0 ? 'Sin cajas NAP registradas' : 'Ninguna caja coincide con la búsqueda'}
-            descripcion={cajas.length === 0 ? 'Todavía no hay cajas NAP en esta zona.' : undefined}
-          />
+          <div className="xl:col-span-2">
+            <EmptyState
+              icono="tabler:box-off"
+              titulo={cajas.length === 0 ? 'Sin cajas NAP registradas' : 'Ninguna caja coincide con la búsqueda'}
+              descripcion={cajas.length === 0 ? 'Todavía no hay cajas NAP en esta zona.' : undefined}
+            />
+          </div>
         )}
         {cajasFiltradas.map((c) => {
           const libres = c.bornes.filter((b) => b.estado === 'libre').length;
