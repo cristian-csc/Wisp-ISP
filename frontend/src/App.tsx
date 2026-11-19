@@ -16,6 +16,7 @@ import Onus from 'src/views/onus/Onus';
 import Stock from 'src/views/inventario/Stock';
 import MovimientosInventario from 'src/views/inventario/Movimientos';
 import PersonalInventario from 'src/views/inventario/Personal';
+import UnidadesInventario from 'src/views/inventario/Unidades';
 import Averias from 'src/views/averias/Averias';
 import AveriaZonaDetail from 'src/views/averias/AveriaZonaDetail';
 import Retiros from 'src/views/retiros/Retiros';
@@ -90,6 +91,7 @@ function App() {
             <Route path="/inventario" element={<Stock />} />
             <Route path="/inventario/movimientos" element={<MovimientosInventario />} />
             <Route path="/inventario/personal" element={<PersonalInventario />} />
+            <Route path="/inventario/unidades" element={<UnidadesInventario />} />
             <Route path="/onus" element={<Onus />} />
             <Route path="/averias" element={<Averias />} />
             <Route path="/averias/zona/:zonaId" element={<AveriaZonaDetail />} />

@@ -144,8 +144,15 @@ const Personal = () => {
                   <ul className="flex flex-col">
                     {p.material.slice(0, 6).map((m) => (
                       <li key={m.articulo_id} className="flex items-baseline justify-between gap-3 py-1.5">
-                        <span className="min-w-0 truncate text-sm">{m.nombre}</span>
-                        <span className="shrink-0 text-sm font-medium tabular-nums">{cantidadConUnidad(m.cantidad, m.unidad)}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm">{m.nombre}</span>
+                          {m.piezas.length > 0 && (
+                            <span className="block truncate font-mono text-[11px] text-muted-foreground" title={m.piezas.join(', ')}>
+                              {m.piezas.join(' · ')}
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-sm font-medium tabular-nums">{cantidadConUnidad(m.cantidad, m)}</span>
                       </li>
                     ))}
                     {p.material.length > 6 && (

@@ -5,9 +5,22 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from 'src/component
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import LoadingState from 'src/components/shared/LoadingState';
+import ConfirmDialog from 'src/components/shared/ConfirmDialog';
+import ImprimirEtiquetas from './ImprimirEtiquetas';
+import type { Etiqueta } from 'src/lib/etiquetas';
 import { ROL_LABEL } from 'src/lib/permisos';
 import { fechaHora, soles } from 'src/lib/formato';
-import { ajustarStock, cantidadConUnidad, getArticulo, palabraUnidad, type DetalleArticulo as Detalle } from 'src/lib/inventario';
+import {
+  ESTADO_ACTIVO,
+  ajustarStock,
+  cantidadConUnidad,
+  etiquetarPorPieza,
+  getArticulo,
+  listActivos,
+  palabraUnidad,
+  type Activo,
+  type DetalleArticulo as Detalle,
+} from 'src/lib/inventario';
 import { BarraStock, CantidadMovimiento, EstadoStockBadge, TipoMovimientoEtiqueta, iniciales } from './piezas';
 import type { InicialMovimiento } from './RegistrarMovimiento';
 
@@ -29,6 +42,10 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
   const [contado, setContado] = useState('');
   const [motivo, setMotivo] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [piezas, setPiezas] = useState<Activo[] | null>(null);
+  const [marcadas, setMarcadas] = useState<Set<number>>(new Set());
+  const [imprimiendo, setImprimiendo] = useState<{ etiquetas: Etiqueta[]; copias: boolean } | null>(null);
+  const [confirmarPieza, setConfirmarPieza] = useState(false);
 
   useEffect(() => {
     if (articuloId == null) return;
@@ -41,7 +58,23 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
     };
   }, [articuloId, version]);
 
+  const porPieza = detalle?.articulo.id === articuloId && detalle?.articulo.controla_por_unidad;
   useEffect(() => {
+    if (articuloId == null || !porPieza) {
+      setPiezas(null);
+      return;
+    }
+    let vigente = true;
+    listActivos(articuloId)
+      .then((ps) => vigente && setPiezas(ps))
+      .catch(() => vigente && setPiezas([]));
+    return () => {
+      vigente = false;
+    };
+  }, [articuloId, porPieza, version]);
+
+  useEffect(() => {
+    setMarcadas(new Set());
     setAjustando(false);
     setContado('');
     setMotivo('');
@@ -63,6 +96,29 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
     } finally {
       setGuardando(false);
     }
+  }
+
+  async function pasarAPieza() {
+    if (!detalle) return;
+    try {
+      const nuevas = await etiquetarPorPieza(detalle.articulo.id);
+      toast.success(`${nuevas.length} pieza${nuevas.length === 1 ? '' : 's'} con etiqueta`);
+      onCambio();
+      if (nuevas.length) setImprimiendo({ etiquetas: nuevas.map(etiquetaDe), copias: false });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo pasar a etiqueta por pieza');
+    }
+  }
+
+  function etiquetaDe(p: Activo): Etiqueta {
+    return { codigo: p.codigo, titulo: p.articulo_nombre, detalle: p.numero_serie ? `S/N ${p.numero_serie}` : null };
+  }
+
+  const vigentes = (piezas ?? []).filter((p) => p.estado === 'almacen' || p.estado === 'asignado');
+
+  function imprimirPiezas() {
+    const elegidas = marcadas.size ? (piezas ?? []).filter((p) => marcadas.has(p.id)) : vigentes;
+    setImprimiendo({ etiquetas: elegidas.map(etiquetaDe), copias: false });
   }
 
   const a = detalle?.articulo;
@@ -110,11 +166,12 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
               <div className="px-5 py-4">
                 <p className="text-xs text-muted-foreground">Con el personal</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">{a.en_personal.toLocaleString('es-PE')}</p>
-                <p className="mt-1.5 text-xs text-muted-foreground">{palabraUnidad(a.unidad, 2)}</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">{palabraUnidad(a, 2)}</p>
               </div>
             </div>
 
-            {(puedeGestionar || puedeAjustar) && (
+            {/* La etiqueta del material la puede imprimir cualquiera que vea el stock. */}
+            {(
               <div className="flex flex-wrap gap-2 border-b border-ld px-6 py-4">
                 {puedeGestionar && (
                   <>
@@ -129,7 +186,26 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
                     </Button>
                   </>
                 )}
-                {puedeAjustar && (
+                {!a.controla_por_unidad && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setImprimiendo({
+                        etiquetas: [{ codigo: a.codigo, titulo: a.nombre, detalle: [a.marca, a.modelo].filter(Boolean).join(' ') || a.categoria.nombre }],
+                        copias: true,
+                      })
+                    }
+                  >
+                    <Icon icon="tabler:barcode" width={16} /> Etiqueta
+                  </Button>
+                )}
+                {puedeGestionar && !a.controla_por_unidad && (
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmarPieza(true)}>
+                    <Icon icon="tabler:tags" width={16} /> Etiquetar cada pieza
+                  </Button>
+                )}
+                {puedeAjustar && !a.controla_por_unidad && (
                   <Button size="sm" variant="ghost" onClick={() => setAjustando((v) => !v)} aria-expanded={ajustando}>
                     <Icon icon="tabler:adjustments" width={16} /> Ajustar por conteo
                   </Button>
@@ -182,6 +258,60 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
               </div>
             )}
 
+            {a.controla_por_unidad && (
+              <section className="border-b border-ld px-6 py-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">
+                    Piezas con etiqueta{' '}
+                    <span className="font-normal text-muted-foreground">
+                      · {vigentes.length} en uso{piezas && piezas.length > vigentes.length ? `, ${piezas.length - vigentes.length} instaladas o de baja` : ''}
+                    </span>
+                  </h3>
+                  <Button size="sm" variant="outline" onClick={imprimirPiezas} disabled={!piezas || (marcadas.size === 0 && vigentes.length === 0)}>
+                    <Icon icon="tabler:printer" width={16} />
+                    {marcadas.size ? `Imprimir ${marcadas.size}` : 'Imprimir etiquetas'}
+                  </Button>
+                </div>
+                {piezas === null ? (
+                  <LoadingState filas={2} />
+                ) : piezas.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">Aún no hay piezas: se crean al registrar una entrada.</p>
+                ) : (
+                  <ul className="mt-3 flex max-h-72 flex-col overflow-y-auto rounded-lg border border-ld">
+                    {piezas.map((p) => (
+                      <li key={p.id} className="flex items-center gap-3 border-b border-ld px-3 py-2 last:border-0">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-[var(--brand)]"
+                          aria-label={`Marcar ${p.codigo}`}
+                          checked={marcadas.has(p.id)}
+                          onChange={(e) =>
+                            setMarcadas((m) => {
+                              const n = new Set(m);
+                              if (e.target.checked) n.add(p.id);
+                              else n.delete(p.id);
+                              return n;
+                            })
+                          }
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-mono text-sm font-semibold">{p.codigo}</span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {p.numero_serie ? `S/N ${p.numero_serie}` : 'Sin número de serie'}
+                            {p.persona && ` · ${p.persona.nombre}`}
+                            {p.cliente_nombre && ` · ${p.cliente_nombre}`}
+                          </span>
+                        </span>
+                        <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${ESTADO_ACTIVO[p.estado].clase}`}>
+                          {ESTADO_ACTIVO[p.estado].texto}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+
             <section className="border-b border-ld px-6 py-5">
               <h3 className="text-sm font-semibold">Quién lo tiene</h3>
               {detalle.en_manos.length === 0 ? (
@@ -197,7 +327,7 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
                         <span className="block truncate text-sm font-medium">{persona.nombre}</span>
                         <span className="block text-xs text-muted-foreground">{ROL_LABEL[persona.rol] ?? persona.rol}</span>
                       </span>
-                      <span className="text-sm font-semibold tabular-nums">{cantidadConUnidad(cantidad, a.unidad)}</span>
+                      <span className="text-sm font-semibold tabular-nums">{cantidadConUnidad(cantidad, a)}</span>
                     </li>
                   ))}
                 </ul>
@@ -215,6 +345,7 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <TipoMovimientoEtiqueta tipo={m.tipo} />
+                          {m.activo_codigo && <span className="font-mono text-xs text-muted-foreground">{m.activo_codigo}</span>}
                           {m.persona && <span className="text-sm text-muted-foreground">· {m.persona.nombre}</span>}
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -242,6 +373,28 @@ const DetalleArticulo = ({ articuloId, onClose, version, puedeGestionar, puedeAj
           </>
         )}
       </SheetContent>
+      <ImprimirEtiquetas
+        open={imprimiendo != null}
+        onOpenChange={(o) => !o && setImprimiendo(null)}
+        etiquetas={imprimiendo?.etiquetas ?? []}
+        conCopias={imprimiendo?.copias}
+        titulo={imprimiendo?.copias ? 'Etiqueta del material' : 'Etiquetas de las piezas'}
+      />
+      <ConfirmDialog
+        open={confirmarPieza}
+        onOpenChange={setConfirmarPieza}
+        title="Etiquetar cada pieza"
+        description={
+          a
+            ? `Se crea un código para cada una de las ${a.stock + a.en_personal} piezas de «${a.nombre}»: las del almacén y las que ya tiene el personal. Desde ahí se entregan y devuelven pasando la etiqueta. No se puede deshacer.`
+            : undefined
+        }
+        confirmText="Crear etiquetas"
+        loadingText="Creando…"
+        tone="primary"
+        icon="tabler:tags"
+        onConfirm={pasarAPieza}
+      />
     </Sheet>
   );
 };

@@ -1,20 +1,17 @@
-import { Link } from 'react-router';
-import { Icon } from '@iconify/react';
 import CardBox from './CardBox';
+import Cifra, { type TonoCifra } from './Cifra';
 
 export type TonoStat = 'primary' | 'brand' | 'success' | 'warning' | 'error' | 'info';
 
-const NEUTRO = { tile: 'bg-muted', icono: 'text-foreground' };
-
 /** Las tarjetas son neutras: el verde y el rojo se reservan para los estados
  *  y avisos, donde sí significan algo. Solo el dinero lleva el naranja. */
-const TONOS: Record<TonoStat, { tile: string; icono: string }> = {
-  primary: NEUTRO,
-  brand: { tile: 'bg-lightbrand', icono: 'text-brand-strong dark:text-brand' },
-  success: NEUTRO,
-  warning: NEUTRO,
-  error: NEUTRO,
-  info: NEUTRO,
+const TONOS: Record<TonoStat, TonoCifra> = {
+  primary: 'neutro',
+  brand: 'marca',
+  success: 'neutro',
+  warning: 'neutro',
+  error: 'neutro',
+  info: 'neutro',
 };
 
 interface Props {
@@ -29,45 +26,12 @@ interface Props {
   to?: string;
 }
 
-const StatCard = ({ icono, etiqueta, valor, nota, delta, tono = 'primary', to }: Props) => {
-  const t = TONOS[tono];
-  const sube = (delta ?? 0) >= 0;
-
-  const cuerpo = (
-    <CardBox className={`transition-ui h-full p-5 ${to ? 'card-hover' : ''}`}>
-      <div className="flex items-start gap-3">
-        <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${t.tile}`}>
-          <Icon icon={icono} width={22} className={t.icono} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm text-muted-foreground">{etiqueta}</p>
-          <div className="mt-1 flex flex-wrap items-baseline gap-2">
-            <span className="text-2xl font-semibold leading-none">{valor}</span>
-            {delta !== null && delta !== undefined && (
-              <span
-                className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                  sube ? 'bg-lightsuccess text-success-text' : 'bg-lighterror text-error-text'
-                }`}
-              >
-                <Icon icon={sube ? 'tabler:trending-up' : 'tabler:trending-down'} width={13} />
-                {sube ? '+' : ''}
-                {delta.toFixed(0)}%
-              </span>
-            )}
-          </div>
-          {nota && <div className="mt-1.5 text-xs text-muted-foreground">{nota}</div>}
-        </div>
-      </div>
-    </CardBox>
-  );
-
-  return to ? (
-    <Link to={to} className="block h-full">
-      {cuerpo}
-    </Link>
-  ) : (
-    cuerpo
-  );
-};
+/** Una cifra suelta en su propia tarjeta. Por dentro es la misma Cifra de
+ *  las tiras de indicadores, para que todas se lean igual. */
+const StatCard = ({ icono, etiqueta, valor, nota, delta, tono = 'primary', to }: Props) => (
+  <CardBox className="h-full gap-0 overflow-hidden !p-0">
+    <Cifra icono={icono} etiqueta={etiqueta} valor={valor} nota={nota} delta={delta} tono={TONOS[tono]} to={to} />
+  </CardBox>
+);
 
 export default StatCard;

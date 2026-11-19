@@ -114,6 +114,13 @@ const SidebarContent: MenuItem[] = [
         roles: ['admin'],
       },
       {
+        name: 'Unidades de medida',
+        icon: 'solar:ruler-linear',
+        id: uniqueId(),
+        url: '/inventario/unidades',
+        roles: ['admin'],
+      },
+      {
         name: 'Inventario de ONUs',
         icon: 'solar:cpu-bolt-linear',
         id: uniqueId(),

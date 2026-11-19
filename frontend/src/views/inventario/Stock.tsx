@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import { Link } from 'react-router';
 import { Icon } from '@iconify/react';
 import CardBox from 'src/components/shared/CardBox';
@@ -19,9 +20,11 @@ import { useCurrentUser } from 'src/lib/useCurrentUser';
 import { useMisModulos } from 'src/lib/modulos';
 import { soles } from 'src/lib/formato';
 import {
+  escanear,
   getResumenInventario,
   listArticulos,
   listCategorias,
+  listUnidades,
   listPersonal,
   palabraUnidad,
   permisosInventario,
@@ -29,6 +32,7 @@ import {
   type Categoria,
   type PersonaConMaterial,
   type ResumenInventario,
+  type UnidadMedida,
 } from 'src/lib/inventario';
 
 const Stock = () => {
@@ -38,6 +42,7 @@ const Stock = () => {
 
   const [articulos, setArticulos] = useState<Articulo[] | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
   const [personal, setPersonal] = useState<PersonaConMaterial[]>([]);
   const [resumen, setResumen] = useState<ResumenInventario | null>(null);
   const [categoria, setCategoria] = useState('todas');
@@ -63,6 +68,7 @@ const Stock = () => {
 
   useEffect(() => {
     listCategorias().then(setCategorias).catch(() => {});
+    listUnidades().then(setUnidades).catch(() => {});
   }, []);
 
   const visibles = useMemo(() => {
@@ -82,6 +88,25 @@ const Stock = () => {
       ...categorias.map((c) => ({ valor: String(c.id), etiqueta: c.nombre, cuenta: cuenta(c.id) })),
     ];
   }, [articulos, categorias]);
+
+  /** Enter en el buscador: si lo escrito (o lo que pasó el lector) es una
+   *  etiqueta, se abre directo la ficha de ese material. */
+  async function buscarEtiqueta(e: FormEvent) {
+    e.preventDefault();
+    const texto = busqueda.trim();
+    if (!texto) return;
+    try {
+      const r = await escanear(texto);
+      setAbierto(r.articulo.id);
+      setBusqueda('');
+      if (r.tipo === 'activo') {
+        const quien = r.activo.persona ? ` · la tiene ${r.activo.persona.nombre}` : '';
+        toast.message(`${r.activo.codigo} · ${r.articulo.nombre}${quien}`);
+      }
+    } catch {
+      // No es una etiqueta: se queda como búsqueda por texto.
+    }
+  }
 
   const alertas = (resumen?.sin_stock ?? 0) + (resumen?.bajo_minimo ?? 0);
   const articuloAbierto = articulos?.find((a) => a.id === abierto) ?? null;
@@ -109,20 +134,37 @@ const Stock = () => {
 
       <CardBox className="gap-0 overflow-hidden !p-0">
         <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-4 [&>*]:bg-card">
-          <Cifra etiqueta="Materiales" valor={resumen?.articulos ?? '—'} nota={`${categorias.length} categorías`} />
+          <Cifra
+            etiqueta="Materiales"
+            icono="solar:box-minimalistic-linear"
+            valor={resumen?.articulos ?? '—'}
+            nota={`en ${categorias.length} categorías`}
+          />
           <Cifra
             etiqueta="Por reponer"
+            icono="solar:danger-triangle-linear"
+            tono={resumen?.sin_stock ? 'peligro' : alertas ? 'alerta' : 'ok'}
             valor={resumen ? alertas : '—'}
-            nota={resumen ? `${resumen.sin_stock} sin stock · ${resumen.bajo_minimo} en el mínimo` : undefined}
+            progreso={resumen && resumen.articulos && alertas ? { valor: alertas, total: resumen.articulos } : null}
+            nota={
+              resumen
+                ? alertas
+                  ? `${resumen.sin_stock} sin stock · ${resumen.bajo_minimo} en el mínimo`
+                  : 'Todo por encima del mínimo'
+                : undefined
+            }
           />
           <Cifra
             etiqueta="Con el personal"
+            icono="solar:users-group-two-rounded-linear"
             valor={resumen?.unidades_en_personal.toLocaleString('es-PE') ?? '—'}
             nota={resumen ? `unidades en manos de ${resumen.personas_con_material} persona${resumen.personas_con_material === 1 ? '' : 's'}` : undefined}
             to="/inventario/personal"
           />
           <Cifra
             etiqueta="Valor en almacén"
+            icono="solar:wallet-2-linear"
+            tono="marca"
             valor={resumen ? soles(resumen.valor_almacen, true) : '—'}
             nota={resumen ? `${resumen.movimientos_hoy} movimiento${resumen.movimientos_hoy === 1 ? '' : 's'} hoy` : undefined}
             to="/inventario/movimientos"
@@ -150,7 +192,9 @@ const Stock = () => {
       <CardBox className="gap-0 overflow-hidden !p-0">
         <div className="flex flex-col gap-3 px-4 pt-4 sm:px-5">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <SearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar por nombre, código o marca" className="md:max-w-sm md:flex-1" />
+            <form onSubmit={buscarEtiqueta} role="search" className="md:max-w-sm md:flex-1">
+              <SearchInput value={busqueda} onChange={setBusqueda} placeholder="Buscar o pasar el lector por una etiqueta" />
+            </form>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <Switch checked={soloAlertas} onCheckedChange={setSoloAlertas} aria-label="Solo por reponer" />
@@ -203,7 +247,12 @@ const Stock = () => {
                   <TableRow key={a.id} className={`cursor-pointer ${a.activo ? '' : 'opacity-60'}`} onClick={() => setAbierto(a.id)}>
                     <TableCell>
                       <button type="button" className="block min-w-0 text-left" onClick={() => setAbierto(a.id)}>
-                        <span className="block truncate font-medium">{a.nombre}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="truncate font-medium">{a.nombre}</span>
+                          {a.controla_por_unidad && (
+                            <Icon icon="tabler:barcode" width={15} className="shrink-0 text-muted-foreground" aria-label="Etiqueta por pieza" />
+                          )}
+                        </span>
                         <span className="block truncate text-xs text-muted-foreground">
                           <span className="font-mono">{a.codigo}</span>
                           {(a.marca || a.modelo) && <> · {[a.marca, a.modelo].filter(Boolean).join(' ')}</>}
@@ -215,7 +264,7 @@ const Stock = () => {
                       <div className="flex flex-col items-end gap-1.5">
                         <span className="tabular-nums">
                           <span className="font-semibold">{a.stock.toLocaleString('es-PE')}</span>{' '}
-                          <span className="text-xs text-muted-foreground">{palabraUnidad(a.unidad, a.stock)}</span>
+                          <span className="text-xs text-muted-foreground">{palabraUnidad(a, a.stock)}</span>
                         </span>
                         <BarraStock stock={a.stock} minimo={a.stock_minimo} estado={a.estado} />
                       </div>
@@ -289,6 +338,7 @@ const Stock = () => {
         open={editando != null}
         onOpenChange={(o) => !o && setEditando(null)}
         categorias={categorias}
+        unidades={unidades}
         articulo={editando === 'nuevo' ? null : editando}
         onGuardado={recargar}
       />

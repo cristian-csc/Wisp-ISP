@@ -5,12 +5,14 @@ import { Input } from 'src/components/ui/input';
 import { Textarea } from 'src/components/ui/textarea';
 import { Switch } from 'src/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'src/components/ui/select';
-import { UNIDADES, crearArticulo, editarArticulo, type Articulo, type Categoria, type Unidad } from 'src/lib/inventario';
+import OpcionMarcable from 'src/components/shared/OpcionMarcable';
+import { crearArticulo, editarArticulo, type Articulo, type Categoria, type UnidadMedida } from 'src/lib/inventario';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categorias: Categoria[];
+  unidades: UnidadMedida[];
   /** Si llega, se edita; si no, se da de alta. */
   articulo?: Articulo | null;
   onGuardado: (a: Articulo) => void;
@@ -22,7 +24,8 @@ const VACIO = {
   categoria_id: '',
   marca: '',
   modelo: '',
-  unidad: 'unidad' as Unidad,
+  unidad_id: '',
+  por_pieza: false,
   stock_minimo: '',
   stock_inicial: '',
   costo_unitario: '',
@@ -40,7 +43,8 @@ function desde(a: Articulo): Campos {
     categoria_id: String(a.categoria_id),
     marca: a.marca ?? '',
     modelo: a.modelo ?? '',
-    unidad: a.unidad,
+    unidad_id: String(a.unidad_id),
+    por_pieza: a.controla_por_unidad,
     stock_minimo: String(a.stock_minimo),
     stock_inicial: '',
     costo_unitario: a.costo_unitario != null ? String(a.costo_unitario) : '',
@@ -50,7 +54,7 @@ function desde(a: Articulo): Campos {
   };
 }
 
-const ArticuloDialog = ({ open, onOpenChange, categorias, articulo, onGuardado }: Props) => {
+const ArticuloDialog = ({ open, onOpenChange, categorias, unidades, articulo, onGuardado }: Props) => {
   const [f, setF] = useState<Campos>(VACIO);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +63,9 @@ const ArticuloDialog = ({ open, onOpenChange, categorias, articulo, onGuardado }
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setF(articulo ? desde(articulo) : VACIO);
-  }, [open, articulo]);
+    // Lo más común es contar por unidad: se deja elegida para no hacer un paso más.
+    setF(articulo ? desde(articulo) : { ...VACIO, unidad_id: String(unidades.find((u) => u.nombre === 'unidad')?.id ?? '') });
+  }, [open, articulo, unidades]);
 
   const campo = (k: keyof Campos) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
 
@@ -74,7 +79,7 @@ const ArticuloDialog = ({ open, onOpenChange, categorias, articulo, onGuardado }
       categoria_id: Number(f.categoria_id),
       marca: f.marca.trim() || null,
       modelo: f.modelo.trim() || null,
-      unidad: f.unidad,
+      unidad_id: Number(f.unidad_id),
       stock_minimo: Number(f.stock_minimo || 0),
       costo_unitario: f.costo_unitario ? Number(f.costo_unitario) : null,
       ubicacion: f.ubicacion.trim() || null,
@@ -83,7 +88,7 @@ const ArticuloDialog = ({ open, onOpenChange, categorias, articulo, onGuardado }
     try {
       const a = editando
         ? await editarArticulo(articulo!.id, { ...datos, activo: f.activo })
-        : await crearArticulo({ ...datos, stock_inicial: Number(f.stock_inicial || 0) });
+        : await crearArticulo({ ...datos, stock_inicial: Number(f.stock_inicial || 0), controla_por_unidad: f.por_pieza });
       toast.success(editando ? 'Material actualizado' : 'Material registrado');
       onOpenChange(false);
       onGuardado(a);
@@ -109,7 +114,7 @@ const ArticuloDialog = ({ open, onOpenChange, categorias, articulo, onGuardado }
           submitLabel={editando ? 'Guardar cambios' : 'Registrar material'}
           submitForm="articulo-form"
           submitting={guardando}
-          disabled={!f.codigo.trim() || f.nombre.trim().length < 2 || !f.categoria_id}
+          disabled={!f.codigo.trim() || f.nombre.trim().length < 2 || !f.categoria_id || !f.unidad_id}
         />
       }
     >
@@ -142,14 +147,14 @@ const ArticuloDialog = ({ open, onOpenChange, categorias, articulo, onGuardado }
             <Input id="art-modelo" value={f.modelo} onChange={campo('modelo')} maxLength={80} placeholder="TL-SG108" />
           </FormField>
           <FormField label="Se cuenta por">
-            <Select value={f.unidad} onValueChange={(v) => setF((x) => ({ ...x, unidad: v as Unidad }))}>
+            <Select value={f.unidad_id} onValueChange={(v) => setF((x) => ({ ...x, unidad_id: v }))}>
               <SelectTrigger className="w-full" aria-label="Unidad">
-                <SelectValue />
+                <SelectValue placeholder="Elige una" />
               </SelectTrigger>
               <SelectContent>
-                {UNIDADES.map((u) => (
-                  <SelectItem key={u.valor} value={u.valor}>
-                    {u.plural[0].toUpperCase() + u.plural.slice(1)}
+                {unidades.map((u) => (
+                  <SelectItem key={u.id} value={String(u.id)}>
+                    {u.plural[0].toUpperCase() + u.plural.slice(1)} <span className="text-muted-foreground">({u.abreviatura})</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -159,7 +164,18 @@ const ArticuloDialog = ({ open, onOpenChange, categorias, articulo, onGuardado }
             <Input id="art-minimo" type="number" inputMode="numeric" min={0} step={1} value={f.stock_minimo} onChange={campo('stock_minimo')} placeholder="0" className="tabular-nums" />
           </FormField>
           {!editando && (
-            <FormField label="Hay ahora en almacén" htmlFor="art-inicial" hint="Queda registrado como la primera entrada.">
+            <div className="md:col-span-2">
+              <OpcionMarcable
+                icono="tabler:barcode"
+                titulo="Etiqueta por cada pieza"
+                descripcion="Para equipos y herramientas: cada switch, router o cleaver recibe su propio código para imprimir y pegar, y se sigue uno por uno. El cable y los conectores van a granel."
+                marcada={f.por_pieza}
+                onCambiar={() => setF((x) => ({ ...x, por_pieza: !x.por_pieza }))}
+              />
+            </div>
+          )}
+          {!editando && (
+            <FormField label="Hay ahora en almacén" htmlFor="art-inicial" hint={f.por_pieza ? 'Se genera una etiqueta por cada una.' : 'Queda registrado como la primera entrada.'}>
               <Input id="art-inicial" type="number" inputMode="numeric" min={0} step={1} value={f.stock_inicial} onChange={campo('stock_inicial')} placeholder="0" className="tabular-nums" />
             </FormField>
           )}

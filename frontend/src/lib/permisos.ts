@@ -96,6 +96,7 @@ const SECCION_DE_RUTA: { patron: RegExp; seccion: string | string[] | null }[] =
   { patron: /^\/onus(\/.*)?$/, seccion: '/onus' },
   { patron: /^\/inventario\/movimientos$/, seccion: '/inventario/movimientos' },
   { patron: /^\/inventario\/personal$/, seccion: '/inventario/personal' },
+  { patron: /^\/inventario\/unidades$/, seccion: '/inventario/unidades' },
   { patron: /^\/inventario$/, seccion: '/inventario' },
   { patron: /^\/averias(\/.*)?$/, seccion: '/averias' },
   { patron: /^\/ordenes-retiro(\/.*)?$/, seccion: '/ordenes-retiro' },

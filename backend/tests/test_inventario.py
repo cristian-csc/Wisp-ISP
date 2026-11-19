@@ -37,15 +37,17 @@ def base(db):
     vendedora = models.Usuario(nombre="Ana Vendedora", email="ana@wisp.test", hashed_password="x", rol=models.RolUsuario.vendedor_campo)
     cajera = models.Usuario(nombre="Caja", email="caja@wisp.test", hashed_password="x", rol=models.RolUsuario.atencion_cliente)
     categoria = models.CategoriaInventario(nombre="Fibra óptica", orden=1)
-    db.add_all([tecnico, vendedora, cajera, categoria])
+    unidad = models.UnidadMedida(nombre="unidad", plural="unidades", abreviatura="und")
+    db.add_all([tecnico, vendedora, cajera, categoria, unidad])
     db.commit()
-    return {"tecnico": tecnico.id, "vendedora": vendedora.id, "cajera": cajera.id, "categoria": categoria.id}
+    return {"tecnico": tecnico.id, "vendedora": vendedora.id, "cajera": cajera.id, "categoria": categoria.id, "unidad": unidad.id}
 
 
-def _alta(api, base, codigo="SCAPC", stock=0, minimo=10, nombre="Conector SC/APC"):
+def _alta(api, base, codigo="SCAPC", stock=0, minimo=10, nombre="Conector SC/APC", por_pieza=False):
     r = api.post("/inv/articulos", json={
         "codigo": codigo, "nombre": nombre, "categoria_id": base["categoria"],
-        "unidad": "unidad", "stock_minimo": minimo, "stock_inicial": stock, "costo_unitario": 1.5,
+        "unidad_id": base["unidad"], "stock_minimo": minimo, "stock_inicial": stock, "costo_unitario": 1.5,
+        "controla_por_unidad": por_pieza,
     })
     assert r.status_code == 201, r.json()
     return r.json()
@@ -67,7 +69,7 @@ def test_alta_con_stock_inicial_queda_en_el_historial(api, base):
 
 def test_codigo_repetido(api, base):
     _alta(api, base)
-    r = api.post("/inv/articulos", json={"codigo": "scapc", "nombre": "Otro", "categoria_id": base["categoria"]})
+    r = api.post("/inv/articulos", json={"codigo": "scapc", "nombre": "Otro", "categoria_id": base["categoria"], "unidad_id": base["unidad"]})
     assert r.status_code == 409
 
 
@@ -180,7 +182,7 @@ def test_editar_no_toca_el_stock(api, base):
     a = _alta(api, base, stock=20)
     r = api.put(f"/inv/articulos/{a['id']}", json={
         "codigo": "SCAPC", "nombre": "Conector SC/APC rápido", "categoria_id": base["categoria"],
-        "unidad": "unidad", "stock_minimo": 30, "activo": True,
+        "unidad_id": base["unidad"], "stock_minimo": 30, "activo": True,
     })
     assert r.status_code == 200
     assert r.json()["stock"] == 20 and r.json()["estado"] == "bajo"
@@ -191,3 +193,95 @@ def test_mi_material(api, base, db):
     _mover(api, "asignacion", [{"articulo_id": a["id"], "cantidad": 4}], persona_id=MOCK_USER.id)
     # El admin no es personal de campo: no se le entrega y su lista queda vacía.
     assert api.get("/inv/mio").json() == {"material": []}
+
+
+# ── Piezas con etiqueta ──────────────────────────────────────────────────────
+
+def _piezas(api, articulo_id):
+    return api.get(f"/inv/articulos/{articulo_id}/activos").json()
+
+
+def test_alta_por_pieza_genera_un_codigo_por_pieza(api, base):
+    a = _alta(api, base, codigo="SW8", nombre="Switch 8 puertos", stock=3, por_pieza=True)
+    assert a["stock"] == 3 and a["controla_por_unidad"]
+    piezas = _piezas(api, a["id"])
+    assert len(piezas) == 3
+    assert all(p["codigo"].startswith("ACT-") and p["estado"] == "almacen" for p in piezas)
+    assert len({p["codigo"] for p in piezas}) == 3
+    movs = api.get("/inv/movimientos", params={"articulo_id": a["id"]}).json()["items"]
+    assert len(movs) == 3 and all(m["activo_codigo"] for m in movs)
+
+
+def test_entrega_y_devolucion_por_pieza(api, base):
+    a = _alta(api, base, codigo="SW8", nombre="Switch", stock=3, por_pieza=True)
+    p1, p2, _ = _piezas(api, a["id"])
+    r = _mover(api, "asignacion", [{"articulo_id": a["id"], "activo_ids": [p1["id"], p2["id"]]}], persona_id=base["tecnico"])
+    assert r.status_code == 201, r.json()
+    assert api.get(f"/inv/articulos/{a['id']}").json()["articulo"]["stock"] == 1
+    estado = {p["id"]: p for p in _piezas(api, a["id"])}
+    assert estado[p1["id"]]["estado"] == "asignado" and estado[p1["id"]]["persona"]["id"] == base["tecnico"]
+
+    # La misma pieza no se entrega dos veces.
+    r = _mover(api, "asignacion", [{"articulo_id": a["id"], "activo_ids": [p1["id"]]}], persona_id=base["vendedora"])
+    assert r.status_code == 400 and p1["codigo"] in r.json()["detail"]
+    # La vendedora no puede devolver lo que tiene el técnico.
+    r = _mover(api, "devolucion", [{"articulo_id": a["id"], "activo_ids": [p1["id"]]}], persona_id=base["vendedora"])
+    assert r.status_code == 400
+
+    assert _mover(api, "devolucion", [{"articulo_id": a["id"], "activo_ids": [p1["id"]]}], persona_id=base["tecnico"]).status_code == 201
+    assert _mover(api, "consumo", [{"articulo_id": a["id"], "activo_ids": [p2["id"]]}], persona_id=base["tecnico"]).status_code == 201
+    estado = {p["id"]: p["estado"] for p in _piezas(api, a["id"])}
+    assert estado[p1["id"]] == "almacen" and estado[p2["id"]] == "usado"
+    assert api.get(f"/inv/articulos/{a['id']}").json()["articulo"]["en_personal"] == 0
+
+
+def test_material_por_pieza_pide_piezas_y_a_granel_no(api, base):
+    sw = _alta(api, base, codigo="SW8", nombre="Switch", stock=2, por_pieza=True)
+    cable = _alta(api, base, codigo="UTP", nombre="Cable", stock=50)
+    assert _mover(api, "asignacion", [{"articulo_id": sw["id"], "cantidad": 1}], persona_id=base["tecnico"]).status_code == 400
+    pieza = _piezas(api, sw["id"])[0]
+    assert _mover(api, "asignacion", [{"articulo_id": cable["id"], "activo_ids": [pieza["id"]]}], persona_id=base["tecnico"]).status_code == 400
+
+
+def test_entrada_por_pieza_crea_piezas_con_serie(api, base):
+    a = _alta(api, base, codigo="RT", nombre="Router", por_pieza=True)
+    r = _mover(api, "entrada", [{"articulo_id": a["id"], "cantidad": 2, "numeros_serie": ["SN-1", "SN-2"]}])
+    assert r.status_code == 201 and len(r.json()) == 2
+    assert {p["numero_serie"] for p in _piezas(api, a["id"])} == {"SN-1", "SN-2"}
+
+
+def test_escanear_pieza_serie_y_material(api, base):
+    a = _alta(api, base, codigo="RT", nombre="Router", por_pieza=True)
+    _mover(api, "entrada", [{"articulo_id": a["id"], "cantidad": 1, "numeros_serie": ["ZTEG123"]}])
+    pieza = _piezas(api, a["id"])[0]
+    r = api.get("/inv/escanear", params={"codigo": pieza["codigo"].lower()}).json()
+    assert r["tipo"] == "activo" and r["activo"]["id"] == pieza["id"]
+    assert api.get("/inv/escanear", params={"codigo": "ZTEG123"}).json()["activo"]["id"] == pieza["id"]
+    assert api.get("/inv/escanear", params={"codigo": "rt"}).json()["tipo"] == "material"
+    assert api.get("/inv/escanear", params={"codigo": "NADA"}).status_code == 404
+
+
+def test_etiquetar_material_existente_respeta_lo_que_tiene_cada_uno(api, base):
+    a = _alta(api, base, codigo="CLV", nombre="Cleaver", stock=4)
+    _mover(api, "asignacion", [{"articulo_id": a["id"], "cantidad": 1}], persona_id=base["tecnico"])
+    r = api.post(f"/inv/articulos/{a['id']}/etiquetar")
+    assert r.status_code == 200, r.json()
+    piezas = r.json()
+    assert len(piezas) == 4
+    assert sum(1 for p in piezas if p["estado"] == "asignado" and p["persona"]["id"] == base["tecnico"]) == 1
+    assert api.post(f"/inv/articulos/{a['id']}/etiquetar").status_code == 400
+    # Ya no se ajusta por conteo: se mueve por pieza.
+    assert api.post(f"/inv/articulos/{a['id']}/ajuste", json={"stock_contado": 1, "motivo": "conteo"}).status_code == 400
+    personal = {p["persona"]["id"]: p for p in api.get("/inv/personal").json()}
+    assert len(personal[base["tecnico"]]["material"][0]["piezas"]) == 1
+
+
+def test_unidades_de_medida(api, base):
+    r = api.post("/inv/unidades", json={"nombre": " Bobina ", "plural": "Bobinas", "abreviatura": "BOB"})
+    assert r.status_code == 201 and r.json()["nombre"] == "bobina"
+    assert api.post("/inv/unidades", json={"nombre": "bobina", "plural": "x", "abreviatura": "x"}).status_code == 409
+    _alta(api, base)
+    unidades = {u["nombre"]: u for u in api.get("/inv/unidades").json()}
+    assert unidades["unidad"]["materiales"] == 1
+    assert api.delete(f"/inv/unidades/{base['unidad']}").status_code == 409
+    assert api.delete(f"/inv/unidades/{r.json()['id']}").status_code == 204

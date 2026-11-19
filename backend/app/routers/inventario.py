@@ -75,6 +75,9 @@ def _movimiento_out(m: models.MovimientoInventario) -> schemas.MovimientoInventa
         articulo_nombre=m.articulo.nombre,
         articulo_codigo=m.articulo.codigo,
         unidad=m.articulo.unidad,
+        unidad_plural=m.articulo.unidad_plural,
+        activo_id=m.activo_id,
+        activo_codigo=m.activo.codigo if m.activo else None,
         tipo=m.tipo.value,
         cantidad=m.cantidad,
         stock_resultante=m.stock_resultante,
@@ -93,7 +96,8 @@ def _movimiento_out(m: models.MovimientoInventario) -> schemas.MovimientoInventa
 
 def _con_relaciones(consulta):
     return consulta.options(
-        joinedload(models.MovimientoInventario.articulo),
+        joinedload(models.MovimientoInventario.articulo).joinedload(models.ArticuloInventario.unidad_medida),
+        joinedload(models.MovimientoInventario.activo),
         joinedload(models.MovimientoInventario.persona),
         joinedload(models.MovimientoInventario.registrado_por),
         joinedload(models.MovimientoInventario.cliente),
@@ -202,6 +206,31 @@ def _validar_categoria(db: Session, categoria_id: int):
         raise HTTPException(status_code=400, detail="La categoría no existe")
 
 
+def _validar_unidad(db: Session, unidad_id: int):
+    if not db.query(models.UnidadMedida).get(unidad_id):
+        raise HTTPException(status_code=400, detail="La unidad de medida no existe")
+
+
+def _crear_activos(
+    db: Session, articulo: models.ArticuloInventario, n: int, series: Optional[list[str]] = None,
+    estado: models.EstadoActivo = models.EstadoActivo.almacen, persona_id: Optional[int] = None,
+) -> list[models.ActivoInventario]:
+    """Crea `n` piezas con su código de etiqueta (ACT-000123)."""
+    series = [x.strip() for x in (series or []) if x and x.strip()]
+    nuevos = []
+    for i in range(n):
+        act = models.ActivoInventario(
+            codigo=f"TMP-{uuid.uuid4().hex[:12]}", articulo_id=articulo.id,
+            numero_serie=series[i] if i < len(series) else None, estado=estado, persona_id=persona_id,
+        )
+        db.add(act)
+        nuevos.append(act)
+    db.flush()
+    for act in nuevos:
+        act.codigo = f"ACT-{act.id:06d}"
+    return nuevos
+
+
 def _validar_codigo(db: Session, codigo: str, propio: Optional[int] = None):
     otro = db.query(models.ArticuloInventario).filter(models.ArticuloInventario.codigo == codigo).first()
     if otro and otro.id != propio:
@@ -215,16 +244,28 @@ def crear_articulo(
     current_user: models.Usuario = Depends(GESTIONAR),
 ):
     _validar_categoria(db, data.categoria_id)
+    _validar_unidad(db, data.unidad_id)
     _validar_codigo(db, data.codigo)
-    a = models.ArticuloInventario(**data.model_dump(exclude={"stock_inicial"}), stock=data.stock_inicial)
+    if data.controla_por_unidad and data.stock_inicial > 200:
+        raise HTTPException(status_code=400, detail="Con etiqueta por pieza se registran hasta 200 de una vez")
+    a = models.ArticuloInventario(**data.model_dump(exclude={"stock_inicial"}), stock=0)
     db.add(a)
     db.flush()
     if data.stock_inicial:
-        db.add(models.MovimientoInventario(
-            articulo_id=a.id, tipo=Tipo.entrada, cantidad=data.stock_inicial,
-            stock_resultante=data.stock_inicial, motivo="Stock inicial al registrar el material",
-            registrado_por_id=current_user.id,
-        ))
+        motivo = "Stock inicial al registrar el material"
+        if a.controla_por_unidad:
+            for act in _crear_activos(db, a, data.stock_inicial):
+                a.stock += 1
+                db.add(models.MovimientoInventario(
+                    articulo_id=a.id, activo_id=act.id, tipo=Tipo.entrada, cantidad=1,
+                    stock_resultante=a.stock, motivo=motivo, registrado_por_id=current_user.id,
+                ))
+        else:
+            a.stock = data.stock_inicial
+            db.add(models.MovimientoInventario(
+                articulo_id=a.id, tipo=Tipo.entrada, cantidad=data.stock_inicial,
+                stock_resultante=data.stock_inicial, motivo=motivo, registrado_por_id=current_user.id,
+            ))
     db.commit()
     db.refresh(a)
     return _articulo_out(a, 0)
@@ -243,6 +284,7 @@ def editar_articulo(
     if not a:
         raise HTTPException(status_code=404, detail="Material no encontrado")
     _validar_categoria(db, data.categoria_id)
+    _validar_unidad(db, data.unidad_id)
     _validar_codigo(db, data.codigo, propio=a.id)
     for campo, valor in data.model_dump().items():
         setattr(a, campo, valor)
@@ -263,6 +305,11 @@ def ajustar_stock(
     a = db.query(models.ArticuloInventario).filter(models.ArticuloInventario.id == articulo_id).with_for_update().first()
     if not a:
         raise HTTPException(status_code=404, detail="Material no encontrado")
+    if a.controla_por_unidad:
+        raise HTTPException(
+            status_code=400,
+            detail="Este material lleva etiqueta por pieza: registra la entrada o da de baja las piezas que faltan",
+        )
     diferencia = data.stock_contado - a.stock
     if diferencia == 0:
         raise HTTPException(status_code=400, detail="El conteo coincide con el stock: no hay nada que ajustar")
@@ -319,18 +366,39 @@ def registrar_movimientos(
     }
     en_mano = _en_mano_de(db, persona.id) if persona else {}
 
-    lote = str(uuid.uuid4()) if len(data.lineas) > 1 else None
+    varias = len(data.lineas) > 1 or any(len(l.activo_ids or []) > 1 or (l.cantidad or 0) > 1 for l in data.lineas)
+    lote = str(uuid.uuid4()) if varias else None
     creados = []
+
+    def anotar(a, cantidad, activo_id=None):
+        m = models.MovimientoInventario(
+            articulo_id=a.id, activo_id=activo_id, tipo=Tipo(data.tipo), cantidad=cantidad, stock_resultante=a.stock,
+            persona_id=persona.id if persona else None, cliente_id=data.cliente_id,
+            motivo=(data.motivo or "").strip() or None, documento=(data.documento or "").strip() or None,
+            lote=lote, registrado_por_id=current_user.id,
+        )
+        db.add(m)
+        creados.append(m)
+
     for linea in data.lineas:
         a = articulos.get(linea.articulo_id)
         if not a:
             raise HTTPException(status_code=404, detail=f"El material {linea.articulo_id} no existe")
         if not a.activo and data.tipo in ("entrada", "asignacion"):
             raise HTTPException(status_code=400, detail=f"«{a.nombre}» está archivado")
+
+        if a.controla_por_unidad:
+            _mover_piezas(db, data, linea, a, persona, anotar)
+            continue
+
+        if linea.activo_ids:
+            raise HTTPException(status_code=400, detail=f"«{a.nombre}» se cuenta a granel, no por pieza")
+        if not linea.cantidad:
+            raise HTTPException(status_code=400, detail=f"Indica la cantidad de «{a.nombre}»")
         if data.tipo in ("salida", "asignacion") and linea.cantidad > a.stock:
             raise HTTPException(
                 status_code=400,
-                detail=f"No alcanza «{a.nombre}»: pides {linea.cantidad} y en el almacén hay {a.stock} {a.unidad}(s)",
+                detail=f"No alcanza «{a.nombre}»: pides {linea.cantidad} y en el almacén hay {a.stock} {a.unidad_plural}",
             )
         if data.tipo in ("devolucion", "consumo") and linea.cantidad > en_mano.get(a.id, 0):
             raise HTTPException(
@@ -341,18 +409,69 @@ def registrar_movimientos(
             a.stock += linea.cantidad
         elif data.tipo in ("salida", "asignacion"):
             a.stock -= linea.cantidad
-        m = models.MovimientoInventario(
-            articulo_id=a.id, tipo=Tipo(data.tipo), cantidad=linea.cantidad, stock_resultante=a.stock,
-            persona_id=persona.id if persona else None, cliente_id=data.cliente_id,
-            motivo=(data.motivo or "").strip() or None, documento=(data.documento or "").strip() or None,
-            lote=lote, registrado_por_id=current_user.id,
-        )
-        db.add(m)
-        creados.append(m)
+        anotar(a, linea.cantidad)
     db.commit()
     ids_creados = [m.id for m in creados]
     filas = _con_relaciones(db.query(models.MovimientoInventario)).filter(models.MovimientoInventario.id.in_(ids_creados)).all()
     return [_movimiento_out(m) for m in sorted(filas, key=lambda m: m.id)]
+
+
+# Qué estado debe tener la pieza para cada movimiento y en cuál queda.
+_PIEZA = {
+    "asignacion": (models.EstadoActivo.almacen, models.EstadoActivo.asignado),
+    "salida": (models.EstadoActivo.almacen, models.EstadoActivo.baja),
+    "devolucion": (models.EstadoActivo.asignado, models.EstadoActivo.almacen),
+    "consumo": (models.EstadoActivo.asignado, models.EstadoActivo.usado),
+}
+_ESTADO_TEXTO = {
+    models.EstadoActivo.almacen: "en el almacén",
+    models.EstadoActivo.asignado: "entregada a alguien",
+    models.EstadoActivo.usado: "instalada o usada",
+    models.EstadoActivo.baja: "dada de baja",
+}
+
+
+def _mover_piezas(db: Session, data, linea, a, persona, anotar):
+    """Movimiento de un material con etiqueta por pieza: cada pieza queda en
+    su propia fila del historial."""
+    if data.tipo == "entrada":
+        n = linea.cantidad or len(linea.numeros_serie or [])
+        if not n:
+            raise HTTPException(status_code=400, detail=f"Indica cuántas piezas de «{a.nombre}» llegaron")
+        if n > 200:
+            raise HTTPException(status_code=400, detail="Se registran hasta 200 piezas por entrada")
+        for act in _crear_activos(db, a, n, linea.numeros_serie):
+            a.stock += 1
+            anotar(a, 1, act.id)
+        return
+
+    ids = linea.activo_ids or []
+    if not ids:
+        raise HTTPException(status_code=400, detail=f"Escanea o elige las piezas de «{a.nombre}»")
+    if len(set(ids)) != len(ids):
+        raise HTTPException(status_code=400, detail="Escaneaste dos veces la misma pieza")
+    piezas = {
+        p.id: p for p in db.query(models.ActivoInventario)
+        .filter(models.ActivoInventario.id.in_(ids)).with_for_update().all()
+    }
+    antes, despues = _PIEZA[data.tipo]
+    for pid in ids:
+        p = piezas.get(pid)
+        if not p or p.articulo_id != a.id:
+            raise HTTPException(status_code=400, detail=f"Una de las piezas no es de «{a.nombre}»")
+        if p.estado != antes:
+            raise HTTPException(status_code=400, detail=f"La pieza {p.codigo} está {_ESTADO_TEXTO[p.estado]}")
+        if antes == models.EstadoActivo.asignado and p.persona_id != persona.id:
+            raise HTTPException(status_code=400, detail=f"La pieza {p.codigo} no está a cargo de {persona.nombre}")
+        p.estado = despues
+        p.persona_id = persona.id if despues == models.EstadoActivo.asignado else None
+        if despues == models.EstadoActivo.usado:
+            p.cliente_id = data.cliente_id
+        if data.tipo == "devolucion":
+            a.stock += 1
+        elif data.tipo in ("asignacion", "salida"):
+            a.stock -= 1
+        anotar(a, 1, p.id)
 
 
 @router.get("/movimientos")
@@ -405,6 +524,14 @@ def _material_de(db: Session, persona_id: int) -> list[dict]:
     if not en_mano:
         return []
     articulos = db.query(models.ArticuloInventario).filter(models.ArticuloInventario.id.in_(en_mano)).all()
+    # Las piezas con etiqueta que tiene, para saber exactamente cuáles son.
+    piezas: dict[int, list[str]] = {}
+    for art_id, cod in (
+        db.query(models.ActivoInventario.articulo_id, models.ActivoInventario.codigo)
+        .filter(models.ActivoInventario.persona_id == persona_id, models.ActivoInventario.estado == models.EstadoActivo.asignado)
+        .order_by(models.ActivoInventario.codigo).all()
+    ):
+        piezas.setdefault(art_id, []).append(cod)
     ultimos = dict(
         db.query(models.MovimientoInventario.articulo_id, func.max(models.MovimientoInventario.creado_en))
         .filter(models.MovimientoInventario.persona_id == persona_id)
@@ -415,7 +542,8 @@ def _material_de(db: Session, persona_id: int) -> list[dict]:
         [
             {
                 "articulo_id": a.id, "codigo": a.codigo, "nombre": a.nombre, "unidad": a.unidad,
-                "cantidad": en_mano[a.id], "ultimo_movimiento": ultimos.get(a.id),
+                "unidad_plural": a.unidad_plural, "cantidad": en_mano[a.id], "ultimo_movimiento": ultimos.get(a.id),
+                "piezas": piezas.get(a.id, []),
             }
             for a in articulos if en_mano.get(a.id, 0) > 0
         ],
@@ -456,3 +584,159 @@ def personal(db: Session = Depends(get_db), _: models.Usuario = Depends(get_curr
 def mi_material(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     """Lo que tiene en mano quien inició sesión. Lo usa la app del técnico."""
     return {"material": _material_de(db, current_user.id)}
+
+
+# ── Unidades de medida ───────────────────────────────────────────────────────
+
+GESTIONAR_UNIDADES = require_roles(models.RolUsuario.admin)
+
+
+def _unidades_con_uso(db: Session) -> list[schemas.UnidadMedidaOut]:
+    usos = dict(
+        db.query(models.ArticuloInventario.unidad_id, func.count(models.ArticuloInventario.id))
+        .group_by(models.ArticuloInventario.unidad_id).all()
+    )
+    salida = []
+    for u in db.query(models.UnidadMedida).order_by(models.UnidadMedida.nombre).all():
+        out = schemas.UnidadMedidaOut.model_validate(u)
+        out.materiales = usos.get(u.id, 0)
+        salida.append(out)
+    return salida
+
+
+@router.get("/unidades", response_model=list[schemas.UnidadMedidaOut])
+def listar_unidades(db: Session = Depends(get_db), _: models.Usuario = Depends(get_current_user)):
+    return _unidades_con_uso(db)
+
+
+def _unidad_repetida(db: Session, data: schemas.UnidadMedidaIn, propio: Optional[int] = None):
+    otra = db.query(models.UnidadMedida).filter(models.UnidadMedida.nombre == data.nombre).first()
+    if otra and otra.id != propio:
+        raise HTTPException(status_code=409, detail=f"Ya existe la unidad «{data.nombre}»")
+
+
+@router.post("/unidades", response_model=schemas.UnidadMedidaOut, status_code=201)
+def crear_unidad(data: schemas.UnidadMedidaIn, db: Session = Depends(get_db), _: models.Usuario = Depends(GESTIONAR_UNIDADES)):
+    _unidad_repetida(db, data)
+    u = models.UnidadMedida(**data.model_dump())
+    db.add(u)
+    db.commit()
+    db.refresh(u)
+    return u
+
+
+@router.put("/unidades/{unidad_id}", response_model=schemas.UnidadMedidaOut)
+def editar_unidad(unidad_id: int, data: schemas.UnidadMedidaIn, db: Session = Depends(get_db), _: models.Usuario = Depends(GESTIONAR_UNIDADES)):
+    u = db.query(models.UnidadMedida).get(unidad_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="Unidad no encontrada")
+    _unidad_repetida(db, data, propio=u.id)
+    for campo, valor in data.model_dump().items():
+        setattr(u, campo, valor)
+    db.commit()
+    return next(x for x in _unidades_con_uso(db) if x.id == u.id)
+
+
+@router.delete("/unidades/{unidad_id}", status_code=204)
+def borrar_unidad(unidad_id: int, db: Session = Depends(get_db), _: models.Usuario = Depends(GESTIONAR_UNIDADES)):
+    u = db.query(models.UnidadMedida).get(unidad_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="Unidad no encontrada")
+    usan = db.query(models.ArticuloInventario).filter(models.ArticuloInventario.unidad_id == u.id).count()
+    if usan:
+        raise HTTPException(status_code=409, detail=f"La usan {usan} material(es): cámbialos de unidad antes de borrarla")
+    db.delete(u)
+    db.commit()
+
+
+# ── Piezas con etiqueta ──────────────────────────────────────────────────────
+
+def _activo_out(p: models.ActivoInventario) -> schemas.ActivoInventarioOut:
+    return schemas.ActivoInventarioOut(
+        id=p.id, codigo=p.codigo, articulo_id=p.articulo_id,
+        articulo_nombre=p.articulo.nombre, articulo_codigo=p.articulo.codigo,
+        numero_serie=p.numero_serie, estado=p.estado.value,
+        persona=schemas.PersonaBreve(id=p.persona.id, nombre=p.persona.nombre, rol=p.persona.rol.value) if p.persona else None,
+        cliente_id=p.cliente_id, cliente_nombre=p.cliente.nombre if p.cliente else None,
+        notas=p.notas, creado_en=p.creado_en,
+    )
+
+
+def _activos_query(db: Session):
+    return db.query(models.ActivoInventario).options(
+        joinedload(models.ActivoInventario.articulo),
+        joinedload(models.ActivoInventario.persona),
+        joinedload(models.ActivoInventario.cliente),
+    )
+
+
+@router.get("/articulos/{articulo_id}/activos", response_model=list[schemas.ActivoInventarioOut])
+def listar_activos(articulo_id: int, db: Session = Depends(get_db), _: models.Usuario = Depends(get_current_user)):
+    piezas = _activos_query(db).filter(models.ActivoInventario.articulo_id == articulo_id).order_by(models.ActivoInventario.id).all()
+    return [_activo_out(p) for p in piezas]
+
+
+@router.get("/activos", response_model=list[schemas.ActivoInventarioOut])
+def activos_por_id(ids: str = Query(..., max_length=2000), db: Session = Depends(get_db), _: models.Usuario = Depends(get_current_user)):
+    """Las piezas pedidas, para imprimir sus etiquetas."""
+    try:
+        lista = [int(x) for x in ids.split(",") if x.strip()][:300]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Lista de piezas no válida")
+    piezas = _activos_query(db).filter(models.ActivoInventario.id.in_(lista)).order_by(models.ActivoInventario.id).all()
+    return [_activo_out(p) for p in piezas]
+
+
+@router.put("/activos/{activo_id}", response_model=schemas.ActivoInventarioOut)
+def editar_activo(activo_id: int, data: schemas.ActivoInventarioUpdate, db: Session = Depends(get_db), _: models.Usuario = Depends(GESTIONAR)):
+    p = _activos_query(db).filter(models.ActivoInventario.id == activo_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Pieza no encontrada")
+    p.numero_serie = (data.numero_serie or "").strip() or None
+    p.notas = (data.notas or "").strip() or None
+    db.commit()
+    return _activo_out(p)
+
+
+@router.post("/articulos/{articulo_id}/etiquetar", response_model=list[schemas.ActivoInventarioOut])
+def etiquetar_por_pieza(articulo_id: int, db: Session = Depends(get_db), _: models.Usuario = Depends(GESTIONAR)):
+    """Pasa un material a etiqueta por pieza. Se crean las piezas de lo que ya
+    hay: las del almacén quedan en almacén y las de cada persona, a su cargo,
+    para que el conteo siga cuadrando. No tiene vuelta atrás."""
+    a = db.query(models.ArticuloInventario).filter(models.ArticuloInventario.id == articulo_id).with_for_update().first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Material no encontrado")
+    if a.controla_por_unidad:
+        raise HTTPException(status_code=400, detail="Este material ya lleva etiqueta por pieza")
+    total = a.stock + sum(c for c in _en_personal(db, [a.id]).values() if c > 0)
+    if total > 500:
+        raise HTTPException(status_code=400, detail=f"Son {total} piezas: la etiqueta por pieza es para equipos, no para material a granel")
+    a.controla_por_unidad = True
+    nuevos = _crear_activos(db, a, a.stock) if a.stock else []
+    por_persona = (
+        db.query(models.MovimientoInventario.persona_id, func.sum(_EN_MANO))
+        .filter(models.MovimientoInventario.articulo_id == a.id, models.MovimientoInventario.persona_id.isnot(None))
+        .group_by(models.MovimientoInventario.persona_id).all()
+    )
+    for persona_id, cantidad in por_persona:
+        if cantidad and cantidad > 0:
+            nuevos += _crear_activos(db, a, int(cantidad), estado=models.EstadoActivo.asignado, persona_id=persona_id)
+    db.commit()
+    ids = [p.id for p in nuevos]
+    return [_activo_out(p) for p in _activos_query(db).filter(models.ActivoInventario.id.in_(ids)).order_by(models.ActivoInventario.id).all()]
+
+
+@router.get("/escanear")
+def escanear(codigo: str = Query(..., min_length=1, max_length=100), db: Session = Depends(get_db), _: models.Usuario = Depends(get_current_user)):
+    """Lo que dice una etiqueta: una pieza (ACT-000123, o su número de serie)
+    o un material (su código)."""
+    limpio = codigo.strip()
+    p = _activos_query(db).filter(func.upper(models.ActivoInventario.codigo) == limpio.upper()).first()
+    if not p:
+        p = _activos_query(db).filter(models.ActivoInventario.numero_serie == limpio).first()
+    if p:
+        return {"tipo": "activo", "activo": _activo_out(p), "articulo": _articulo_out(p.articulo, 0)}
+    a = db.query(models.ArticuloInventario).filter(models.ArticuloInventario.codigo == limpio.upper()).first()
+    if a:
+        return {"tipo": "material", "articulo": _articulo_out(a, _en_personal(db, [a.id]).get(a.id, 0))}
+    raise HTTPException(status_code=404, detail=f"No hay ningún material ni pieza con el código {limpio}")

@@ -1224,7 +1224,26 @@ class OrdenModulosOut(OrdenModulos):
 
 # ── Inventario de materiales ─────────────────────────────────────────────────
 
-UnidadInventario = Literal["unidad", "metro", "rollo", "caja", "par", "paquete"]
+class UnidadMedidaIn(BaseModel):
+    nombre: str = Field(..., min_length=1, max_length=30)
+    plural: str = Field(..., min_length=1, max_length=30)
+    abreviatura: str = Field(..., min_length=1, max_length=10)
+
+    @field_validator("nombre", "plural", "abreviatura")
+    @classmethod
+    def _limpio(cls, v: str) -> str:
+        return v.strip().lower()
+
+
+class UnidadMedidaOut(BaseModel):
+    id: int
+    nombre: str
+    plural: str
+    abreviatura: str
+    materiales: int = 0
+
+    class Config:
+        from_attributes = True
 
 
 class CategoriaInventarioOut(BaseModel):
@@ -1243,7 +1262,7 @@ class ArticuloInventarioBase(BaseModel):
     categoria_id: int
     marca: Optional[str] = Field(None, max_length=80)
     modelo: Optional[str] = Field(None, max_length=80)
-    unidad: UnidadInventario = "unidad"
+    unidad_id: int
     stock_minimo: int = Field(0, ge=0, le=1_000_000)
     costo_unitario: Optional[float] = Field(None, ge=0)
     ubicacion: Optional[str] = Field(None, max_length=80)
@@ -1258,6 +1277,7 @@ class ArticuloInventarioBase(BaseModel):
 class ArticuloInventarioCreate(ArticuloInventarioBase):
     # Lo que ya hay en el almacén al darlo de alta; queda como una entrada.
     stock_inicial: int = Field(0, ge=0, le=1_000_000)
+    controla_por_unidad: bool = False
 
 
 class ArticuloInventarioUpdate(ArticuloInventarioBase):
@@ -1272,7 +1292,10 @@ class ArticuloInventarioOut(BaseModel):
     categoria: CategoriaInventarioOut
     marca: Optional[str] = None
     modelo: Optional[str] = None
+    unidad_id: int
     unidad: str
+    unidad_plural: str
+    controla_por_unidad: bool = False
     stock: int
     stock_minimo: int
     costo_unitario: Optional[float] = None
@@ -1287,8 +1310,12 @@ class ArticuloInventarioOut(BaseModel):
 
 
 class LineaMovimiento(BaseModel):
+    """Una línea: a granel se dice la cantidad; si el material se controla
+    por unidad se dicen las piezas (salvo en la entrada, que las crea)."""
     articulo_id: int
-    cantidad: int = Field(..., gt=0, le=1_000_000)
+    cantidad: Optional[int] = Field(None, gt=0, le=1_000_000)
+    activo_ids: Optional[List[int]] = Field(None, min_length=1, max_length=200)
+    numeros_serie: Optional[List[str]] = Field(None, max_length=200)
 
 
 class MovimientosCreate(BaseModel):
@@ -1320,6 +1347,9 @@ class MovimientoInventarioOut(BaseModel):
     articulo_nombre: str
     articulo_codigo: str
     unidad: str
+    unidad_plural: str
+    activo_id: Optional[int] = None
+    activo_codigo: Optional[str] = None
     tipo: str
     cantidad: int
     stock_resultante: int
@@ -1331,3 +1361,23 @@ class MovimientoInventarioOut(BaseModel):
     lote: Optional[str] = None
     registrado_por: PersonaBreve
     creado_en: datetime
+
+
+class ActivoInventarioOut(BaseModel):
+    id: int
+    codigo: str
+    articulo_id: int
+    articulo_nombre: str
+    articulo_codigo: str
+    numero_serie: Optional[str] = None
+    estado: str
+    persona: Optional[PersonaBreve] = None
+    cliente_id: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    notas: Optional[str] = None
+    creado_en: Optional[datetime] = None
+
+
+class ActivoInventarioUpdate(BaseModel):
+    numero_serie: Optional[str] = Field(None, max_length=100)
+    notas: Optional[str] = Field(None, max_length=255)

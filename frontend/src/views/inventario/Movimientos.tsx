@@ -213,11 +213,11 @@ const Movimientos = () => {
                     <TableCell>
                       <span className="block max-w-48 truncate font-medium" title={m.articulo_nombre}>{m.articulo_nombre}</span>
                       {m.motivo && <span className="block max-w-48 truncate text-xs text-muted-foreground 2xl:hidden" title={m.motivo}>{m.motivo}</span>}
-                      <span className="block font-mono text-xs text-muted-foreground">{m.articulo_codigo}</span>
+                      <span className="block font-mono text-xs text-muted-foreground">{m.activo_codigo ? <span className="font-semibold text-foreground">{m.activo_codigo}</span> : m.articulo_codigo}</span>
                     </TableCell>
                     <TableCell className="text-end">
                       <CantidadMovimiento m={m} />{' '}
-                      <span className="text-xs text-muted-foreground">{palabraUnidad(m.unidad, m.cantidad)}</span>
+                      <span className="text-xs text-muted-foreground">{palabraUnidad(m, m.cantidad)}</span>
                     </TableCell>
                     <TableCell className="hidden text-end tabular-nums text-muted-foreground sm:table-cell">{m.stock_resultante}</TableCell>
                     <TableCell>

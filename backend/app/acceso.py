@@ -63,7 +63,10 @@ _CAJA = _delegar("panel.reporte_caja")
 # Quien tenga Stock de materiales lleva el almacén: alta de materiales,
 # entradas, salidas y entregas al personal. El ajuste por conteo es del admin.
 _INVENTARIO = _delegar("panel.inventario")
-INVENTARIO = _m("panel.inventario", "panel.inventario_movimientos", "panel.inventario_personal")
+INVENTARIO = _m(
+    "panel.inventario", "panel.inventario_movimientos", "panel.inventario_personal", "panel.inventario_unidades",
+)
+_UNIDADES = _delegar("panel.inventario_unidades")
 
 # Endpoints protegidos con require_roles().
 REGLAS: dict[tuple[str, str], Regla] = {
@@ -149,6 +152,11 @@ REGLAS: dict[tuple[str, str], Regla] = {
     ("POST", "/api/inventario/articulos"): _INVENTARIO,
     ("PUT", "/api/inventario/articulos/{articulo_id}"): _INVENTARIO,
     ("POST", "/api/inventario/movimientos"): _INVENTARIO,
+    ("PUT", "/api/inventario/activos/{activo_id}"): _INVENTARIO,
+    ("POST", "/api/inventario/articulos/{articulo_id}/etiquetar"): _INVENTARIO,
+    ("POST", "/api/inventario/unidades"): _UNIDADES,
+    ("PUT", "/api/inventario/unidades/{unidad_id}"): _UNIDADES,
+    ("DELETE", "/api/inventario/unidades/{unidad_id}"): _UNIDADES,
 }
 
 _LEER_CLIENTES = CLIENTES_PANEL | PAGOS | AVERIAS | RETIROS | CAMPO
@@ -177,6 +185,10 @@ LECTURAS: dict[tuple[str, str], frozenset] = {
     ("GET", "/api/inventario/articulos/{articulo_id}"): INVENTARIO,
     ("GET", "/api/inventario/movimientos"): INVENTARIO,
     ("GET", "/api/inventario/personal"): INVENTARIO,
+    ("GET", "/api/inventario/unidades"): INVENTARIO,
+    ("GET", "/api/inventario/articulos/{articulo_id}/activos"): INVENTARIO,
+    ("GET", "/api/inventario/activos"): INVENTARIO,
+    ("GET", "/api/inventario/escanear"): INVENTARIO,
 }
 
 
@@ -205,6 +217,7 @@ DELEGABLES = _m(
     "panel.dashboard", "panel.gastos", "panel.planes", "panel.cajas_nap",
     "panel.jornadas", "panel.reporte_caja", "panel.clientes_pendientes",
     "panel.inventario", "panel.inventario_movimientos", "panel.inventario_personal",
+    "panel.inventario_unidades",
 )
 APP_CLIENTE = _m("movil.inicio", "movil.pagos", "movil.perfil")
 

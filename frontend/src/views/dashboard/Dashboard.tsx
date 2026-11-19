@@ -78,6 +78,13 @@ const Dashboard = () => {
     getIngresosMensual().then(setMeses).catch(() => {});
   }, [veGastos]);
 
+  // La forma de los últimos seis meses, hasta el actual.
+
+  const mesActual = new Date().toISOString().slice(0, 7);
+
+  const ultimosMeses = meses.filter((x) => x.mes <= mesActual).slice(-6).map((x) => x.ingresos);
+  const serieIngresos = ultimosMeses.some((v) => v > 0) ? ultimosMeses : null;
+
   const deltaIngresos =
     stats && stats.ingresos_mes_anterior > 0
       ? ((stats.ingresos_mes_actual - stats.ingresos_mes_anterior) / stats.ingresos_mes_anterior) * 100
@@ -142,30 +149,45 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-4 [&>*]:bg-card">
           <Cifra
             etiqueta="Clientes activos"
+            icono="solar:users-group-rounded-linear"
             valor={stats ? stats.clientes_activos : '—'}
-            nota={stats ? `de ${stats.total_clientes} registrados` : undefined}
+            progreso={stats ? { valor: stats.clientes_activos, total: stats.total_clientes } : null}
+            nota={stats ? `de ${stats.total_clientes} registrados · ${stats.clientes_suspendidos} suspendidos` : undefined}
             to={veClientes ? '/clientes/fibra' : undefined}
           />
           {vePagos ? (
             <Cifra
               etiqueta="Cobrado este mes"
+              icono="solar:wallet-money-linear"
+              tono="marca"
               valor={stats ? soles(stats.ingresos_mes_actual, true) : '—'}
               delta={deltaIngresos}
+              serie={serieIngresos}
               nota={stats ? `${soles(stats.ingresos_mes_anterior, true)} el mes pasado` : undefined}
               to="/pagos"
             />
           ) : (
-            <Cifra etiqueta="Suspendidos" valor={stats ? stats.clientes_suspendidos : '—'} to={veClientes ? '/clientes/fibra' : undefined} />
+            <Cifra
+              etiqueta="Suspendidos"
+              icono="solar:plug-circle-linear"
+              tono={stats && stats.clientes_suspendidos > 0 ? 'peligro' : 'neutro'}
+              valor={stats ? stats.clientes_suspendidos : '—'}
+              to={veClientes ? '/clientes/fibra' : undefined}
+            />
           )}
           <Cifra
             etiqueta="Por instalar"
+            icono="solar:routing-linear"
+            tono={porInstalar ? 'alerta' : 'neutro'}
             valor={porInstalar ?? '—'}
             nota="Aprobados, sin instalación"
             to={veClientes ? '/clientes/fibra' : undefined}
           />
           <Cifra
             etiqueta="Zonas con cobertura"
+            icono="solar:map-point-wave-linear"
             valor={stats ? stats.total_zonas : '—'}
+            nota="Donde hay red para instalar"
             to={veZonas ? '/zonas' : undefined}
           />
         </div>

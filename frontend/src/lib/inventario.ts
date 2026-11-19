@@ -2,7 +2,12 @@ import { api } from './api';
 
 export type TipoMovimiento = 'entrada' | 'salida' | 'asignacion' | 'devolucion' | 'consumo' | 'ajuste';
 export type EstadoStock = 'sin_stock' | 'bajo' | 'ok';
-export type Unidad = 'unidad' | 'metro' | 'rollo' | 'caja' | 'par' | 'paquete';
+export type EstadoActivo = 'almacen' | 'asignado' | 'usado' | 'baja';
+
+export type UnidadMedida = { id: number; nombre: string; plural: string; abreviatura: string; materiales: number };
+
+/** Lo mínimo para nombrar una cantidad: "metro" / "metros". */
+export type ConUnidad = { unidad: string; unidad_plural: string };
 
 export type Categoria = { id: number; nombre: string; icono: string | null; orden: number };
 
@@ -14,7 +19,10 @@ export type Articulo = {
   categoria: Categoria;
   marca: string | null;
   modelo: string | null;
-  unidad: Unidad;
+  unidad_id: number;
+  unidad: string;
+  unidad_plural: string;
+  controla_por_unidad: boolean;
   stock: number;
   stock_minimo: number;
   costo_unitario: number | null;
@@ -31,12 +39,13 @@ export type ArticuloForm = {
   categoria_id: number;
   marca?: string | null;
   modelo?: string | null;
-  unidad: Unidad;
+  unidad_id: number;
   stock_minimo: number;
   costo_unitario?: number | null;
   ubicacion?: string | null;
   descripcion?: string | null;
   stock_inicial?: number;
+  controla_por_unidad?: boolean;
   activo?: boolean;
 };
 
@@ -47,7 +56,10 @@ export type MovimientoInv = {
   articulo_id: number;
   articulo_nombre: string;
   articulo_codigo: string;
-  unidad: Unidad;
+  unidad: string;
+  unidad_plural: string;
+  activo_id: number | null;
+  activo_codigo: string | null;
   tipo: TipoMovimiento;
   cantidad: number;
   stock_resultante: number;
@@ -75,9 +87,12 @@ export type MaterialEnMano = {
   articulo_id: number;
   codigo: string;
   nombre: string;
-  unidad: Unidad;
+  unidad: string;
+  unidad_plural: string;
   cantidad: number;
   ultimo_movimiento: string | null;
+  /** Códigos de las piezas con etiqueta que tiene. */
+  piezas: string[];
 };
 
 export type PersonaConMaterial = {
@@ -96,7 +111,7 @@ export type DetalleArticulo = {
 
 export type NuevoMovimiento = {
   tipo: Exclude<TipoMovimiento, 'ajuste'>;
-  lineas: { articulo_id: number; cantidad: number }[];
+  lineas: { articulo_id: number; cantidad?: number; activo_ids?: number[]; numeros_serie?: string[] }[];
   persona_id?: number | null;
   cliente_id?: number | null;
   motivo?: string;
@@ -105,25 +120,41 @@ export type NuevoMovimiento = {
 
 export type PaginaMovimientos = { total: number; page: number; pages: number; items: MovimientoInv[] };
 
-export const UNIDADES: { valor: Unidad; singular: string; plural: string }[] = [
-  { valor: 'unidad', singular: 'unidad', plural: 'unidades' },
-  { valor: 'metro', singular: 'metro', plural: 'metros' },
-  { valor: 'rollo', singular: 'rollo', plural: 'rollos' },
-  { valor: 'caja', singular: 'caja', plural: 'cajas' },
-  { valor: 'par', singular: 'par', plural: 'pares' },
-  { valor: 'paquete', singular: 'paquete', plural: 'paquetes' },
-];
-
 /** "metro" o "metros" según la cantidad. */
-export function palabraUnidad(unidad: Unidad, n: number): string {
-  const u = UNIDADES.find((x) => x.valor === unidad);
-  return Math.abs(n) === 1 ? u?.singular ?? unidad : u?.plural ?? unidad;
+export function palabraUnidad(u: ConUnidad, n: number): string {
+  return Math.abs(n) === 1 ? u.unidad : u.unidad_plural;
 }
 
 /** "3 metros", "1 rollo". */
-export function cantidadConUnidad(n: number, unidad: Unidad): string {
-  return `${n.toLocaleString('es-PE')} ${palabraUnidad(unidad, n)}`;
+export function cantidadConUnidad(n: number, u: ConUnidad): string {
+  return `${n.toLocaleString('es-PE')} ${palabraUnidad(u, n)}`;
 }
+
+export type Activo = {
+  id: number;
+  codigo: string;
+  articulo_id: number;
+  articulo_nombre: string;
+  articulo_codigo: string;
+  numero_serie: string | null;
+  estado: EstadoActivo;
+  persona: PersonaBreve | null;
+  cliente_id: number | null;
+  cliente_nombre: string | null;
+  notas: string | null;
+  creado_en: string | null;
+};
+
+export const ESTADO_ACTIVO: Record<EstadoActivo, { texto: string; clase: string }> = {
+  almacen: { texto: 'En almacén', clase: 'bg-muted text-foreground' },
+  asignado: { texto: 'Entregada', clase: 'bg-lightwarning text-warning-text' },
+  usado: { texto: 'Instalada', clase: 'bg-lightsuccess text-success-text' },
+  baja: { texto: 'De baja', clase: 'bg-lighterror text-error-text' },
+};
+
+export type Escaneo =
+  | { tipo: 'activo'; activo: Activo; articulo: Articulo }
+  | { tipo: 'material'; articulo: Articulo };
 
 /** Cómo se nombra cada movimiento y hacia dónde mueve el almacén. */
 export const TIPO_MOVIMIENTO: Record<TipoMovimiento, { etiqueta: string; icono: string; signo: 1 | -1 | 0 }> = {
@@ -191,4 +222,41 @@ export function permisosInventario(modulos: { clave: string }[], rol?: string) {
     gestionar: admin || modulos.some((m) => m.clave === 'panel.inventario'),
     ajustar: admin,
   };
+}
+
+export async function listUnidades(): Promise<UnidadMedida[]> {
+  return (await api.get<UnidadMedida[]>('/inventario/unidades')).data;
+}
+
+export async function crearUnidad(data: Omit<UnidadMedida, 'id' | 'materiales'>): Promise<UnidadMedida> {
+  return (await api.post<UnidadMedida>('/inventario/unidades', data)).data;
+}
+
+export async function editarUnidad(id: number, data: Omit<UnidadMedida, 'id' | 'materiales'>): Promise<UnidadMedida> {
+  return (await api.put<UnidadMedida>(`/inventario/unidades/${id}`, data)).data;
+}
+
+export async function borrarUnidad(id: number): Promise<void> {
+  await api.delete(`/inventario/unidades/${id}`);
+}
+
+export async function listActivos(articuloId: number): Promise<Activo[]> {
+  return (await api.get<Activo[]>(`/inventario/articulos/${articuloId}/activos`)).data;
+}
+
+export async function activosPorId(ids: number[]): Promise<Activo[]> {
+  return (await api.get<Activo[]>('/inventario/activos', { params: { ids: ids.join(',') } })).data;
+}
+
+export async function editarActivo(id: number, data: { numero_serie?: string | null; notas?: string | null }): Promise<Activo> {
+  return (await api.put<Activo>(`/inventario/activos/${id}`, data)).data;
+}
+
+export async function etiquetarPorPieza(articuloId: number): Promise<Activo[]> {
+  return (await api.post<Activo[]>(`/inventario/articulos/${articuloId}/etiquetar`)).data;
+}
+
+/** Lo que dice una etiqueta leída con el lector: una pieza o un material. */
+export async function escanear(codigo: string): Promise<Escaneo> {
+  return (await api.get<Escaneo>('/inventario/escanear', { params: { codigo } })).data;
 }

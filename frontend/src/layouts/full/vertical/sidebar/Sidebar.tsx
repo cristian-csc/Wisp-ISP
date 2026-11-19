@@ -18,6 +18,19 @@ const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visib
 const estaEn = (url: string | undefined, pathname: string) =>
   !!url && (pathname === url || pathname.startsWith(`${url}/`));
 
+/** La opción del menú que corresponde a esta dirección. Si varias calzan
+ *  (/inventario y /inventario/personal) gana la más específica: si no, se
+ *  marcaban dos a la vez. */
+function rutaActiva(menu: MenuItem[], pathname: string): string | null {
+  let mejor: string | null = null;
+  for (const g of menu) {
+    for (const h of g.children ?? []) {
+      if (estaEn(h.url, pathname) && (!mejor || h.url!.length > mejor.length)) mejor = h.url!;
+    }
+  }
+  return mejor;
+}
+
 const claveDe = (grupo: MenuItem) => String(grupo.id ?? grupo.heading);
 
 const Enlace = ({
@@ -31,7 +44,7 @@ const Enlace = ({
   onClose?: () => void;
   conIcono: boolean;
 }) => {
-  const activo = estaEn(item.url, pathname);
+  const activo = !!item.url && item.url === pathname;
   return (
     <Link
       to={item.url ?? '#'}
@@ -66,7 +79,7 @@ const GrupoMenu = ({
 }) => {
   const idLista = useId();
   const hijos = grupo.children ?? [];
-  const contieneActivo = hijos.some((h) => estaEn(h.url, pathname));
+  const contieneActivo = hijos.some((h) => !!h.url && h.url === pathname);
 
   return (
     <div>
@@ -117,14 +130,16 @@ const GrupoMenu = ({
 const SidebarLayout = ({ onClose }: { onClose?: () => void }) => {
   const { pathname } = useLocation();
   const menu = useMenu();
+  // Lo que reciben los enlaces es la opción activa, no la dirección cruda.
+  const activa = rutaActiva(menu, pathname) ?? '';
   const [abierto, setAbierto] = useState<string | null>(null);
 
   // Al navegar queda abierto solo el grupo de la pantalla actual, como en un
   // acordeón: así el menú entra completo sin desplazarse.
   useEffect(() => {
-    const actual = menu.find((g) => g.children?.some((h) => estaEn(h.url, pathname)));
+    const actual = menu.find((g) => g.children?.some((h) => h.url === activa));
     if (actual) setAbierto(claveDe(actual));
-  }, [menu, pathname]);
+  }, [menu, activa]);
 
   return (
     <AMSidebar
@@ -160,7 +175,7 @@ const SidebarLayout = ({ onClose }: { onClose?: () => void }) => {
             // Un grupo con un solo módulo no necesita plegarse: va directo.
             if (hijos.length === 1) {
               return (
-                <Enlace key={claveDe(grupo)} item={hijos[0]} pathname={pathname} onClose={onClose} conIcono />
+                <Enlace key={claveDe(grupo)} item={hijos[0]} pathname={activa} onClose={onClose} conIcono />
               );
             }
             const clave = claveDe(grupo);
@@ -170,7 +185,7 @@ const SidebarLayout = ({ onClose }: { onClose?: () => void }) => {
                 grupo={grupo}
                 abierto={abierto === clave}
                 alternar={() => setAbierto((a) => (a === clave ? null : clave))}
-                pathname={pathname}
+                pathname={activa}
                 onClose={onClose}
               />
             );
