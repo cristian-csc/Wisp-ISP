@@ -49,12 +49,19 @@ import {
   type ClienteMoroso,
   getClientesCortados,
   getPausasPorVencer,
+  getCompromisosVigentes,
+  type ClienteConCompromiso,
   descargarReportePagos,
   type Pago,
   type EstadoPago,
   type ClienteCortado,
 } from 'src/lib/pagos';
-import { reactivarCliente, darCompromisoPago, type ClienteListItem } from 'src/lib/clientes';
+import {
+  reactivarCliente,
+  darCompromisoPago,
+  quitarCompromisoPago,
+  type ClienteListItem,
+} from 'src/lib/clientes';
 
 const MESES = [
   { value: '01', label: 'Enero' },
@@ -123,12 +130,13 @@ function labelAtraso(dias: number): string {
   return `${dias} días de atraso`;
 }
 
-type CategoriaControl = 'atrasado' | 'cortado' | 'pausado';
+type CategoriaControl = 'atrasado' | 'cortado' | 'pausado' | 'con_compromiso';
 
 type ClienteControl = ClienteListItem & {
   categoria: CategoriaControl;
   dias_atraso?: number;
   cortado_en?: string | null;
+  dias_restantes?: number;
 };
 
 const CATEGORIA_FILTRO_LABEL: Record<'todos' | CategoriaControl, string> = {
@@ -136,6 +144,7 @@ const CATEGORIA_FILTRO_LABEL: Record<'todos' | CategoriaControl, string> = {
   atrasado: 'Atrasados',
   cortado: 'Cortados',
   pausado: 'Pausados',
+  con_compromiso: 'Con compromiso de pago',
 };
 
 const Pagos = () => {
@@ -160,6 +169,8 @@ const Pagos = () => {
   const [sinPago, setSinPago] = useState<ClienteMoroso[]>([]);
   const [cortados, setCortados] = useState<ClienteCortado[]>([]);
   const [pausas, setPausas] = useState<ClienteListItem[]>([]);
+  const [compromisos, setCompromisos] = useState<ClienteConCompromiso[]>([]);
+  const [quitandoCompromiso, setQuitandoCompromiso] = useState<ClienteListItem | null>(null);
   const [controlFiltro, setControlFiltro] = useState<'todos' | CategoriaControl>('todos');
   const [compromisoCliente, setCompromisoCliente] = useState<ClienteListItem | null>(null);
   const [compromisoFecha, setCompromisoFecha] = useState('');
@@ -207,12 +218,13 @@ const Pagos = () => {
   }
 
   async function reloadResumen() {
-    const [resumen, morosos, cortadosData, pausasData] = await Promise.all([
+    const [resumen, morosos, cortadosData, pausasData, compromisosData] = await Promise.all([
       // Las cifras globales son de gerencia: sin ese permiso el resto carga igual.
       getResumenMensual().catch(() => []),
       getClientesSinPago(),
       getClientesCortados(),
       getPausasPorVencer(),
+      getCompromisosVigentes(),
     ]);
     const actual = resumen.find((r) => r.mes === mesActual);
     setIngresosMes(actual?.ingresos ?? 0);
@@ -220,6 +232,7 @@ const Pagos = () => {
     setSinPago(morosos);
     setCortados(cortadosData);
     setPausas(pausasData);
+    setCompromisos(compromisosData);
   }
 
   useEffect(() => {
@@ -319,6 +332,22 @@ const Pagos = () => {
     }
   }
 
+  /** Quien atiende se equivoca de cliente —son dos nombres parecidos en
+   *  una lista larga— y hasta ahora el plazo quedaba puesto hasta que
+   *  vencía solo. Esto lo deshace, y queda escrito quién lo deshizo. */
+  async function handleQuitarCompromiso() {
+    if (!quitandoCompromiso) return;
+    const quien = quitandoCompromiso;
+    setQuitandoCompromiso(null);
+    try {
+      await quitarCompromisoPago(quien.id);
+      reloadResumen();
+      toast.success(`Se quitó el compromiso de ${quien.nombre}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo quitar el compromiso');
+    }
+  }
+
   function abrirCompromiso(c: ClienteListItem) {
     setCompromisoCliente(c);
     const sugerida = new Date();
@@ -369,10 +398,16 @@ const Pagos = () => {
 
   // Orden alfabético fijo (no por categoría) — así una fila no "salta" de
   // posición al cortar/reactivar, solo cambia su propio badge y botón.
+  // Quien tiene un compromiso vigente aparece SOLO en esa categoría,
+  // aunque también esté atrasado: su situación de hoy es que se le dio
+  // plazo. Dos filas del mismo cliente diciendo cosas distintas es como se
+  // le cobra dos veces a alguien.
+  const conPlazo = new Set(compromisos.map((c) => c.id));
   const controlClientes: ClienteControl[] = [
-    ...sinPago.map((c) => ({ ...c, categoria: 'atrasado' as const })),
-    ...cortados.map((c) => ({ ...c, categoria: 'cortado' as const })),
-    ...pausas.map((c) => ({ ...c, categoria: 'pausado' as const })),
+    ...compromisos.map((c) => ({ ...c, categoria: 'con_compromiso' as const })),
+    ...sinPago.filter((c) => !conPlazo.has(c.id)).map((c) => ({ ...c, categoria: 'atrasado' as const })),
+    ...cortados.filter((c) => !conPlazo.has(c.id)).map((c) => ({ ...c, categoria: 'cortado' as const })),
+    ...pausas.filter((c) => !conPlazo.has(c.id)).map((c) => ({ ...c, categoria: 'pausado' as const })),
   ].sort((a, b) => a.nombre.localeCompare(b.nombre));
   const controlFiltrados = controlFiltro === 'todos'
     ? controlClientes
@@ -493,6 +528,15 @@ const Pagos = () => {
                           <Badge className="bg-lightprimary text-primary-text rounded-md">
                             <Icon icon="tabler:handshake" height={12} className="mr-1" />
                             Compromiso hasta {c.compromiso_pago_hasta}
+                            {c.dias_restantes != null && (
+                              <span className="ml-1 font-normal">
+                                ({c.dias_restantes === 0
+                                  ? 'vence hoy'
+                                  : c.dias_restantes === 1
+                                    ? 'queda 1 día'
+                                    : `quedan ${c.dias_restantes} días`})
+                              </span>
+                            )}
                           </Badge>
                         )}
                       </div>
@@ -526,6 +570,31 @@ const Pagos = () => {
                             <Icon icon="tabler:player-play" height={14} className="mr-1" />
                             Reactivar
                           </Button>
+                        )}
+                        {c.categoria === 'con_compromiso' && (
+                          <>
+                            <Button size="sm" onClick={() => abrirRegistrarPago(c)}>
+                              Registrar pago
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => abrirCompromiso(c)}
+                              title="Correr la fecha del compromiso"
+                            >
+                              <Icon icon="tabler:calendar-plus" height={14} className="mr-1" />
+                              Cambiar fecha
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="lighterror"
+                              onClick={() => setQuitandoCompromiso(c)}
+                              title="Lo puse por error: deshacerlo"
+                            >
+                              <Icon icon="tabler:eraser" height={14} className="mr-1" />
+                              Quitar
+                            </Button>
+                          </>
                         )}
                       </div>
                     </TableCell>
@@ -939,6 +1008,19 @@ const Pagos = () => {
           {compromisoError && <FormCallout tone="error">{compromisoError}</FormCallout>}
         </div>
       </FormDialog>
+
+      <ConfirmDialog
+        open={!!quitandoCompromiso}
+        onOpenChange={(v) => !v && setQuitandoCompromiso(null)}
+        title="Quitar el compromiso de pago"
+        description={
+          quitandoCompromiso
+            ? `Se le quita el plazo a ${quitandoCompromiso.nombre} y vuelve al control normal de morosos. `
+              + 'El servicio NO se corta ahora: eso lo decide el corte automático cuando le toque, con la deuda real a la vista.'
+            : undefined
+        }
+        onConfirm={handleQuitarCompromiso}
+      />
 
       <ConfirmDialog
         open={!!borrando}

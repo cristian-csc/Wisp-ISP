@@ -1991,6 +1991,50 @@ def dar_compromiso_pago(
     }
 
 
+@router.delete("/{cliente_id}/compromiso-pago")
+def quitar_compromiso_pago(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
+):
+    """Deshace un compromiso de pago puesto por error.
+
+    Quien atiende se equivoca de cliente —son dos nombres parecidos en una
+    lista larga— y hasta ahora no había cómo volver atrás: ese cliente
+    quedaba con plazo hasta que el plazo venciera solo.
+
+    Lo que hace es quitar el plazo y nada más. **No vuelve a cortar el
+    servicio**, ni siquiera si la ficha se había reactivado al darlo: eso lo
+    decide el corte automático cuando le toque, con la deuda real a la
+    vista, o un administrador a mano. Deshacer un error no debería poder
+    causar otro mayor.
+
+    Queda escrito en el historial con el nombre de quien lo quitó. Un
+    compromiso que aparece y desaparece sin dejar rastro es justo lo que
+    nadie puede auditar después.
+    """
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    if not cliente.compromiso_pago_hasta:
+        raise HTTPException(status_code=400, detail="Este cliente no tiene un compromiso de pago")
+
+    tenia = cliente.compromiso_pago_hasta
+    cliente.compromiso_pago_hasta = None
+    db.add(models.Historial(
+        cliente_id=cliente.id,
+        tipo=models.TipoHistorial.compromiso_pago,
+        descripcion=(
+            f"Se quitó el compromiso de pago que venía hasta el "
+            f"{tenia.strftime('%d/%m/%Y')}"
+        ),
+        usuario_id=current_user.id,
+    ))
+    db.commit()
+
+    return {"ok": True, "estado": cliente.estado.value}
+
+
 # ── Líneas del titular ────────────────────────────────────────────────────────
 
 @router.get("/{cliente_id}/lineas")

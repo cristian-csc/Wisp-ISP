@@ -151,6 +151,18 @@ export async function reenviarConfirmacionWhatsapp(pagoId: number): Promise<{ ok
   return data;
 }
 
+export type ClienteConCompromiso = ClienteListItem & { dias_restantes: number };
+
+/** Los que pidieron plazo y todavía lo tienen corriendo.
+ *
+ *  Al dar un compromiso el cliente sale de morosos y de cortados —que es
+ *  lo que se busca— y con eso desaparece de la pantalla hasta que el plazo
+ *  se le vence. Esta lista es dónde ir a verlos mientras tanto. */
+export async function getCompromisosVigentes(): Promise<ClienteConCompromiso[]> {
+  const { data } = await api.get('/pagos/compromisos-vigentes');
+  return data;
+}
+
 export async function getPausasPorVencer(): Promise<ClienteListItem[]> {
   const { data } = await api.get('/pagos/pausas-por-vencer');
   return data;

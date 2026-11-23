@@ -361,6 +361,16 @@ export async function darCompromisoPago(id: number, fechaLimite: string) {
   return data as { ok: boolean; estado: string; compromiso_pago_hasta: string; mikrotik_ok: boolean };
 }
 
+/** Deshace un compromiso puesto por error.
+ *
+ *  Solo quita el plazo: NO vuelve a cortar el servicio, aunque la ficha se
+ *  hubiera reactivado al darlo. De eso se encarga el corte automático
+ *  cuando le toque — deshacer un error no debería poder causar otro. */
+export async function quitarCompromisoPago(id: number) {
+  const { data } = await api.delete(`/clientes/${id}/compromiso-pago`);
+  return data as { ok: boolean; estado: string };
+}
+
 export type MesPago = { mes: string; estado: 'pagado' | 'vencido' | 'pendiente' | 'no_aplica' | 'futuro' };
 
 export async function getCalendarioPagos(clienteId: number, anio?: number): Promise<MesPago[]> {

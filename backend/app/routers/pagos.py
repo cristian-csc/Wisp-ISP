@@ -777,6 +777,40 @@ def clientes_cortados(
     return items
 
 
+@router.get("/compromisos-vigentes")
+def compromisos_vigentes(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)),
+):
+    """Clientes a los que se les dio plazo y todavía lo tienen corriendo.
+
+    Hacía falta por una razón simple: al dar el compromiso, el cliente sale
+    de la lista de morosos y de la de cortados — que es justo lo que se
+    busca— y entonces desaparece de la pantalla. Quedaba invisible hasta que
+    se le vencía el plazo. Si alguien se equivocaba de cliente, no había
+    dónde ir a verlo ni cómo deshacerlo.
+
+    Ordenados por el que vence primero, que es a quien hay que llamar hoy.
+    """
+    hoy = date.today()
+    con_plazo = db.query(models.Cliente).options(
+        joinedload(models.Cliente.zona),
+        joinedload(models.Cliente.plan),
+    ).filter(
+        models.Cliente.compromiso_pago_hasta.isnot(None),
+        models.Cliente.compromiso_pago_hasta >= hoy,
+    ).order_by(models.Cliente.compromiso_pago_hasta.asc()).all()
+
+    items = []
+    for c in con_plazo:
+        item = schemas.ClienteListItem.model_validate(c).model_dump(mode="json")
+        item["monto_mensual"] = monto_mensual(c, c.plan)
+        item["monto_mensual_detalle"] = detalle_monto(c, c.plan)
+        item["dias_restantes"] = (c.compromiso_pago_hasta - hoy).days
+        items.append(item)
+    return items
+
+
 @router.get("/pausas-por-vencer")
 def pausas_por_vencer(
     db: Session = Depends(get_db),
