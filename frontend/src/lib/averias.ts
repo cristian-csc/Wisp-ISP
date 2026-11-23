@@ -18,6 +18,11 @@ export type Averia = {
   fecha_atencion: string | null;
   cliente: { id: number; nombre: string; dni: string | null; zona: { id: number; nombre: string } | null } | null;
   caja_nap: { id: number; codigo: string; zona: { id: number; nombre: string } | null } | null;
+  /** Quién la tomó y la atendió. */
+  tecnico_asignado: { id: number; nombre: string } | null;
+  /** Los equipos que se tocaron, cuando hubo cambio de ONU. */
+  onu_reemplazada: { id: number; numero_serie: string } | null;
+  onu_nueva: { id: number; numero_serie: string } | null;
 };
 
 export async function listAverias(params?: { estado?: EstadoAveria; cliente_id?: number; zona_id?: number }): Promise<Averia[]> {

@@ -784,6 +784,18 @@ class AveriaClienteOut(BaseModel):
     class Config:
         from_attributes = True
 
+class AveriaTecnicoOut(BaseModel):
+    id: int
+    nombre: str
+    class Config:
+        from_attributes = True
+
+class AveriaOnuOut(BaseModel):
+    id: int
+    numero_serie: str
+    class Config:
+        from_attributes = True
+
 class AveriaCajaNapOut(BaseModel):
     id: int
     codigo: str
@@ -807,6 +819,12 @@ class AveriaOut(BaseModel):
     fecha_atencion: Optional[datetime] = None
     cliente: Optional[AveriaClienteOut] = None
     caja_nap: Optional[AveriaCajaNapOut] = None
+    # Lo que de verdad paso con la averia. Se guardaba desde siempre, pero
+    # no salía a ninguna pantalla: al cerrarla solo quedaban las fotos, y
+    # una foto no dice que se hizo ni quien lo hizo.
+    tecnico_asignado: Optional[AveriaTecnicoOut] = None
+    onu_reemplazada: Optional[AveriaOnuOut] = None
+    onu_nueva: Optional[AveriaOnuOut] = None
     class Config:
         from_attributes = True
 

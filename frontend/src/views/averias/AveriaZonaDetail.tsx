@@ -69,6 +69,31 @@ const ESTADO_BADGE: Record<Averia['estado'], string> = {
 const MOTIVOS_CLIENTE = ['Cambio de router', 'Conectores', 'Cable drop', 'Patchcord', 'Cambio de roseta'];
 const MOTIVOS_PLANTA = ['Sin potencia óptica', 'Caja dañada', 'Corte de troncal'];
 
+/** Un dato del detalle. Si no hay valor, se dice — no se esconde la fila:
+ *  saber que la potencia NO se midió también es información. */
+function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {etiqueta}
+      </p>
+      <p className="mt-0.5 truncate text-sm text-foreground">
+        {valor ?? <span className="text-muted-foreground">Sin registrar</span>}
+      </p>
+    </div>
+  );
+}
+
+function fechaHora(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('es-PE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
 function ChipsMotivo({ opciones, onPick }: { opciones: string[]; onPick: (texto: string) => void }) {
   return (
     <div className="flex flex-wrap gap-2 mb-2">
@@ -276,10 +301,10 @@ const AveriaZonaDetail = () => {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" onClick={() => abrirEvidencias(a)}>
-                <Icon icon="tabler:photo" height={18} />
+                <Icon icon="tabler:file-description" height={18} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent><p>Ver evidencias</p></TooltipContent>
+            <TooltipContent><p>Ver detalle</p></TooltipContent>
           </Tooltip>
           {a.estado === 'pendiente' && puedeAsignar && (
             <Tooltip>
@@ -291,17 +316,21 @@ const AveriaZonaDetail = () => {
               <TooltipContent><p>Asignar técnico</p></TooltipContent>
             </Tooltip>
           )}
-          {a.estado === 'asignada' && puedeOperar && (
+          {/* También en las pendientes: una avería sin dueño se la queda el
+              técnico que la empieza, sin pasar por una asignación previa. */}
+          {(a.estado === 'pendiente' || a.estado === 'asignada') && puedeOperar && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={() => handleIniciar(a)}>
                   <Icon icon="tabler:player-play" height={18} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>Iniciar atención</p></TooltipContent>
+              <TooltipContent>
+                <p>{a.estado === 'pendiente' ? 'Tomar y atender' : 'Iniciar atención'}</p>
+              </TooltipContent>
             </Tooltip>
           )}
-          {(a.estado === 'asignada' || a.estado === 'en_proceso') && puedeOperar && (
+          {a.estado !== 'resuelta' && a.estado !== 'pendiente' && puedeOperar && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={() => abrirResolver(a)}>
@@ -675,18 +704,81 @@ const AveriaZonaDetail = () => {
         </div>
       </FormDialog>
 
-      {/* Evidencias */}
+      {/* Detalle de la avería.
+          Antes esto enseñaba solo las fotos. Una foto prueba que el técnico
+          estuvo ahí, pero no dice qué encontró, qué hizo ni con cuánta
+          potencia la dejó — y todo eso ya se guardaba. Faltaba mostrarlo. */}
       <FormDialog
         open={!!viendoEvidencias}
         onOpenChange={(o) => !o && cerrarEvidencias()}
-        title="Evidencias"
-        subtitle="Fotos registradas por el técnico"
-        icon="tabler:photo"
+        title="Detalle de la avería"
+        subtitle={viendoEvidencias?.cliente?.nombre
+          ?? (viendoEvidencias?.caja_nap ? `Caja ${viendoEvidencias.caja_nap.codigo}` : 'Planta externa')}
+        icon="tabler:file-description"
         tone="primary"
         size="xl"
       >
+        {viendoEvidencias && (
+          <div className="mb-5 flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ESTADO_BADGE[viendoEvidencias.estado]}`}>
+                {ESTADO_LABEL[viendoEvidencias.estado]}
+              </span>
+              {viendoEvidencias.tecnico_asignado && (
+                <span className="text-xs text-muted-foreground">
+                  Atendió <b className="text-foreground">{viendoEvidencias.tecnico_asignado.nombre}</b>
+                </span>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-ld bg-surface-2 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Motivo reportado
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+                {viendoEvidencias.motivo_reportado}
+              </p>
+            </div>
+
+            {viendoEvidencias.diagnostico_solucion ? (
+              <div className="rounded-lg border border-ld bg-lightsuccess/40 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-success-text">
+                  Qué se hizo
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+                  {viendoEvidencias.diagnostico_solucion}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Todavía no se registra la solución: la avería sigue abierta.
+              </p>
+            )}
+
+            <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2">
+              <Dato etiqueta="Reportada" valor={fechaHora(viendoEvidencias.fecha_reporte)} />
+              <Dato etiqueta="Resuelta" valor={fechaHora(viendoEvidencias.fecha_atencion)} />
+              <Dato
+                etiqueta="Potencia óptica"
+                valor={viendoEvidencias.potencia_optica_dbm != null
+                  ? `${viendoEvidencias.potencia_optica_dbm} dBm`
+                  : null}
+              />
+              {(viendoEvidencias.onu_reemplazada || viendoEvidencias.onu_nueva) && (
+                <Dato
+                  etiqueta="Cambio de equipo"
+                  valor={`${viendoEvidencias.onu_reemplazada?.numero_serie ?? '—'} → ${viendoEvidencias.onu_nueva?.numero_serie ?? '—'}`}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Evidencias
+        </p>
         {evidencias.length === 0 && (
-          <p className="py-4 text-sm text-muted-foreground">
+          <p className="py-2 text-sm text-muted-foreground">
             Sin fotos registradas para esta avería.
           </p>
         )}

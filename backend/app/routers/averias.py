@@ -45,6 +45,9 @@ def _averias_query(db: Session):
     return db.query(models.Averia).options(
         joinedload(models.Averia.cliente).joinedload(models.Cliente.zona),
         joinedload(models.Averia.caja_nap).joinedload(models.CajaNap.zona),
+        joinedload(models.Averia.tecnico_asignado),
+        joinedload(models.Averia.onu_reemplazada),
+        joinedload(models.Averia.onu_nueva),
     )
 
 
@@ -213,14 +216,42 @@ def iniciar_averia(
         require_roles(models.RolUsuario.admin, models.RolUsuario.tecnico)
     ),
 ):
-    """El técnico marca que ya está en atención (en camino / trabajando)."""
+    """El técnico toma la avería y queda en atención (en camino / trabajando).
+
+    Antes hacían falta dos personas para empezar: un administrador que la
+    asignara y el técnico que le diera inicio. En la práctica eso no se
+    sostenía — los técnicos ya están repartidos por zona, así que
+    cualquiera de esa zona puede ir, y quedarse esperando el visto bueno del
+    administrador solo retrasa al cliente.
+
+    Ahora, una avería que todavía no tiene dueño se la queda quien la
+    empieza. Eso sí: **solo un técnico de esa zona**, y solo si está libre.
+    Tomarla no es un permiso, es una firma: a partir de aquí la avería tiene
+    nombre, y se sabe a quién preguntarle.
+    """
     averia = db.query(models.Averia).filter(models.Averia.id == averia_id).first()
     if not averia:
         raise HTTPException(status_code=404, detail="Avería no encontrada")
-    if averia.estado != models.EstadoAveria.asignada:
-        raise HTTPException(status_code=400, detail="La avería no está asignada")
-    if current_user.rol == models.RolUsuario.tecnico and averia.tecnico_asignado_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Esta avería no está asignada a usted")
+    if averia.estado not in (models.EstadoAveria.pendiente, models.EstadoAveria.asignada):
+        raise HTTPException(status_code=400, detail="La avería ya fue atendida")
+
+    if averia.tecnico_asignado_id and averia.tecnico_asignado_id != current_user.id:
+        # Ya tiene dueño. Que otro la empiece sin avisar es como perderla:
+        # dos técnicos saliendo al mismo sitio, o ninguno.
+        if current_user.rol == models.RolUsuario.tecnico:
+            raise HTTPException(
+                status_code=403,
+                detail="Esta avería ya la está atendiendo otro técnico.",
+            )
+    elif current_user.rol == models.RolUsuario.tecnico:
+        # Libre: se la lleva quien la toma, si es de una zona suya.
+        zona = _zona_de_averia(db, averia)
+        if zona is not None and zona not in set(zonas_asignadas(db, current_user)):
+            raise HTTPException(
+                status_code=403,
+                detail="Esta avería es de una zona que no tiene asignada.",
+            )
+        averia.tecnico_asignado_id = current_user.id
 
     averia.estado = models.EstadoAveria.en_proceso
     db.commit()

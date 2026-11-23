@@ -487,6 +487,11 @@ class Averia(Base):
 
     cliente = relationship("Cliente", back_populates="averias")
     caja_nap = relationship("CajaNap")
+    # Para poder contar lo que paso sin que quien mira tenga que cruzar ids
+    # a mano: quien la atendio y que equipos se tocaron.
+    tecnico_asignado = relationship("Usuario", foreign_keys=[tecnico_asignado_id])
+    onu_reemplazada = relationship("Onu", foreign_keys=[onu_reemplazada_id])
+    onu_nueva = relationship("Onu", foreign_keys=[onu_nueva_id])
 
 
 class Evidencia(Base):

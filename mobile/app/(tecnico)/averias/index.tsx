@@ -33,10 +33,15 @@ function AveriaCard({ item, onIniciar, onPress }: { item: Averia; onIniciar: () 
         </View>
       </View>
       <Text style={st.motivo} numberOfLines={2}>{item.motivo_reportado}</Text>
-      {item.estado === 'asignada' && (
+      {/* Pendiente = sin dueño todavía. Como los técnicos están repartidos
+          por zona, cualquiera de esa zona puede tomarla sin esperar que un
+          administrador se la asigne: tocar aquí la pone a su nombre. */}
+      {(item.estado === 'pendiente' || item.estado === 'asignada') && (
         <TouchableOpacity style={st.iniciarBtn} onPress={(e) => { e.stopPropagation(); onIniciar(); }}>
           <Ionicons name="play-outline" size={14} color={COLORS.white} />
-          <Text style={st.iniciarText}>Iniciar atención</Text>
+          <Text style={st.iniciarText}>
+            {item.estado === 'pendiente' ? 'Tomar y atender' : 'Iniciar atención'}
+          </Text>
         </TouchableOpacity>
       )}
       {item.estado === 'en_proceso' && (
@@ -113,7 +118,7 @@ export default function AveriasScreen() {
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 80 }}>
             <Ionicons name="build-outline" size={44} color={COLORS.placeholder} />
-            <Text style={{ color: COLORS.mutedForeground, marginTop: 12, fontSize: 15 }}>Sin averías asignadas</Text>
+            <Text style={{ color: COLORS.mutedForeground, marginTop: 12, fontSize: 15 }}>No hay averías abiertas en sus zonas</Text>
           </View>
         }
       />
