@@ -5,6 +5,7 @@ import CardBox from 'src/components/shared/CardBox';
 import { Input } from 'src/components/ui/input';
 import { listZonas, type Zona } from 'src/lib/zonas';
 import { listOrdenesRetiro, type OrdenRetiro } from 'src/lib/retiros';
+import { useRefrescoAlVolver } from 'src/lib/useRefrescoAlVolver';
 
 const Retiros = () => {
   const navigate = useNavigate();
@@ -12,10 +13,13 @@ const Retiros = () => {
   const [ordenes, setOrdenes] = useState<OrdenRetiro[]>([]);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  function recargar() {
     listZonas().then(setZonas);
     listOrdenesRetiro().then(setOrdenes);
-  }, []);
+  }
+
+  useEffect(recargar, []);
+  useRefrescoAlVolver(recargar);
 
   const zonasFiltradas = zonas.filter((z) =>
     z.nombre.toLowerCase().includes(search.trim().toLowerCase()),

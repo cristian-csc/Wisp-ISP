@@ -5,6 +5,7 @@ import CardBox from 'src/components/shared/CardBox';
 import { Input } from 'src/components/ui/input';
 import { listZonas, type Zona } from 'src/lib/zonas';
 import { listAverias, type Averia } from 'src/lib/averias';
+import { useRefrescoAlVolver } from 'src/lib/useRefrescoAlVolver';
 
 function zonaIdDeAveria(a: Averia): number | null {
   return a.cliente?.zona?.id ?? a.caja_nap?.zona?.id ?? null;
@@ -16,10 +17,15 @@ const Averias = () => {
   const [averias, setAverias] = useState<Averia[]>([]);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  function recargar() {
     listZonas().then(setZonas);
     listAverias().then(setAverias);
-  }, []);
+  }
+
+  useEffect(recargar, []);
+  // El tecnico abre y cierra averias desde el movil: al volver a esta
+  // ventana conviene traer lo que haya pasado mientras.
+  useRefrescoAlVolver(recargar);
 
   const zonasFiltradas = zonas.filter((z) =>
     z.nombre.toLowerCase().includes(search.trim().toLowerCase()),
