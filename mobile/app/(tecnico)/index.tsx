@@ -27,7 +27,14 @@ function OrdenCard({ item, onInstalar, onNoInstalar }: {
 
       <View style={st.cardCuerpo}>
         <View style={st.cardTop}>
-          <Text style={st.nombre} numberOfLines={1}>{item.nombre}</Text>
+          <View style={st.nombreFila}>
+            <Text style={[st.nombre, { flexShrink: 1 }]} numberOfLines={1}>{item.nombre}</Text>
+            {item.linea > 1 && (
+            <View style={st.lineaChip}>
+              <Text style={st.lineaChipText}>L{item.linea}</Text>
+            </View>
+          )}
+          </View>
           <View style={st.badge}>
             <Text style={st.badgeText}>
               {item.tipo_conexion === 'inalambrico' ? 'Inalámbrico' : 'Fibra'}
@@ -190,6 +197,9 @@ const st = StyleSheet.create({
   cardCuerpo: { flex: 1, padding: 15 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 9 },
   nombre: { flex: 1, fontSize: 16.5, fontWeight: '800', color: COLORS.dark },
+  nombreFila: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  lineaChip: { backgroundColor: COLORS.lightbrand, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
+  lineaChipText: { fontSize: 10, fontWeight: '800', color: COLORS.brand },
   badge: { backgroundColor: COLORS.muted, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
   badgeText: { fontSize: 10.5, color: COLORS.mutedForeground, fontWeight: '800' },
   metaFila: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 4 },

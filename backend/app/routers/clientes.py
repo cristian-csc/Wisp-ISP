@@ -12,7 +12,7 @@ import paramiko
 import httpx
 
 from ..database import get_db
-from .. import models, schemas
+from .. import models, schemas, lineas
 from .auth import get_current_user, get_password_hash, require_roles, zonas_asignadas
 from ..config import settings
 from ..mensajeria import cabeceras_bot
@@ -573,13 +573,70 @@ def list_clientes(
 # PPPoE se derivan del DNI (regla de negocio: el DNI es lo que se registra
 # como usuario y contraseña PPPoE).
 
+@router.get("/verificar-dni/{dni}")
+def verificar_dni(
+    dni: str,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente, models.RolUsuario.vendedor_campo, models.RolUsuario.tecnico)),
+):
+    """Qué líneas tiene ya ese DNI, para preguntarlo ANTES de registrar.
+
+    El formulario llama aquí en cuanto se termina de escribir el documento.
+    Si el DNI está libre no pasa nada y se sigue llenando la ficha; si no,
+    la pantalla ofrece lo único que tiene sentido ofrecer: «esta persona ya
+    tiene servicio, ¿es otra línea para ella?».
+
+    Preguntarlo aquí, y no al guardar, es lo que convierte un rechazo seco
+    en una decisión. Quien registra se entera antes de llenar la ficha
+    entera, y de paso ve el nombre con el que esa persona ya está anotada
+    — que es como se descubre un DNI mal tecleado.
+    """
+    existentes = lineas.lineas_del_dni(db, dni)
+    if not existentes:
+        return {"dni": dni, "existe": False, "lineas": [], "puede_agregar": True}
+
+    usadas = max(c.linea for c in existentes)
+    zonas = {
+        z.id: z.nombre
+        for z in db.query(models.Zona)
+        .filter(models.Zona.id.in_([c.zona_id for c in existentes if c.zona_id]))
+        .all()
+    }
+
+    return {
+        "dni": dni,
+        "existe": True,
+        "titular": existentes[0].nombre,
+        "telefono": existentes[0].telefono_whatsapp or existentes[0].telefono,
+        "puede_agregar": usadas < lineas.MAX_LINEAS,
+        "proxima_linea": usadas + 1 if usadas < lineas.MAX_LINEAS else None,
+        "lineas": [
+            {
+                "id": c.id,
+                "linea": c.linea,
+                "nombre": c.nombre,
+                "usuario_pppoe": c.usuario_pppoe,
+                "estado": c.estado.value if c.estado else None,
+                "zona": zonas.get(c.zona_id),
+                "direccion": c.direccion,
+                "fecha_vencimiento": c.fecha_vencimiento.isoformat() if c.fecha_vencimiento else None,
+            }
+            for c in existentes
+        ],
+    }
+
+
 @router.post("", status_code=201)
 def create_cliente(
     data: schemas.ClienteCreate,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente, models.RolUsuario.vendedor_campo, models.RolUsuario.tecnico)),
 ):
-    if db.query(models.Cliente).filter(models.Cliente.dni == data.dni).first():
+    # Un DNI que ya existe no es necesariamente un error: puede ser el mismo
+    # cliente contratando otra línea. La diferencia la marca quien registra,
+    # y tiene que decirla a propósito — por descuido no se crea una línea.
+    existentes = lineas.lineas_del_dni(db, data.dni)
+    if existentes and not data.linea_adicional:
         raise HTTPException(
             status_code=400,
             detail="Ya existe un cliente con ese DNI"
@@ -587,13 +644,33 @@ def create_cliente(
             else "Ese DNI de responsable ya está registrado en otro cliente",
         )
 
-    if data.ruc and db.query(models.Cliente).filter(models.Cliente.ruc == data.ruc).first():
+    if existentes:
+        try:
+            linea = lineas.siguiente_linea(db, data.dni)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    else:
+        linea = 1
+
+    # El RUC se repite entre las líneas de una misma empresa, así que ya no
+    # alcanza con que exista: estorba solo si está a nombre de OTRO titular.
+    if data.ruc and db.query(models.Cliente).filter(
+        models.Cliente.ruc == data.ruc,
+        models.Cliente.dni != data.dni,
+    ).first():
         raise HTTPException(status_code=400, detail="Ya existe un cliente con ese RUC")
 
     dump = data.model_dump()
+    dump.pop("linea_adicional", None)
+    dump["linea"] = linea
     # Las credenciales salen SIEMPRE del DNI, nunca del RUC: un RUC es público
     # y cualquiera podría usarlo para entrar al portal del cliente.
-    dump["usuario_pppoe"] = data.dni
+    #
+    # El usuario lleva además la letra de la línea — 70111222b la segunda—
+    # porque el MikroTik no admite dos secretos con el mismo nombre. La
+    # contraseña no la lleva: no necesita ser única, y es un dato que el
+    # cliente termina dictando por teléfono.
+    dump["usuario_pppoe"] = lineas.usuario_de_linea(data.dni, linea)
     dump["password_pppoe"] = data.dni
     dump["vendedor_id"] = current_user.id
 
@@ -602,10 +679,15 @@ def create_cliente(
     db.commit()
     db.refresh(cliente)
 
+    nota_linea = (
+        f" Es su {lineas.ordinal(linea)} línea; usuario {cliente.usuario_pppoe}."
+        if linea > 1
+        else ""
+    )
     historial = models.Historial(
         cliente_id=cliente.id,
         tipo=models.TipoHistorial.nota,
-        descripcion=f"Cliente registrado por {current_user.nombre} — pendiente de aprobación.",
+        descripcion=f"Cliente registrado por {current_user.nombre} — pendiente de aprobación.{nota_linea}",
         usuario_id=current_user.id,
     )
     db.add(historial)
@@ -1906,6 +1988,65 @@ def dar_compromiso_pago(
         "estado": cliente.estado.value,
         "compromiso_pago_hasta": str(cliente.compromiso_pago_hasta),
         "mikrotik_ok": mt_result["ok"],
+    }
+
+
+# ── Líneas del titular ────────────────────────────────────────────────────────
+
+@router.get("/{cliente_id}/lineas")
+def lineas_del_titular(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user),
+):
+    """Las otras líneas registradas con el mismo DNI que este cliente.
+
+    Cada línea es una ficha aparte, con su plan, su fecha de pago y su
+    recibo — así es como funciona el negocio y así se queda. Lo que falta
+    es que, estando en una, se vea que la persona tiene las otras: sin eso,
+    quien atiende en caja cobra la que tiene delante y no se entera de que
+    la segunda línea venció anteayer.
+
+    Devuelve la lista vacía cuando el cliente tiene una sola línea, que es
+    el caso de casi todos.
+    """
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    if not cliente.dni:
+        return {"lineas": []}
+
+    hermanas = lineas.lineas_del_dni(db, cliente.dni, excluir_id=cliente_id)
+    if not hermanas:
+        return {"lineas": []}
+
+    zonas = {
+        z.id: z.nombre
+        for z in db.query(models.Zona)
+        .filter(models.Zona.id.in_([c.zona_id for c in hermanas if c.zona_id]))
+        .all()
+    }
+    planes = {
+        p.id: p.nombre
+        for p in db.query(models.Plan)
+        .filter(models.Plan.id.in_([c.plan_id for c in hermanas if c.plan_id]))
+        .all()
+    }
+
+    return {
+        "lineas": [
+            {
+                "id": c.id,
+                "linea": c.linea,
+                "usuario_pppoe": c.usuario_pppoe,
+                "estado": c.estado.value if c.estado else None,
+                "zona": zonas.get(c.zona_id),
+                "plan": planes.get(c.plan_id),
+                "direccion": c.direccion,
+                "fecha_vencimiento": c.fecha_vencimiento.isoformat() if c.fecha_vencimiento else None,
+            }
+            for c in hermanas
+        ]
     }
 
 

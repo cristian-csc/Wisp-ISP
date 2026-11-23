@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, DateTime, Date, Numeric,
-    ForeignKey, Text, Enum as SAEnum, UniqueConstraint, JSON
+    ForeignKey, Text, Enum as SAEnum, UniqueConstraint, CheckConstraint, JSON
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -330,9 +330,18 @@ class Cliente(Base):
     tipo_documento = Column(SAEnum(TipoDocumento), default=TipoDocumento.dni, nullable=False)
     # El DNI que genera las credenciales: del titular si es persona, del
     # responsable si es empresa. De aquí salen usuario_pppoe y password_pppoe.
-    dni = Column(String(15), unique=True, index=True)
-    # Solo para empresas
-    ruc = Column(String(11), unique=True, index=True)
+    #
+    # Ya NO es único por sí solo: una misma persona puede tener hasta tres
+    # líneas a su nombre. Lo único es el par (dni, linea) — ver la
+    # UniqueConstraint del final de la clase.
+    dni = Column(String(15), index=True)
+    # Cuál de sus líneas es esta ficha. 1 es la de siempre; la 2 y la 3 son
+    # contrataciones adicionales del mismo titular, y lo único que las
+    # distingue de puertas afuera es el sufijo del usuario PPPoE.
+    linea = Column(Integer, default=1, nullable=False)
+    # Solo para empresas. Tampoco es único, por lo mismo que el DNI: una
+    # empresa con dos líneas lo repite.
+    ruc = Column(String(11), index=True)
     responsable_nombre = Column(String(150))
     telefono = Column(String(20))
     telefono_whatsapp = Column(String(20))
@@ -411,6 +420,15 @@ class Cliente(Base):
     vendedor = relationship("Usuario", foreign_keys=[vendedor_id])
     aprobado_por = relationship("Usuario", foreign_keys=[aprobado_por_id])
     tecnico_instalador = relationship("Usuario", foreign_keys=[tecnico_instalador_id])
+
+    __table_args__ = (
+        # Dos fichas con el mismo DNI son líneas distintas de la misma
+        # persona, nunca la misma línea repetida. Esto es lo que impide que
+        # un alta por descuido cree un duplicado: entraría otra vez como
+        # línea 1 y chocaría aquí.
+        UniqueConstraint("dni", "linea", name="uq_clientes_dni_linea"),
+        CheckConstraint("linea >= 1 AND linea <= 3", name="ck_clientes_linea"),
+    )
 
 
 class Onu(Base):

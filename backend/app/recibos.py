@@ -105,6 +105,9 @@ class LineaRecibo:
 class DatosRecibo:
     numero: int
     cliente: str
+    # Solo cuando el titular tiene mas de una linea: sin esto, dos recibos
+    # del mismo cliente salen identicos y no hay forma de saber cual pago.
+    servicio: Optional[str]
     direccion: Optional[str]
     dia_pago: Optional[int]
     dia_corte: Optional[int]
@@ -250,6 +253,8 @@ def _dibujar(destino: BytesIO, d: DatosRecibo, alto: float) -> float:
 
     # Datos del cobro
     L.izq(f"CLIENTE: {d.cliente}", negrita=True)
+    if d.servicio:
+        L.izq(f"SERVICIO: {d.servicio}")
     if d.direccion:
         L.envuelto(f"DIRECCION: {d.direccion}")
     if d.dia_pago:

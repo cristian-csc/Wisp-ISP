@@ -39,6 +39,10 @@ export type ClienteListItem = {
   nombre: string;
   tipo_documento: TipoDocumento;
   dni: string | null;
+  /** Cuál de las líneas del titular es esta ficha. 1 en casi todas; la 2 y
+   *  la 3 son contrataciones adicionales del mismo DNI, y lo que las
+   *  distingue de puertas afuera es el sufijo del usuario PPPoE. */
+  linea: number;
   ruc: string | null;
   responsable_nombre: string | null;
   telefono: string | null;
@@ -186,6 +190,10 @@ export type ClienteCreateInput = {
   plan_id: number;
   cantidad_tv?: number;
   tipo_conexion?: TipoConexion;
+  /** Se manda en true cuando quien registra ya vio que ese DNI tiene
+   *  servicio y aun así quiere darle otra línea. Sin esto, un DNI repetido
+   *  se rechaza — que es lo que protege del alta por descuido. */
+  linea_adicional?: boolean;
   /** El cliente ya estaba conectado antes de que existiera este sistema. Lo
    *  marca quien lo registra desde el panel, nunca el técnico desde la app:
    *  si el técnico pudiera, en un mes todas las instalaciones serían
@@ -198,6 +206,52 @@ export type ClienteCreateInput = {
 export async function createCliente(data: ClienteCreateInput) {
   const res = await api.post<{ cliente: ClienteOut }>('/clientes', data);
   return res.data.cliente;
+}
+
+/** Una de las líneas que un DNI ya tiene registradas. */
+export type LineaDelTitular = {
+  id: number;
+  /** 1, 2 o 3 */
+  linea: number;
+  nombre?: string;
+  usuario_pppoe: string;
+  estado: string | null;
+  zona: string | null;
+  plan?: string | null;
+  direccion: string | null;
+  fecha_vencimiento: string | null;
+};
+
+export type ConsultaLineas = {
+  dni: string;
+  existe: boolean;
+  titular?: string;
+  telefono?: string | null;
+  /** false cuando ya tiene las tres líneas que permite el sistema */
+  puede_agregar: boolean;
+  proxima_linea?: number | null;
+  lineas: LineaDelTitular[];
+};
+
+/** ¿Este DNI ya tiene servicio?
+ *
+ *  Se pregunta mientras se escribe el documento, no al guardar. Un DNI
+ *  repetido casi siempre es un error de tecleo, pero a veces es el mismo
+ *  cliente pidiendo otra línea — y eso hay que poder ofrecerlo antes de
+ *  que llene la ficha entera, no después de rechazársela. */
+export async function verificarDni(dni: string) {
+  const res = await api.get<ConsultaLineas>(`/clientes/verificar-dni/${dni}`);
+  return res.data;
+}
+
+/** Las otras líneas del mismo titular, vistas desde la ficha de una.
+ *
+ *  Vacío para la inmensa mayoría de clientes, que tienen una sola. */
+export async function lineasDelTitular(clienteId: number) {
+  const res = await api.get<{ lineas: LineaDelTitular[] }>(
+    `/clientes/${clienteId}/lineas`,
+  );
+  return res.data.lineas;
 }
 
 /** Registrar la caja, el borne y el equipo de un cliente YA instalado.

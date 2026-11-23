@@ -189,6 +189,11 @@ export type ClienteListItem = {
   id: number;
   nombre: string;
   dni: string | null;
+  /** Cuál de las líneas del titular es esta ficha. 1 en casi todas; la 2 y
+   *  la 3 son contrataciones adicionales del mismo DNI. En una lista de
+   *  trabajo salen como dos tarjetas con el mismo nombre, y esto es lo
+   *  único que las distingue. */
+  linea: number;
   telefono: string | null;
   usuario_pppoe: string;
   ip_estatica: string | null;
@@ -294,10 +299,49 @@ export type ClienteRegistroInput = {
   cantidad_tv?: number;
   tipo_conexion?: 'fibra_optica' | 'inalambrico';
   notas?: string | null;
+  /** Se manda en true cuando quien registra ya vio que ese DNI tiene
+   *  servicio y aun así quiere darle otra línea. Sin esto, el servidor
+   *  rechaza el DNI repetido — que es lo que protege del alta por
+   *  descuido. */
+  linea_adicional?: boolean;
 };
 
 export async function crearCliente(data: ClienteRegistroInput): Promise<{ cliente: ClienteDetalle }> {
   return request('/clientes', { method: 'POST', body: JSON.stringify(data) });
+}
+
+/** Una de las líneas que un DNI ya tiene registradas. */
+export type LineaDelTitular = {
+  id: number;
+  /** 1, 2 o 3 */
+  linea: number;
+  nombre?: string;
+  usuario_pppoe: string;
+  estado: string | null;
+  zona: string | null;
+  direccion: string | null;
+  fecha_vencimiento: string | null;
+};
+
+export type ConsultaLineas = {
+  dni: string;
+  existe: boolean;
+  titular?: string;
+  telefono?: string | null;
+  /** false cuando ya tiene las tres líneas que permite el sistema */
+  puede_agregar: boolean;
+  proxima_linea?: number | null;
+  lineas: LineaDelTitular[];
+};
+
+/** ¿Este DNI ya tiene servicio?
+ *
+ *  Se pregunta mientras se escribe el documento, no al guardar. En el campo
+ *  eso importa más que en la oficina: la vendedora está en la puerta de la
+ *  casa, y enterarse al final —después de la foto, el mapa y el plan— de
+ *  que el DNI estaba repetido significa volver a empezar. */
+export async function verificarDni(dni: string): Promise<ConsultaLineas> {
+  return request(`/clientes/verificar-dni/${dni}`);
 }
 
 export async function aprobarCliente(id: number): Promise<{ ok: boolean; mikrotik_ok: boolean; mikrotik_msg: string }> {

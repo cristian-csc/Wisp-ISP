@@ -191,6 +191,14 @@ export default function InstalarScreen() {
     <ScrollView style={s.container} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
       <View style={s.infoCard}>
         <Text style={s.infoNombre}>{cliente.nombre}</Text>
+        {/* El tecnico puede tener dos instalaciones del mismo titular el
+            mismo dia. Aqui se conecta el equipo: equivocarse de linea
+            significa dejar sin internet a la que ya estaba. */}
+        {cliente.linea > 1 && (
+          <Text style={s.infoLinea}>
+            {cliente.linea === 2 ? 'Segunda' : 'Tercera'} línea de este titular · usuario {cliente.usuario_pppoe}
+          </Text>
+        )}
         <Text style={s.infoSub}>{cliente.direccion ?? 'Sin dirección'}</Text>
         <Text style={s.infoSub}>Plan: {cliente.plan?.nombre ?? '—'} · Zona: {cliente.zona?.nombre ?? '—'}</Text>
         {cliente.lat != null && cliente.lng != null && (
@@ -411,6 +419,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   infoCard: { backgroundColor: COLORS.card, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 14, marginBottom: 18 },
   infoNombre: { fontSize: 16, fontWeight: '800', color: COLORS.dark },
+  infoLinea: { fontSize: 12, fontWeight: '700', color: COLORS.brand, marginTop: 2 },
   infoSub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 3 },
   ubicacionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 10, borderWidth: 1, borderColor: COLORS.dark, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
   ubicacionBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.dark },

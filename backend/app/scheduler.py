@@ -12,6 +12,7 @@ from . import models
 from .billing import monto_mensual
 from .config import settings
 from .mensajeria import cabeceras_bot
+from . import lineas
 from .database import SessionLocal
 
 logger = logging.getLogger(__name__)
@@ -55,9 +56,17 @@ async def job_recordatorio_preventivo(dias_antes: int = 3):
             nombre = cliente.nombre.split()[0]
             tiendas = f"🏪 *Tiendas autorizadas:*\n{zona.tiendas_pago}\n" if zona and zona.tiendas_pago else ""
             monto = monto_mensual(cliente, plan) if plan else 0
+
+            # Cada línea vence por su cuenta y se cobra por separado, así que
+            # al titular con dos le llegan dos avisos. Sin decir cuál es cada
+            # uno, el segundo parece el primero repetido y se ignora; peor
+            # aún, paga una sola vez creyendo que cubrió las dos.
+            cual = lineas.etiqueta(cliente.linea)
+            servicio = f"su *{cual}* ({cliente.usuario_pppoe})" if cual else "su servicio"
+
             mensaje = (
                 f"📅 *WISP* — Recordatorio de Pago\n\n"
-                f"Hola *{nombre}* 👋, le recordamos que su servicio vence en *{dias_antes} días* "
+                f"Hola *{nombre}* 👋, le recordamos que {servicio} vence en *{dias_antes} días* "
                 f"({fecha_objetivo.strftime('%d/%m/%Y')}).\n\n"
                 f"📦 Plan: {plan.nombre if plan else 'Internet'}\n"
                 f"💰 Monto: *S/ {monto:.2f}*\n\n"

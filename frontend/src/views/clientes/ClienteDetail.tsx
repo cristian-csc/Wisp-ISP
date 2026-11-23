@@ -48,9 +48,13 @@ import {
   updateCliente,
   deleteCliente,
   getCalendarioPagos,
+  lineasDelTitular,
   type ClienteOut,
+  type LineaDelTitular,
   type MesPago,
 } from 'src/lib/clientes';
+import { etiquetaLinea } from 'src/lib/lineas';
+import StatusBadge from 'src/components/shared/StatusBadge';
 import {
   listPagos,
   createPago,
@@ -66,6 +70,7 @@ import { listPlanes, type Plan as PlanOpcion } from 'src/lib/planes';
 import ReciboDialog from 'src/components/apps/pagos/ReciboDialog';
 import CarritoMeses from 'src/components/apps/pagos/CarritoMeses';
 import { puedeVerUrl, ROL_LABEL } from 'src/lib/permisos';
+import { useRefrescoAlVolver } from 'src/lib/useRefrescoAlVolver';
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -212,11 +217,24 @@ const ClienteDetail = () => {
   const [editFechaVencimiento, setEditFechaVencimiento] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  // Las otras líneas del mismo DNI. Vacío en casi todos los clientes.
+  const [otrasLineas, setOtrasLineas] = useState<LineaDelTitular[]>([]);
+
+  // Lo que el tecnico haga con este cliente desde el movil -instalar,
+  // completar datos, subir evidencias- aparece al volver a esta ficha.
+  useRefrescoAlVolver(reload);
 
   async function reload() {
     if (!id) return;
     const c = await getCliente(Number(id));
     setCliente(c);
+
+    // Quien atiende en caja cobra la línea que tiene delante. Si el titular
+    // tiene otra y venció anteayer, nadie se entera — salvo que la ficha lo
+    // diga. Si esta consulta falla no se rompe nada: no se muestran.
+    lineasDelTitular(Number(id))
+      .then(setOtrasLineas)
+      .catch(() => setOtrasLineas([]));
     const { data } = await api.get(`/clientes/${id}/historial`);
     setHistorial(data);
 
@@ -570,6 +588,11 @@ const ClienteDetail = () => {
                 <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
                   #{cliente.id}
                 </span>
+                {cliente.linea > 1 && (
+                  <span className="rounded-full bg-lightbrand px-2.5 py-0.5 text-xs font-semibold capitalize text-brand-strong dark:text-brand">
+                    {etiquetaLinea(cliente.linea)}
+                  </span>
+                )}
                 {cliente.tipo_documento === 'ruc' && cliente.ruc ? (
                   <span className="rounded-full bg-lightinfo px-2.5 py-0.5 text-xs font-semibold text-info-text">
                     RUC {cliente.ruc}
@@ -824,6 +847,35 @@ const ClienteDetail = () => {
                   )}
                   {cliente.ip_estatica && <Field label="IP estática" value={cliente.ip_estatica} />}
                 </div>
+                {otrasLineas.length > 0 && (
+                  <div className="mt-5 border-t border-ld pt-5">
+                    <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Otras líneas de este titular
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {otrasLineas.map((l) => (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => navigate(`/clientes/${l.id}`)}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-ld bg-surface-2 px-3 py-2 text-left transition-colors hover:bg-muted"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate font-mono text-sm font-semibold text-foreground">
+                              {l.usuario_pppoe}
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              <span className="capitalize">{etiquetaLinea(l.linea)}</span>
+                              {l.zona ? ` · ${l.zona}` : ''}
+                              {l.fecha_vencimiento ? ` · vence ${l.fecha_vencimiento}` : ''}
+                            </span>
+                          </span>
+                          <StatusBadge estado={l.estado ?? ''} punto className="shrink-0 py-0.5" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {(cliente.notas || cliente.motivo_rechazo || cliente.motivo_no_instalado) && (
                   <div className="mt-5 grid gap-5 border-t border-ld pt-5">
                     {cliente.notas && <Field label="Notas" value={cliente.notas} />}

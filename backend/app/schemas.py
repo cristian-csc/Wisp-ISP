@@ -231,6 +231,11 @@ class ClienteCreate(BaseModel):
     # marca quien lo registra desde el panel, y con eso la instalacion acepta
     # cerrarse sin caja, borne ni equipo, que de el no hay.
     migrado: bool = False
+    # Se envía en True cuando quien registra YA SABE que ese DNI tiene
+    # servicio y aun así quiere dar de alta otra línea para la misma
+    # persona. En False —lo normal— un DNI repetido se rechaza, que es la
+    # red que protege de registrar dos veces al mismo cliente.
+    linea_adicional: bool = False
 
     @field_validator('dni')
     @classmethod
@@ -424,6 +429,8 @@ class ClienteOut(BaseModel):
     nombre: str
     tipo_documento: TipoDocumento = TipoDocumento.dni
     dni: Optional[str] = None
+    # 1 salvo que el titular tenga más de una línea contratada.
+    linea: int = 1
     ruc: Optional[str] = None
     responsable_nombre: Optional[str] = None
     telefono: Optional[str] = None
@@ -485,6 +492,8 @@ class ClienteListItem(BaseModel):
     tipo_documento: TipoDocumento = TipoDocumento.dni
     ruc: Optional[str] = None
     dni: Optional[str] = None
+    # 1 salvo que el titular tenga mas de una linea contratada.
+    linea: int = 1
     telefono: Optional[str] = None
     usuario_pppoe: str
     ip_estatica: Optional[str] = None

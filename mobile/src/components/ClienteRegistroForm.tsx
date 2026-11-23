@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { crearCliente, subirFotoFachada, getZonas, getPlanes, consultarDocumento} from '@/services/api';
+import { crearCliente, subirFotoFachada, getZonas, getPlanes, consultarDocumento, verificarDni, type ConsultaLineas } from '@/services/api';
 import { useSession } from '@/hooks/useSession';
 import { UbicacionPickerModal } from './UbicacionPickerModal';
 import { SelectorZona } from './SelectorZona';
@@ -11,6 +11,14 @@ import { alerta } from '@/components/Aviso';
 
 type Opcion = { id: number; nombre: string; precio?: number; total_clientes?: number };
 type Coords = { lat: number; lng: number };
+
+/* Un mismo titular puede tener hasta tres líneas. El MikroTik crea el
+   secreto PPPoE con el nombre del DNI, así que la segunda lleva una b y la
+   tercera una c — 70111222, 70111222b, 70111222c. La regla vive en el
+   servidor (app/lineas.py); esto es solo para poder decir en pantalla, antes
+   de guardar, cómo se va a llamar. */
+const SUFIJO_LINEA: Record<number, string> = { 1: '', 2: 'b', 3: 'c' };
+const ORDINAL_LINEA: Record<number, string> = { 1: 'primera', 2: 'segunda', 3: 'tercera' };
 
 function Label({ text, required }: { text: string; required?: boolean }) {
   return (
@@ -92,6 +100,10 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
   const [responsable, setResponsable] = useState('');
   // Aviso de la consulta automatica: nunca bloquea el registro
   const [avisoDni,  setAvisoDni]  = useState<string | null>(null);
+  // Qué líneas tiene ya ese DNI, y si quien registra decidió que esta es
+  // otra línea de la misma persona en vez de un documento mal tecleado.
+  const [lineasDni, setLineasDni] = useState<ConsultaLineas | null>(null);
+  const [esLineaAdicional, setEsLineaAdicional] = useState(false);
   const [avisoRuc,  setAvisoRuc]  = useState<string | null>(null);
   const [buscando,  setBuscando]  = useState<'dni' | 'ruc' | null>(null);
   // Si el nombre lo trajo la consulta, al cambiar el documento se reemplaza.
@@ -123,6 +135,30 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
 
   /** Al completar el documento se busca el nombre. Si falla, se escribe el
    *  motivo y el campo queda para llenarlo a mano: el registro no se detiene. */
+  /** Escribir el DNI dispara dos preguntas distintas: a RENIEC, cómo se
+   *  llama esta persona; a nuestro propio sistema, si ya le vendimos
+   *  internet. La segunda es la que importa aquí.
+   *
+   *  Un DNI repetido casi siempre es un error de tecleo —y verlo ahora, con
+   *  el nombre del titular delante, es como se descubre—, pero a veces es
+   *  el mismo cliente pidiendo otra línea. Preguntarlo mientras escribe, y
+   *  no al guardar, evita llenar la ficha entera para que la rechacen. */
+  function cambiarDni(valor: string) {
+    const n = valor.replace(/\D/g, '');
+    setDni(n);
+    setAvisoDni(null);
+    setLineasDni(null);
+    setEsLineaAdicional(false);
+    if (n.length !== 8) return;
+    void buscarNombre('dni', n);
+    // Si esta consulta falla —y en el campo la señal se cae— el alta sigue
+    // su curso: el servidor rechaza igual el DNI repetido. Esto adelanta el
+    // aviso, no lo sustituye.
+    void verificarDni(n)
+      .then(setLineasDni)
+      .catch(() => setLineasDni(null));
+  }
+
   async function buscarNombre(tipo: 'dni' | 'ruc', numero: string) {
     const poner = tipo === 'dni' ? setAvisoDni : setAvisoRuc;
     setBuscando(tipo);
@@ -178,6 +214,17 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
       alerta('DNI inválido', 'El DNI debe tener 8 dígitos.');
       return;
     }
+    // El servidor rechaza igual el DNI repetido; esto evita que se entere
+    // después de la foto, el mapa y el plan.
+    if (lineasDni?.existe && !esLineaAdicional) {
+      alerta(
+        'Ese DNI ya tiene servicio',
+        lineasDni.puede_agregar
+          ? 'Si es otra línea para la misma persona, activa la opción que sale debajo del DNI. Si no, revisa el documento.'
+          : 'Ya tiene las tres líneas que permite el sistema.',
+      );
+      return;
+    }
     if (esEmpresa) {
       if (!/^(10|15|17|20)\d{9}$/.test(ruc.trim())) {
         alerta('RUC inválido', 'El RUC debe tener 11 dígitos y empezar en 10, 15, 17 o 20.');
@@ -209,6 +256,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
         plan_id:         planId,
         cantidad_tv:     tieneTV ? 1 : 0,
         tipo_conexion:   'fibra_optica',
+        linea_adicional: esLineaAdicional,
         notas:           notas.trim() || null,
       });
 
@@ -296,17 +344,55 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
             <Input
               label={tipoDoc === 'ruc' ? 'DNI del responsable' : 'DNI'}
               value={dni}
-              onChange={(v) => {
-                const n = v.replace(/\D/g, '');
-                setDni(n);
-                setAvisoDni(null);
-                if (n.length === 8) void buscarNombre('dni', n);
-              }}
+              onChange={cambiarDni}
               placeholder="8 números"
               keyboard="numeric"
               required
             />
             {avisoDni ? <Text style={f.avisoConsulta}>{avisoDni}</Text> : null}
+            {lineasDni?.existe ? (
+              <View style={f.lineasAviso}>
+                <View style={f.lineasCabecera}>
+                  <Ionicons name="information-circle" size={18} color={COLORS.warning} />
+                  <Text style={f.lineasTitulo}>Este DNI ya tiene servicio</Text>
+                </View>
+                <Text style={f.lineasTitular}>{lineasDni.titular}</Text>
+
+                {lineasDni.lineas.map((l) => (
+                  <Text key={l.id} style={f.lineasItem}>
+                    <Text style={f.lineasUsuario}>{l.usuario_pppoe}</Text>
+                    {l.zona ? `  ·  ${l.zona}` : ''}
+                    {l.estado ? `  ·  ${l.estado.replace(/_/g, ' ')}` : ''}
+                  </Text>
+                ))}
+
+                {lineasDni.puede_agregar && lineasDni.proxima_linea ? (
+                  <View style={f.lineasSwitch}>
+                    <Switch
+                      value={esLineaAdicional}
+                      onValueChange={setEsLineaAdicional}
+                      trackColor={{ false: COLORS.border, true: COLORS.lightbrand }}
+                      thumbColor={esLineaAdicional ? COLORS.brand : '#f4f4f5'}
+                    />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={f.lineasSwitchTitulo}>
+                        Es otra línea para la misma persona
+                      </Text>
+                      <Text style={f.lineasSwitchDetalle}>
+                        Se registrará como {dni}
+                        {SUFIJO_LINEA[lineasDni.proxima_linea] ?? ''}, su{' '}
+                        {ORDINAL_LINEA[lineasDni.proxima_linea] ?? lineasDni.proxima_linea} línea.
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={f.lineasTope}>
+                    Ya tiene las tres líneas que permite el sistema. Para una
+                    más hay que dar de baja alguna.
+                  </Text>
+                )}
+              </View>
+            ) : null}
           </View>
           <View style={{ width: 12 }} />
           <View style={{ flex: 1 }}>
@@ -435,6 +521,32 @@ const f = StyleSheet.create({
     marginTop: -8,
     marginBottom: 12,
   },
+
+  lineasAviso: {
+    backgroundColor: COLORS.muted,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: -4,
+    marginBottom: 12,
+  },
+  lineasCabecera: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  lineasTitulo: { fontSize: 13, fontWeight: '700', color: COLORS.dark },
+  lineasTitular: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 2 },
+  lineasItem: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 6 },
+  lineasUsuario: { fontWeight: '700', color: COLORS.dark },
+  lineasSwitch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  lineasSwitchTitulo: { fontSize: 13, fontWeight: '600', color: COLORS.dark },
+  lineasSwitchDetalle: { fontSize: 11, color: COLORS.mutedForeground, marginTop: 2 },
+  lineasTope: { fontSize: 12, color: COLORS.warningText, marginTop: 10 },
   tipoFila: {
     flexDirection: 'row',
     gap: 10,

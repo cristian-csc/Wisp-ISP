@@ -4,6 +4,7 @@ import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -288,13 +289,22 @@ def cliente_login(request: Request, data: schemas.ClienteLoginRequest, db: Sessi
     por defecto; si el cliente cambió su contraseña desde la app, se valida
     contra ese valor en vez del DNI.
 
+    Quien tiene más de una línea puede entrar a cualquiera de ellas
+    escribiendo su usuario completo — 70111222b para la segunda—, y con el
+    DNI pelado entra a la primera. Antes, con el DNI repetido en la base,
+    la consulta devolvía una línea cualquiera: el mismo cliente podía ver
+    un día una y al día siguiente otra, sin tocar nada.
+
     El freno de intentos importa más aquí que en el panel: mientras el cliente
     no cambie su clave, ésta es su DNI, que son ocho dígitos y no es secreto."""
     usuario = data.usuario.strip()
     clave_freno = _frenar_o_seguir(request, f"cliente:{usuario}")
     cliente = db.query(models.Cliente).filter(
-        models.Cliente.dni == usuario
-    ).first()
+        or_(
+            models.Cliente.dni == usuario,
+            models.Cliente.usuario_pppoe == usuario,
+        )
+    ).order_by(models.Cliente.linea).first()
 
     if not cliente:
         _anotar_fallo(clave_freno)

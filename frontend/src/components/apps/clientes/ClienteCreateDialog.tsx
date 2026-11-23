@@ -24,7 +24,19 @@ import {
   SelectValue,
 } from 'src/components/ui/select';
 import { Switch } from 'src/components/ui/switch';
-import { consultarDocumento, type ConsultaDocumento, createCliente, listZonas, listPlanes, type Zona, type Plan } from 'src/lib/clientes';
+import {
+  consultarDocumento,
+  type ConsultaDocumento,
+  type ConsultaLineas,
+  createCliente,
+  listZonas,
+  listPlanes,
+  verificarDni,
+  type Zona,
+  type Plan,
+} from 'src/lib/clientes';
+import { etiquetaLinea, usuarioDeLinea } from 'src/lib/lineas';
+import StatusBadge from 'src/components/shared/StatusBadge';
 import { listCajasNap, type CajaNap } from 'src/lib/cajasnap';
 import CampoCoordenadas from 'src/components/shared/mapa/CampoCoordenadas';
 import SelectorUbicacion from 'src/components/shared/mapa/SelectorUbicacion';
@@ -52,6 +64,10 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
   const [responsableNombre, setResponsableNombre] = useState('');
   // Resultado de la consulta automática de nombre: nunca bloquea el alta
   const [consultaDni, setConsultaDni] = useState<ConsultaDocumento | null>(null);
+  // Qué líneas tiene ya ese DNI, y si quien registra decidió que esta es
+  // otra línea de la misma persona en vez de un documento mal tecleado.
+  const [lineasDni, setLineasDni] = useState<ConsultaLineas | null>(null);
+  const [esLineaAdicional, setEsLineaAdicional] = useState(false);
   const [consultaRuc, setConsultaRuc] = useState<ConsultaDocumento | null>(null);
   const [buscando, setBuscando] = useState<'dni' | 'ruc' | null>(null);
   // Si el nombre lo trajo la consulta, al cambiar el documento se reemplaza.
@@ -94,6 +110,8 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
     setResponsableNombre('');
     setConsultaDni(null);
     setConsultaRuc(null);
+    setLineasDni(null);
+    setEsLineaAdicional(false);
     setBuscando(null);
     setNombreAuto(false);
     setResponsableAuto(false);
@@ -120,6 +138,30 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
       setResponsableAuto(false);
     }
   }, [tipoConexion, tipoDocumento]);
+
+  /** Escribir el DNI dispara dos preguntas distintas, y conviene no
+   *  confundirlas: a RENIEC, cómo se llama esta persona; a nuestro propio
+   *  sistema, si ya le vendimos internet alguna vez.
+   *
+   *  La segunda es la que importa aquí. Un DNI repetido casi siempre es un
+   *  error de tecleo —y verlo ahora, con el nombre del titular delante, es
+   *  como se descubre—, pero a veces es el mismo cliente pidiendo otra
+   *  línea. Preguntarlo mientras escribe, y no al guardar, es lo que
+   *  convierte un rechazo seco en una decisión. */
+  function cambiarDni(valor: string) {
+    const v = valor.replace(/\D/g, '');
+    setDni(v);
+    setConsultaDni(null);
+    setLineasDni(null);
+    setEsLineaAdicional(false);
+    if (v.length !== 8) return;
+    void buscarNombre('dni', v);
+    // Si esta consulta falla, el alta sigue su curso: el servidor rechaza
+    // igual el DNI repetido. Esto adelanta el aviso, no lo sustituye.
+    void verificarDni(v)
+      .then(setLineasDni)
+      .catch(() => setLineasDni(null));
+  }
 
   /** Al completar el documento se busca el nombre. Si no se puede, se deja
    *  escrito el motivo y el campo sigue editable: el alta nunca se bloquea. */
@@ -170,6 +212,72 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
       setBuscando(null);
     }
   }
+
+  /** Lo que se muestra cuando el DNI escrito ya tiene servicio.
+   *
+   *  No es un error: es una pregunta. Se enseña con qué nombre está
+   *  anotada esa persona y qué líneas tiene, porque eso es lo que deja
+   *  distinguir «me equivoqué de documento» de «es el mismo cliente». */
+  const avisoLineas = !lineasDni?.existe ? null : (
+    <div className="mt-2 rounded-lg border border-ld bg-surface-2 p-3">
+      <div className="flex items-start gap-2">
+        <Icon
+          icon="tabler:info-circle"
+          width={18}
+          className="mt-0.5 shrink-0 text-warning-text"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">
+            Este DNI ya tiene servicio
+          </p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {lineasDni.titular}
+          </p>
+
+          <ul className="mt-2 space-y-1.5">
+            {lineasDni.lineas.map((l) => (
+              <li key={l.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <span className="font-mono font-semibold text-foreground">
+                  {l.usuario_pppoe}
+                </span>
+                <span className="text-muted-foreground">
+                  {l.zona ?? 'sin zona'}
+                </span>
+                <StatusBadge estado={l.estado ?? ''} punto className="py-0.5" />
+              </li>
+            ))}
+          </ul>
+
+          {lineasDni.puede_agregar && lineasDni.proxima_linea ? (
+            <label className="mt-3 flex cursor-pointer items-start gap-2.5">
+              <Switch
+                checked={esLineaAdicional}
+                onCheckedChange={setEsLineaAdicional}
+                className="mt-0.5"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-foreground">
+                  Es otra línea para la misma persona
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Se registrará como{' '}
+                  <b className="font-mono text-foreground">
+                    {usuarioDeLinea(dni, lineasDni.proxima_linea)}
+                  </b>
+                  , su {etiquetaLinea(lineasDni.proxima_linea)}.
+                </span>
+              </span>
+            </label>
+          ) : (
+            <p className="mt-3 text-xs text-warning-text">
+              Ya tiene las tres líneas que permite el sistema. Para una más
+              hay que dar de baja alguna.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   /** Aviso bajo el campo, con el tono según lo que pasó. */
   function AvisoConsulta({ r, tipo }: { r: ConsultaDocumento | null; tipo: 'dni' | 'ruc' }) {
@@ -231,6 +339,16 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
       setError('Selecciona zona y plan.');
       return;
     }
+    // El servidor rechaza igual el DNI repetido; esto evita que se entere
+    // después de haber llenado la ficha entera.
+    if (lineasDni?.existe && !esLineaAdicional) {
+      setError(
+        lineasDni.puede_agregar
+          ? 'Ese DNI ya tiene servicio. Si es otra línea para la misma persona, marca la opción; si no, revisa el documento.'
+          : 'Ese DNI ya tiene las tres líneas que permite el sistema.',
+      );
+      return;
+    }
     if (esEmpresa) {
       if (!/^(10|15|17|20)\d{9}$/.test(ruc)) {
         setError('El RUC debe tener 11 dígitos y empezar en 10, 15, 17 o 20.');
@@ -257,6 +375,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
         plan_id: Number(planId),
         cantidad_tv: Number(cantidadTv) || 0,
         tipo_conexion: tipoConexion,
+        linea_adicional: esLineaAdicional,
         migrado,
         notas: notas || undefined,
       });
@@ -386,12 +505,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                     <Input
                       id="dni"
                       value={dni}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/\D/g, '');
-                        setDni(v);
-                        setConsultaDni(null);
-                        if (v.length === 8) void buscarNombre('dni', v);
-                      }}
+                      onChange={(e) => cambiarDni(e.target.value)}
                       maxLength={8}
                       placeholder="8 números"
                       inputMode="numeric"
@@ -400,6 +514,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                     />
                   </FieldIcon>
                   <AvisoConsulta r={consultaDni} tipo="dni" />
+                  {avisoLineas}
                 </FormField>
               </FormSection>
             </>
@@ -424,12 +539,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                   <Input
                     id="dni"
                     value={dni}
-                    onChange={(e) => {
-                      const v = e.target.value.replace(/\D/g, '');
-                      setDni(v);
-                      setConsultaDni(null);
-                      if (v.length === 8) void buscarNombre('dni', v);
-                    }}
+                    onChange={(e) => cambiarDni(e.target.value)}
                     maxLength={8}
                     placeholder="8 números"
                     inputMode="numeric"
@@ -438,6 +548,7 @@ const ClienteCreateDialog = ({ open, onOpenChange, onCreated, tipoInicial }: Pro
                   />
                 </FieldIcon>
                 <AvisoConsulta r={consultaDni} tipo="dni" />
+                {avisoLineas}
               </FormField>
             </FormSection>
           )}

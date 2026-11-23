@@ -52,6 +52,8 @@ import {
 } from 'src/lib/clientes';
 import { ESTADOS_DESTACADOS } from './ClienteFilter';
 import type { Usuario } from 'src/lib/api';
+import { useRefrescoAlVolver } from 'src/lib/useRefrescoAlVolver';
+import { etiquetaLinea, marcaLinea } from 'src/lib/lineas';
 
 const ESTADO_LABEL: Record<EstadoCliente, string> = {
   pendiente_aprobacion: 'Pendiente',
@@ -121,6 +123,10 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
    *  cuelga del filtro de estados-- porque es ortogonal: los hay activos,
    *  suspendidos y pausados. */
   const [soloIncompletos, setSoloIncompletos] = useState(false);
+
+  // El tecnico instala desde el movil y esta lista no se entera sola:
+  // al volver a la ventana se vuelve a preguntar.
+  useRefrescoAlVolver(reload);
 
   async function reload() {
     setLoading(true);
@@ -345,6 +351,18 @@ const ClienteListing = ({ filter, setFilter, resumen, currentUser, tipo }: Props
                         >
                           {c.nombre}
                         </h6>
+                        {/* El mismo titular puede tener hasta tres líneas, y
+                            en la lista salen como tres filas con el mismo
+                            nombre. Sin esta marca no hay forma de saber cuál
+                            es cuál. */}
+                        {c.linea > 1 && (
+                          <Badge
+                            className="rounded-md bg-lightbrand text-brand-strong dark:text-brand text-[10px]"
+                            title={`${etiquetaLinea(c.linea)} de este titular · ${c.usuario_pppoe}`}
+                          >
+                            {marcaLinea(c.linea)}
+                          </Badge>
+                        )}
                         {!tipo && (
                           <Badge className={`rounded-md text-[10px] ${c.tipo_conexion === 'fibra_optica' ? 'bg-lightprimary text-primary-text' : 'bg-lightinfo text-info-text'}`}>
                             {c.tipo_conexion === 'fibra_optica' ? 'Fibra' : 'Inalámbrico'}

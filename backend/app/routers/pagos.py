@@ -16,6 +16,7 @@ from ..database import get_db
 from .. import models, schemas
 from .auth import get_current_user, require_roles
 from ..config import settings
+from ..lineas import etiqueta as etiqueta_linea
 from ..facturacion import dia_de_pago
 from ..billing import monto_mensual, detalle_monto
 from ..recibos import DatosRecibo, LineaRecibo, etiqueta_mes, generar_recibo_pdf
@@ -144,6 +145,14 @@ def _datos_recibo(db: Session, pago: models.Pago) -> DatosRecibo:
     return DatosRecibo(
         numero=primero.id,
         cliente=cliente.nombre if cliente else f"Cliente #{pago.cliente_id}",
+        # Un cliente con dos lineas paga dos veces al mes, cada una por su
+        # cuenta. Si los dos recibos dicen lo mismo, el que reclama tiene
+        # razon y nosotros no podemos demostrar nada.
+        servicio=(
+            f"{etiqueta_linea(cliente.linea).capitalize()} ({cliente.usuario_pppoe})"
+            if cliente and cliente.linea > 1
+            else None
+        ),
         direccion=cliente.direccion if cliente else None,
         dia_pago=dia_pago,
         dia_corte=(dia_pago + settings.DIAS_GRACIA) if dia_pago else None,

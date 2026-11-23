@@ -32,7 +32,14 @@ function ClienteCard({ item, onPress }: { item: ClienteListItem; onPress: () => 
     <TouchableOpacity style={st.card} onPress={onPress} activeOpacity={0.75}>
       <View style={st.cardTop}>
         <View style={{ flex: 1 }}>
-          <Text style={st.nombre}>{item.nombre}</Text>
+          <View style={st.nombreFila}>
+            <Text style={st.nombre}>{item.nombre}</Text>
+            {item.linea > 1 && (
+            <View style={st.lineaChip}>
+              <Text style={st.lineaChipText}>L{item.linea}</Text>
+            </View>
+          )}
+          </View>
           <Text style={st.sub}>DNI {item.dni ?? '—'} · {item.telefono ?? 'sin teléfono'}</Text>
           {item.zona && (
             <View style={st.zonaTagRow}>
@@ -117,6 +124,9 @@ const st = StyleSheet.create({
   card: { backgroundColor: COLORS.card, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 14, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
   nombre: { fontSize: 15, fontWeight: '700', color: COLORS.dark },
+  nombreFila: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  lineaChip: { backgroundColor: COLORS.lightbrand, borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
+  lineaChipText: { fontSize: 10, fontWeight: '800', color: COLORS.brand },
   sub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 2 },
   zonaTagRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   zonaTag: { fontSize: 11, color: COLORS.mutedForeground, fontWeight: '600' },
