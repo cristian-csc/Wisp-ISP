@@ -79,6 +79,41 @@ const Login = () => {
         @media (prefers-reduced-motion: reduce) {
           .login-card { animation: none; }
         }
+
+        /* Credenciales guardadas en el navegador.
+         *
+         * Al autocompletar, el navegador pinta el campo con SU fondo —claro
+         * casi siempre— ignorando el nuestro, porque el input es
+         * transparente y quien pone el color es la tarjeta de atrás. Sobre
+         * un login negro eso deja dos recuadros blancos con el texto casi
+         * invisible: parece roto.
+         *
+         * No se puede cambiar ese fondo por las buenas: el navegador lo
+         * protege. Lo que sí se puede es taparlo con una sombra interior
+         * sólida y decirle de qué color escribir el texto.
+         *
+         * La transición larguisima es el otro truco conocido: retrasa el
+         * destello amarillo del primer pintado tanto que no llega a verse.
+         */
+        .login-card input:-webkit-autofill,
+        .login-card input:-webkit-autofill:hover,
+        .login-card input:-webkit-autofill:focus,
+        .login-card input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 100px #000000 inset;
+          box-shadow: 0 0 0 100px #000000 inset;
+          -webkit-text-fill-color: #ffffff;
+          caret-color: #ffffff;
+          border-radius: 0;
+          transition: background-color 100000s ease-in-out 0s;
+        }
+        /* El pseudo-selector estándar, para los navegadores que ya lo
+           entienden sin prefijo. Va aparte a propósito: si uno de los dos
+           no se reconoce, una regla con ambos se descarta entera. */
+        .login-card input:autofill {
+          box-shadow: 0 0 0 100px #000000 inset;
+          -webkit-text-fill-color: #ffffff;
+          caret-color: #ffffff;
+        }
       `}</style>
 
       <section
