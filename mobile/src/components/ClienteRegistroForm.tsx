@@ -69,10 +69,17 @@ function PlanChip({ plan, selected, onSelect }: { plan: Opcion; selected: boolea
  * es exclusivamente fibra óptica, así que no hay opción de conexión inalámbrica. */
 export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => void }) {
   const { session } = useSession();
-  // Solo campo (técnico/vendedor_campo) está físicamente en la vivienda al
-  // registrar — a ellos sí se les exige la foto. Oficina/tienda registra por
-  // teléfono, no puede tomarla; queda pendiente hasta que el técnico instale.
-  const fotoObligatoria = session?.role === 'tecnico' || session?.role === 'vendedor_campo';
+  // Solo al técnico se le exige la foto: cuando él registra a alguien está
+  // en la puerta de la casa, siempre.
+  //
+  // A la vendedora no. Reparte volantes y muchas veces la llaman después,
+  // desde su propia casa, para pedir el servicio: ahí no tiene ninguna
+  // fachada que fotografiar. Exigírsela la dejaba sin poder registrar al
+  // cliente justo cuando acaba de conseguirlo.
+  //
+  // La foto no se pierde por esto: al instalar se sigue exigiendo, y ese es
+  // el momento en que alguien SÍ está frente a la vivienda.
+  const fotoObligatoria = session?.role === 'tecnico';
 
   const [zonas,  setZonas]  = useState<Opcion[]>([]);
   const [planes, setPlanes] = useState<Opcion[]>([]);
@@ -321,7 +328,7 @@ export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => vo
         {!fotoObligatoria && (
           <View style={f.pinHint}>
             <Ionicons name="information-circle-outline" size={16} color={COLORS.mutedForeground} style={{ marginRight: 6, marginTop: 1 }} />
-            <Text style={f.pinHintText}>Como registras por teléfono, la foto es opcional — el técnico la tomará al ir a instalar si todavía falta.</Text>
+            <Text style={f.pinHintText}>Si estás frente a la vivienda, toma la foto ahora. Si te llamaron por teléfono, déjala — el técnico la tomará al ir a instalar.</Text>
           </View>
         )}
         <TouchableOpacity style={[f.captureBtn, coords && f.captureBtnDone, !fotoObligatoria && { marginTop: 10 }]} onPress={() => setMapaAbierto(true)}>
