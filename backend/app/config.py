@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     # arrancar con claves de ejemplo y esconde la documentacion de la API.
     ENTORNO: str = "desarrollo"
 
+    # Que se anota. INFO es lo correcto en produccion: es el nivel en el que
+    # estan escritas las cosas que hay que poder responder -- cuantos clientes
+    # se cortaron anoche, quien ejecuto que comando en un router. Ver
+    # app/registro.py.
+    LOG_LEVEL: str = "INFO"
+
     DATABASE_URL: str = _DEFAULT_DATABASE_URL
     SECRET_KEY: str = _DEFAULT_SECRET
     ALGORITHM: str = "HS256"

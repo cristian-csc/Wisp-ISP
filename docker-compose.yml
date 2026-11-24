@@ -47,6 +47,10 @@ services:
       - NET_ADMIN               # necesario para wg set / wg show
     environment:
       ENTORNO: ${ENTORNO:-produccion}
+      # Que se anota. Sin esto el logger raiz descarta todo lo que este por
+      # debajo de WARNING y se pierde el recuento de los cortes de cada noche
+      # y la auditoria de los comandos RouterOS. Ver app/registro.py.
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: ${DATABASE_URL}
       SECRET_KEY: ${SECRET_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS}

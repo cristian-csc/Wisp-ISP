@@ -25,11 +25,6 @@ import pytest
 from app import scheduler as sched
 
 
-@pytest.mark.asyncio_no_plugin  # marca informativa: se usa asyncio.run a mano
-class _Marca:
-    pass
-
-
 def test_el_corte_corre_fuera_del_bucle_de_eventos(monkeypatch, db):
     """`cortar_cliente` tiene que ejecutarse en un hilo del pool, no en el
     hilo del bucle. Si vuelve a correr en el bucle, esta prueba lo caza."""

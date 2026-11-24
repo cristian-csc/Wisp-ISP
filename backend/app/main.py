@@ -2,8 +2,13 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from . import models
-from .config import es_produccion, origenes_cors
+from . import models, registro
+from .config import es_produccion, origenes_cors, settings
+
+# Lo primero de todo, antes de que cualquier módulo pueda anotar algo: sin
+# esto el logger raíz descarta todo lo que esté por debajo de WARNING, y cada
+# logger.info() del proyecto no se escribe en ninguna parte. Ver registro.py.
+registro.configurar(settings.LOG_LEVEL)
 from .routers import (
     clientes, zonas, pagos, gastos, auth, whatsapp, dashboard, planes, admin,
     cliente_app, cajas_nap, onus, averias, ordenes_retiro, evidencias, mufas,
