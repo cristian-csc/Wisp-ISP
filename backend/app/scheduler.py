@@ -114,7 +114,20 @@ async def job_corte_automatico():
             if cliente.compromiso_pago_hasta and cliente.compromiso_pago_hasta >= hoy:
                 continue  # tiene compromiso de pago vigente, se saltea por ahora
             try:
-                cortar_cliente(db, cliente, "Servicio cortado automáticamente por falta de pago")
+                # A un hilo del pool, y no aquí mismo.
+                #
+                # cortar_cliente es síncrona y por cada cliente hace una
+                # petición HTTP a WhatsApp (8 s de timeout) y abre una conexión
+                # SSH al MikroTik (10 s de conexión más 10 s por comando).
+                # Ninguna de las dos cede el control, y este trabajo corre en
+                # el bucle de eventos del único proceso que atiende la API: con
+                # 100 clientes a cortar y una zona cuyo router no contesta, el
+                # panel, la app y el bot se quedaban muertos entre 15 y 30
+                # minutos. Todos los días, a las nueve de la mañana.
+                await asyncio.to_thread(
+                    cortar_cliente, db, cliente,
+                    "Servicio cortado automáticamente por falta de pago",
+                )
                 cortados += 1
             except Exception as e:
                 db.rollback()

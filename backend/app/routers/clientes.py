@@ -18,10 +18,10 @@ from .auth import (
     require_roles, zonas_asignadas,
 )
 from ..config import settings
+from .. import mensajeria
 from ..mensajeria import cabeceras_bot
 from ..billing import monto_mensual, detalle_monto
 from ..facturacion import con_dia, dia_de_pago, primer_vencimiento
-from .whatsapp import wa_request
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -1345,7 +1345,7 @@ def resumen_estados(
 
 
 @router.get("/notificaciones", response_model=List[schemas.NotificacionOut])
-async def get_notificaciones(
+def get_notificaciones(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(
         require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)
@@ -1463,11 +1463,13 @@ async def get_notificaciones(
 
     # 6) WhatsApp desconectado — si nadie lo nota, los recordatorios de pago
     # simplemente dejan de salir en silencio.
-    try:
-        status = await wa_request("GET", "/status")
-        conectado = bool(status.get("connected"))
-    except Exception:
-        conectado = False
+    # Declarada como `def` y no `async def`: este endpoint hace cinco bloques
+    # de consultas sincronas y esta llamada al bot, y el panel lo consulta cada
+    # 30 segundos desde CADA pestana abierta. Siendo async, todo eso corria en
+    # el bucle de eventos del unico proceso que atiende la API: con tres
+    # administradores con el panel abierto, la API se detenia varias veces por
+    # minuto. Como def normal, FastAPI la lleva al pool de hilos sola.
+    conectado = mensajeria.bot_conectado()
 
     if not conectado:
         notificaciones.append(schemas.NotificacionOut(

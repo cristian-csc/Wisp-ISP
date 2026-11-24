@@ -117,3 +117,26 @@ def _detalle(r: httpx.Response) -> str:
 def contacto_empresa() -> Optional[str]:
     """Los teléfonos de la empresa, para cerrar los mensajes."""
     return settings.EMPRESA_TELEFONOS or None
+
+
+def bot_conectado(timeout: float = 5) -> bool:
+    """¿El bot tiene sesión de WhatsApp abierta? Sin lanzar nunca.
+
+    Versión síncrona de lo que hace `wa_request("GET", "/status")`. Hace falta
+    porque quien pregunta es `get_notificaciones`, que el panel consulta cada
+    30 segundos desde cada pestaña abierta: siendo `async def` esa espera
+    corría en el bucle de eventos y detenía la API entera varias veces por
+    minuto. Como `def` normal, FastAPI la lleva al pool de hilos, y entonces lo
+    que hace falta aquí es un cliente síncrono.
+
+    El timeout es más corto que el de enviar un mensaje a propósito: esto es
+    un adorno de la campana de notificaciones. Si el bot tarda, la respuesta
+    correcta es decir que no se sabe, no hacer esperar a quien abrió el panel.
+    """
+    try:
+        with httpx.Client(timeout=timeout) as http:
+            r = http.get(f"{settings.WHATSAPP_API_URL}/status", headers=cabeceras_bot())
+        return bool(r.status_code == 200 and r.json().get("connected"))
+    except Exception as e:
+        logger.debug("No se pudo consultar el estado del bot: %s", e)
+        return False
