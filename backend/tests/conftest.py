@@ -37,12 +37,21 @@ def override_get_db():
 
 
 # Usuario falso — evita autenticación real en todos los endpoints
+#
+# `rol` tiene que ser el miembro del enum y NO la cadena "admin". Este objeto
+# nunca pasa por un flush de SQLAlchemy, así que el atributo se queda tal como
+# se escribe aquí: con una cadena, `usuario.rol.value` revienta con
+#   AttributeError: 'str' object has no attribute 'value'
+# Antes daba igual, porque nadie leía `.value`. Cuando se añadió el sistema de
+# roles y módulos, require_roles() empezó a llamar a rol_de_la_cuenta(), que sí
+# lo lee (auth.py), y las 30 pruebas de la suite pasaron a fallar de golpe —
+# todas por esta línea, no por 30 problemas distintos.
 MOCK_USER = models.Usuario(
     id=99,
     nombre="Test Admin",
     email="test@wisp.test",
     hashed_password="x",
-    rol="admin",
+    rol=models.RolUsuario.admin,
     activo=True,
 )
 
