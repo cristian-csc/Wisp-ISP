@@ -371,7 +371,13 @@ export async function quitarCompromisoPago(id: number) {
   return data as { ok: boolean; estado: string };
 }
 
-export type MesPago = { mes: string; estado: 'pagado' | 'vencido' | 'pendiente' | 'no_aplica' | 'futuro' };
+/** `corte_temporal` lo devuelve el backend desde siempre (sale del estado del
+ *  pago del mes), pero faltaba aquí: el calendario lo pintaba bien de milagro,
+ *  porque las tablas de estilos sí lo tenían y TypeScript no lo sabía. */
+export type MesPago = {
+  mes: string;
+  estado: 'pagado' | 'vencido' | 'pendiente' | 'no_aplica' | 'futuro' | 'corte_temporal';
+};
 
 export async function getCalendarioPagos(clienteId: number, anio?: number): Promise<MesPago[]> {
   const { data } = await api.get(`/clientes/${clienteId}/calendario-pagos`, { params: anio ? { anio } : undefined });

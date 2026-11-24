@@ -93,6 +93,11 @@ export async function createPago(input: {
   meses?: number;
   /** Rebaja aplicada, solo para dejar constancia: `monto` ya viene con ella descontada */
   descuento?: number;
+  /** Qué se está registrando. Sin esto el backend asume `pagado`, que es lo
+   *  normal. Se manda explícitamente para marcar un mes de `corte_temporal`:
+   *  un pago de S/ 0 que deja constancia de que el servicio estuvo cortado,
+   *  sin reactivar al cliente ni mover su fecha de vencimiento. */
+  estado?: EstadoPago;
 }): Promise<Pago> {
   const { data } = await api.post('/pagos', input);
   return data;

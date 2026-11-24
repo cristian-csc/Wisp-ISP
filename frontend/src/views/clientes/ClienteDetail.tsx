@@ -188,6 +188,10 @@ const ClienteDetail = () => {
   const [pagoNumeroOperacion, setPagoNumeroOperacion] = useState('');
   // Meses que cubre el cobro: con más de uno, el monto es el total cobrado
   const [pagoMeses, setPagoMeses] = useState('1');
+  // Corte temporal: el mes se registra con S/ 0 para dejar constancia de que
+  // el servicio estuvo cortado. No es un cobro, así que no reactiva al
+  // cliente ni mueve su fecha de vencimiento.
+  const [pagoCorteTemporal, setPagoCorteTemporal] = useState(false);
   const [pagoError, setPagoError] = useState<string | null>(null);
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [onuAsignada, setOnuAsignada] = useState<Onu | null>(null);
@@ -466,6 +470,7 @@ const ClienteDetail = () => {
     setPagoMetodo('efectivo');
     setPagoNumeroOperacion('');
     setPagoMeses('1');
+    setPagoCorteTemporal(false);
     setPagoError(null);
     setPagoDialogOpen(true);
   }
@@ -485,6 +490,38 @@ const ClienteDetail = () => {
 
   async function handleRegistrarPago() {
     if (!cliente) return;
+
+    // Un corte temporal no es un cobro: no pide importe y va siempre con S/ 0
+    // y un solo mes. Por eso se valida aparte y se salta el control del
+    // descuento, que ahí no significa nada.
+    if (pagoCorteTemporal) {
+      if (!pagoMes || !pagoFecha) {
+        setPagoError('Completa el mes y la fecha.');
+        return;
+      }
+      setGuardandoPago(true);
+      setPagoError(null);
+      try {
+        await createPago({
+          cliente_id: cliente.id,
+          monto: 0,
+          mes_pagado: pagoMes,
+          fecha_pago: pagoFecha,
+          estado: 'corte_temporal',
+          meses: 1,
+        });
+        setPagoDialogOpen(false);
+        await reload();
+        await reloadCalendario(anioCalendario);
+      } catch (err: any) {
+        const detail = err?.response?.data?.detail;
+        setPagoError(typeof detail === 'string' ? detail : 'No se pudo marcar el corte temporal');
+      } finally {
+        setGuardandoPago(false);
+      }
+      return;
+    }
+
     if (!pagoSubtotal || !pagoMes || !pagoFecha) {
       setPagoError('Completa subtotal, mes y fecha de pago.');
       return;
@@ -1711,28 +1748,62 @@ const ClienteDetail = () => {
       <FormDialog
         open={pagoDialogOpen}
         onOpenChange={setPagoDialogOpen}
-        title="Registrar pago"
+        title={pagoCorteTemporal ? 'Marcar corte temporal' : 'Registrar pago'}
         subtitle={cliente.nombre}
-        icon="tabler:receipt-2"
-        tone="success"
+        icon={pagoCorteTemporal ? 'tabler:plug-connected-x' : 'tabler:receipt-2'}
+        tone={pagoCorteTemporal ? 'warning' : 'success'}
         size="lg"
         footer={
           <FormActions
             onCancel={() => setPagoDialogOpen(false)}
-            submitLabel="Registrar pago"
-            submitIcon="tabler:receipt-2"
+            submitLabel={pagoCorteTemporal ? 'Marcar corte temporal' : 'Registrar pago'}
+            submitIcon={pagoCorteTemporal ? 'tabler:plug-connected-x' : 'tabler:receipt-2'}
             onSubmit={handleRegistrarPago}
             submitting={guardandoPago}
           />
         }
       >
         <FormGrid>
-          <FormSection title="Meses a pagar" icon="tabler:calendar-dollar">
+          {/* El mes en que el servicio estuvo cortado se deja anotado con un
+              pago de S/ 0. Va arriba porque cambia el resto del formulario:
+              un corte temporal no lleva importe ni forma de pago. */}
+          <FormSection title="Qué se registra" icon="tabler:help-circle">
+            <FormField label="Tipo de registro" htmlFor="pagoCorteTemporal" wide>
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-3">
+                <Switch
+                  id="pagoCorteTemporal"
+                  checked={pagoCorteTemporal}
+                  onCheckedChange={setPagoCorteTemporal}
+                />
+                <div className="min-w-0 text-sm">
+                  <p className="font-medium text-foreground">
+                    {pagoCorteTemporal
+                      ? 'Corte temporal — no se cobra nada'
+                      : 'Pago normal'}
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {pagoCorteTemporal
+                      ? 'El mes queda marcado en amarillo en el calendario. No reactiva al cliente ni mueve su fecha de vencimiento.'
+                      : 'Actívalo si este mes el cliente estuvo cortado y no hay nada que cobrar.'}
+                  </p>
+                </div>
+              </div>
+            </FormField>
+          </FormSection>
+
+          <FormSection
+            title={pagoCorteTemporal ? 'Mes cortado' : 'Meses a pagar'}
+            icon="tabler:calendar-dollar"
+          >
             <FormField
-              label="Mes que paga"
+              label={pagoCorteTemporal ? 'Mes en que estuvo cortado' : 'Mes que paga'}
               htmlFor="pagoMes"
               wide
-              hint="Desde este mes se arma el cobro."
+              hint={
+                pagoCorteTemporal
+                  ? 'Un corte temporal se anota de un mes por vez.'
+                  : 'Desde este mes se arma el cobro.'
+              }
             >
               <Input
                 id="pagoMes"
@@ -1742,20 +1813,27 @@ const ClienteDetail = () => {
               />
             </FormField>
 
-            <FormField
-              label={pagoMesesNum === 1 ? 'Mes en el cobro' : `Meses en el cobro (${pagoMesesNum})`}
-              icon="tabler:shopping-cart"
-              wide
-            >
-              <CarritoMeses
-                mesInicio={pagoMes}
-                meses={pagoMesesNum}
-                onChange={cambiarPagoMeses}
-                cuota={pagoCuota}
-              />
-            </FormField>
+            {/* El carrito reparte un importe entre varios meses, así que no
+                tiene sentido cuando no hay importe. */}
+            {!pagoCorteTemporal && (
+              <FormField
+                label={pagoMesesNum === 1 ? 'Mes en el cobro' : `Meses en el cobro (${pagoMesesNum})`}
+                icon="tabler:shopping-cart"
+                wide
+              >
+                <CarritoMeses
+                  mesInicio={pagoMes}
+                  meses={pagoMesesNum}
+                  onChange={cambiarPagoMeses}
+                  cuota={pagoCuota}
+                />
+              </FormField>
+            )}
           </FormSection>
 
+          {/* Un corte temporal va siempre con S/ 0: no hay importe que
+              pedir ni descuento que aplicar. */}
+          {!pagoCorteTemporal && (
           <FormSection title="Importe" icon="tabler:cash">
             <FormField
               label="Subtotal (S/)"
@@ -1796,9 +1874,17 @@ const ClienteDetail = () => {
               </span>
             </div>
           </FormSection>
+          )}
 
-          <FormSection title="Forma de pago" icon="tabler:credit-card">
-            <FormField label="Fecha de pago" htmlFor="pagoFecha">
+          <FormSection
+            title={pagoCorteTemporal ? 'Cuándo se anota' : 'Forma de pago'}
+            icon={pagoCorteTemporal ? 'tabler:calendar-event' : 'tabler:credit-card'}
+          >
+            <FormField
+              label={pagoCorteTemporal ? 'Fecha en que se anota' : 'Fecha de pago'}
+              htmlFor="pagoFecha"
+              wide={pagoCorteTemporal}
+            >
               <Input
                 id="pagoFecha"
                 type="date"
@@ -1806,6 +1892,7 @@ const ClienteDetail = () => {
                 onChange={(e) => setPagoFecha(e.target.value)}
               />
             </FormField>
+            {!pagoCorteTemporal && (
             <FormField label="Método de pago">
               <FieldIcon icon="tabler:credit-card">
                 <Select value={pagoMetodo} onValueChange={setPagoMetodo}>
@@ -1822,6 +1909,9 @@ const ClienteDetail = () => {
                 </Select>
               </FieldIcon>
             </FormField>
+            )}
+
+            {!pagoCorteTemporal && (
             <FormField
               label="Número de operación"
               htmlFor="pagoNumeroOperacion"
@@ -1840,6 +1930,7 @@ const ClienteDetail = () => {
                 />
               </FieldIcon>
             </FormField>
+            )}
           </FormSection>
 
           {pagoError && (

@@ -316,7 +316,16 @@ def create_pago(
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
-    if data.monto <= 0:
+    # El tope de cero vale para los COBROS, no para todo lo que se registra.
+    #
+    # Un corte temporal es, por diseño, un pago de S/ 0: marca en amarillo un
+    # mes en que el servicio estuvo cortado. Cuando se añadieron los
+    # descuentos, este guard se escribió sobre el monto a secas y se llevó por
+    # delante esa función entera — el enum, las etiquetas de los informes y las
+    # insignias de tres pantallas seguían ahí, pero ningún camino podía crear
+    # un corte temporal. Las tres pruebas de TestCorteTemporal lo decían desde
+    # entonces; nadie las vio porque la suite no arrancaba.
+    if data.estado == models.EstadoPago.pagado and data.monto <= 0:
         raise HTTPException(
             status_code=400,
             detail="El total a pagar tiene que ser mayor que cero — revisa el descuento",

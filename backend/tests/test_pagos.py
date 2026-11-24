@@ -38,6 +38,47 @@ def _payload_pago(cliente_id: int, mes: str, estado: str = "pagado", monto: floa
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
 
+class TestTopeDeCero:
+    """El guard que impide cobrar S/ 0 o menos.
+
+    Existe por los descuentos: un descuento igual o mayor que el subtotal
+    dejaría un cobro de cero o negativo, que no es un cobro. Pero el guard se
+    escribió sobre el monto a secas y se llevó por delante el corte temporal,
+    que por diseño ES un pago de S/ 0 (ver TestCorteTemporal). Al restringirlo
+    a los cobros reales hay que comprobar las dos mitades: que el corte
+    temporal pasa, y que un cobro de cero sigue sin pasar.
+    """
+
+    def test_un_cobro_de_cero_se_rechaza(self, client, datos):
+        zona, plan, db = datos
+        cliente = crear_cliente(db, zona, plan)
+        resp = client.post("/pagos", json=_payload_pago(cliente.id, "2026-07", "pagado", 0))
+        assert resp.status_code == 400, "un cobro de S/ 0 entró como pago real"
+        assert "mayor que cero" in resp.json()["detail"]
+
+    def test_un_cobro_negativo_se_rechaza(self, client, datos):
+        zona, plan, db = datos
+        cliente = crear_cliente(db, zona, plan)
+        resp = client.post("/pagos", json=_payload_pago(cliente.id, "2026-07", "pagado", -10))
+        assert resp.status_code == 400
+
+    def test_sin_indicar_estado_tambien_se_rechaza(self, client, datos):
+        """El estado por defecto es `pagado`, así que el camino normal del
+        panel —que no manda el campo— sigue protegido."""
+        zona, plan, db = datos
+        cliente = crear_cliente(db, zona, plan)
+        payload = _payload_pago(cliente.id, "2026-07", "pagado", 0)
+        del payload["estado"]
+        resp = client.post("/pagos", json=payload)
+        assert resp.status_code == 400
+
+    def test_un_cobro_normal_sigue_pasando(self, client, datos):
+        zona, plan, db = datos
+        cliente = crear_cliente(db, zona, plan)
+        resp = client.post("/pagos", json=_payload_pago(cliente.id, "2026-07", "pagado", 50))
+        assert resp.status_code == 201
+
+
 class TestCorteTemporal:
     def test_corte_temporal_no_reactiva_cliente_suspendido(self, client, datos):
         """
