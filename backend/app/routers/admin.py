@@ -1,6 +1,8 @@
-import os
-import subprocess
 import gzip
+import logging
+import os
+import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -35,8 +37,24 @@ def _todos_los_backups(backup_dir: Path) -> list[Path]:
     return sorted(archivos, key=lambda p: p.stat().st_mtime)
 
 
-@router.post("/backup")
-def crear_backup(current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin))):
+COPIAS_QUE_SE_GUARDAN = 7
+
+# pg_dump de una base de un WISP tarda segundos, no minutos. El tope existe
+# para que un pg_dump colgado -- la base bloqueada por otra cosa, el disco
+# lleno -- no deje el proceso esperando para siempre, no para acotar un dump
+# normal. Media hora es holgado a propósito: cortar un respaldo por impaciencia
+# es peor que esperar.
+SEGUNDOS_MAXIMOS = 1800
+
+
+def hacer_backup() -> dict:
+    """Un respaldo comprimido de la base, en BACKUP_DIR.
+
+    Separado del endpoint porque lo llaman dos: el botón del panel y el
+    trabajo nocturno del planificador. Devuelve {filename, size_kb, ruta} y
+    lanza RuntimeError con el motivo si falla — quien llama decide si eso es
+    un 500, una línea en el log o una alerta.
+    """
     backup_dir = _backup_dir()
     db_url = make_url(settings.DATABASE_URL)
 
@@ -44,8 +62,14 @@ def crear_backup(current_user: models.Usuario = Depends(require_roles(models.Rol
     filename = f"{PREFIJO_BACKUP}{timestamp}.sql.gz"
     filepath = backup_dir / filename
 
-    env = os.environ.copy()
-    env['PGPASSWORD'] = db_url.password or ''
+    # Un entorno mínimo y explícito, no una copia del del proceso: ahí viven
+    # SECRET_KEY, el token de WhatsApp y el de APIs Perú, y pg_dump no tiene
+    # nada que hacer con ellos.
+    env = {
+        'PGPASSWORD': db_url.password or '',
+        'PATH': os.environ.get('PATH', '/usr/local/bin:/usr/bin:/bin'),
+        'LANG': os.environ.get('LANG', 'C.UTF-8'),
+    }
 
     dump_cmd = [
         'pg_dump',
@@ -57,25 +81,41 @@ def crear_backup(current_user: models.Usuario = Depends(require_roles(models.Rol
     ]
 
     try:
-        result = subprocess.run(dump_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, timeout=120)
-        if result.returncode != 0:
-            raise RuntimeError(result.stderr.decode().strip())
+        # Se comprime sobre la marcha en vez de juntar el volcado entero en
+        # memoria y comprimirlo después. Con la base de hoy cabe de sobra, pero
+        # esto ahora corre solo cada noche y crece con los clientes: el día que
+        # no cupiera, el fallo sería que el contenedor muere de madrugada sin
+        # que nadie lo mire.
         with gzip.open(filepath, 'wb') as gz:
-            gz.write(result.stdout)
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=f"pg_dump falló: {e}")
+            proceso = subprocess.Popen(
+                dump_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env,
+            )
+            shutil.copyfileobj(proceso.stdout, gz)
+            proceso.stdout.close()
+            _, err = proceso.communicate(timeout=SEGUNDOS_MAXIMOS)
+        if proceso.returncode != 0:
+            raise RuntimeError(err.decode(errors="ignore").strip() or f"pg_dump salió con {proceso.returncode}")
     except Exception as e:
+        # Un respaldo a medias es peor que ninguno: parece válido en la lista.
         if filepath.exists():
             filepath.unlink()
-        raise HTTPException(status_code=500, detail=f"Error de backup: {e}")
+        raise RuntimeError(str(e)) from e
 
     size_kb = filepath.stat().st_size // 1024
 
-    all_backups = _todos_los_backups(backup_dir)
-    for old in all_backups[:-7]:
-        old.unlink()
+    for viejo in _todos_los_backups(backup_dir)[:-COPIAS_QUE_SE_GUARDAN]:
+        viejo.unlink()
 
-    return {"filename": filename, "size_kb": size_kb}
+    return {"filename": filename, "size_kb": size_kb, "ruta": str(filepath)}
+
+
+@router.post("/backup")
+def crear_backup(current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin))):
+    try:
+        resultado = hacer_backup()
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=f"Error de backup: {e}")
+    return {"filename": resultado["filename"], "size_kb": resultado["size_kb"]}
 
 
 @router.get("/backups/download/{filename}")

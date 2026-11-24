@@ -139,6 +139,37 @@ async def job_corte_automatico():
         db.close()
 
 
+async def job_backup_diario():
+    """El respaldo de cada noche.
+
+    Existe porque hasta ahora el único respaldo era el que alguien se
+    acordara de pulsar en el panel. No había cron, ni trabajo aquí, ni nada en
+    scripts/: el RPO real era «desde el último que alguien recordó hacer».
+
+    Va en un hilo por lo mismo que el corte automático: pg_dump es un proceso
+    externo y esperarlo en el bucle de eventos para la API entera.
+
+    A las 03:30 y no a medianoche: a esa hora no hay nadie cobrando, y queda
+    lejos del recordatorio de las 08:00 y del corte de las 09:00 para que tres
+    trabajos no se peleen por el mismo disco.
+    """
+    from .routers.admin import hacer_backup
+
+    try:
+        resultado = await asyncio.to_thread(hacer_backup)
+    except Exception as e:
+        # Se anota como ERROR y no como WARNING: un respaldo que falla en
+        # silencio es exactamente cómo se pierde una base de datos.
+        logger.error("Respaldo diario FALLÓ: %s", e)
+        return {"ok": False, "error": str(e)}
+
+    logger.info(
+        "Respaldo diario listo — %s (%d KB)",
+        resultado["filename"], resultado["size_kb"],
+    )
+    return {"ok": True, **resultado}
+
+
 scheduler = AsyncIOScheduler(timezone="America/Lima")
 
 
@@ -155,8 +186,17 @@ def init_scheduler():
         id="corte_automatico",
         replace_existing=True,
     )
+    scheduler.add_job(
+        job_backup_diario,
+        CronTrigger(hour=3, minute=30, timezone="America/Lima"),
+        id="backup_diario",
+        replace_existing=True,
+    )
     scheduler.start()
-    logger.info("Scheduler iniciado — recordatorio 08:00, corte automático 09:00 (hora Lima)")
+    logger.info(
+        "Scheduler iniciado — respaldo 03:30, recordatorio 08:00, "
+        "corte automático 09:00 (hora Lima)"
+    )
 
 
 def stop_scheduler():
