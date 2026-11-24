@@ -148,9 +148,58 @@ class ZonaBase(BaseModel):
     descripcion: Optional[str] = None
     tiendas_pago: Optional[str] = None
 
+# ── Campos del túnel: se comprueban al entrar ────────────────────────────────
+#
+# ip_wireguard y wg_public_key acaban dentro de la línea de comando que
+# configura el peer en la VPS (app/routers/zonas.py). Ahí ya se validan antes
+# de armar el comando, que es donde de verdad importa; esto es el segundo
+# cerrojo, y además hace que un dato mal escrito se rechace al guardarlo en
+# vez de reventar más tarde, cuando alguien intente levantar el túnel.
+#
+# Va solo en los esquemas de ENTRADA, nunca en ZonaBase: si estuviera en la
+# base, ZonaOut lo heredaría y una zona que ya tenga un valor raro guardado
+# de antes dejaría de poder leerse.
+_WG_PUBKEY_RE = re.compile(r'^[A-Za-z0-9+/]{43}=$')
+
+
+def _valida_ip_wireguard(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    v = v.strip()
+    if not v:
+        return None
+    if not _IPV4_RE.match(v):
+        raise ValueError('La IP de WireGuard debe ser una dirección IPv4 válida (ej. 10.10.0.2)')
+    return v
+
+
+def _valida_wg_pubkey(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    v = v.strip()
+    if not v:
+        return None
+    if not _WG_PUBKEY_RE.match(v):
+        raise ValueError(
+            'La clave pública de WireGuard son 44 caracteres en base64, los que '
+            'imprime `wg genkey | wg pubkey`'
+        )
+    return v
+
+
 class ZonaCreate(ZonaBase):
     # Solo de entrada: se guarda en el servidor y nunca se devuelve.
     password_mikrotik: Optional[str] = None
+
+    @field_validator('ip_wireguard')
+    @classmethod
+    def validate_ip_wireguard(cls, v: Optional[str]) -> Optional[str]:
+        return _valida_ip_wireguard(v)
+
+    @field_validator('wg_public_key')
+    @classmethod
+    def validate_wg_public_key(cls, v: Optional[str]) -> Optional[str]:
+        return _valida_wg_pubkey(v)
 
 class ZonaOut(ZonaBase):
     id: int
@@ -187,6 +236,16 @@ class ZonaDatosUpdate(BaseModel):
     # puede completar después de haber creado la zona.
     ip_wireguard: Optional[str] = None
     wg_public_key: Optional[str] = None
+
+    @field_validator('ip_wireguard')
+    @classmethod
+    def validate_ip_wireguard(cls, v: Optional[str]) -> Optional[str]:
+        return _valida_ip_wireguard(v)
+
+    @field_validator('wg_public_key')
+    @classmethod
+    def validate_wg_public_key(cls, v: Optional[str]) -> Optional[str]:
+        return _valida_wg_pubkey(v)
 
 class TecnicoZonaAsignar(BaseModel):
     tecnico_id: int
@@ -962,12 +1021,33 @@ class CambiarPinRequest(BaseModel):
     pin_actual: str
     pin_nuevo: str
 
+class SolicitarCodigoRequest(BaseModel):
+    """El documento (o el usuario completo) de quien pide un código."""
+    usuario: str
+
+class SolicitarCodigoResponse(BaseModel):
+    # Siempre true: la respuesta no dice si el documento está registrado o no.
+    enviado: bool = True
+    # El número al que se mandó, tapado (9****7069), para que la persona sepa
+    # dónde mirar. None si no había a quién mandárselo.
+    telefono: Optional[str] = None
+    mensaje: str
+
+class VerificarCodigoRequest(BaseModel):
+    usuario: str
+    codigo: str
+    pin_nuevo: str
+
 class ClienteTokenResponse(BaseModel):
     access_token: str
     token_type: str
     role: str
     cliente_id: int
     nombre: str
+    # True mientras el cliente siga entrando con la contraseña por defecto,
+    # que es su propio DNI: ocho dígitos que no son ningún secreto. La app lo
+    # usa para llevarlo a cambiarla antes de dejarle ver nada.
+    debe_cambiar_pin: bool = False
 
 class NotificacionOut(BaseModel):
     tipo: str  # pendiente_aprobacion | instalado | no_instalado | averia_demorada | jornada_iniciada | whatsapp_desconectado

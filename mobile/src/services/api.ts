@@ -45,6 +45,9 @@ export type LoginClienteResponse = {
   role: string;
   cliente_id: number;
   nombre: string;
+  /** true mientras su contraseña siga siendo su DNI. La app no le deja pasar
+   *  del cambio de contraseña hasta que ponga una propia. */
+  debe_cambiar_pin?: boolean;
 };
 
 export async function loginAdmin(
@@ -112,13 +115,62 @@ export async function cambiarPassword(passwordActual: string, passwordNueva: str
   });
 }
 
+/** Error de la API que además trae el código HTTP, para poder distinguir
+ *  «te equivocaste de contraseña» (401) de «todavía no tienes contraseña»
+ *  (409), que llevan a sitios distintos. */
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'ApiError';
+  }
+}
+
+/** Sin token: el cliente que pide su código todavía no tiene sesión. */
+async function requestSinSesion<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const datos = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(res.status, datos?.detail ?? `Error ${res.status}`);
+  }
+  return datos as T;
+}
+
 export async function loginCliente(
   usuario: string,
   pin: string,
 ): Promise<LoginClienteResponse> {
-  return request('/auth/cliente/login', {
-    method: 'POST',
-    body: JSON.stringify({ usuario, pin }),
+  return requestSinSesion('/auth/cliente/login', { usuario, pin });
+}
+
+export type SolicitarCodigoResponse = {
+  enviado: boolean;
+  telefono: string | null;
+  mensaje: string;
+};
+
+/** Pide el código de un solo uso al WhatsApp registrado del cliente. */
+export async function solicitarCodigoCliente(
+  usuario: string,
+): Promise<SolicitarCodigoResponse> {
+  return requestSinSesion('/auth/cliente/solicitar-codigo', { usuario });
+}
+
+/** Canjea el código por una contraseña propia y deja al cliente dentro. */
+export async function verificarCodigoCliente(
+  usuario: string,
+  codigo: string,
+  pinNuevo: string,
+): Promise<LoginClienteResponse> {
+  return requestSinSesion('/auth/cliente/verificar-codigo', {
+    usuario,
+    codigo,
+    pin_nuevo: pinNuevo,
   });
 }
 

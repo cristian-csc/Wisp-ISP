@@ -13,7 +13,10 @@ import httpx
 
 from ..database import get_db
 from .. import models, schemas, lineas
-from .auth import get_current_user, get_password_hash, require_roles, zonas_asignadas
+from .auth import (
+    _datos_publicos_del_cliente, get_current_user, get_password_hash,
+    require_roles, zonas_asignadas,
+)
 from ..config import settings
 from ..mensajeria import cabeceras_bot
 from ..billing import monto_mensual, detalle_monto
@@ -1596,6 +1599,17 @@ def update_cliente(
             _mikrotik_exec(wg_ip, cmds)
 
     if "pin_app" in update_data and update_data["pin_app"]:
+        # La oficina le pone la contraseña de la app a mano. Es la salida para
+        # el cliente que no tiene WhatsApp y no puede recibir el código (ver
+        # /api/auth/cliente/solicitar-codigo), así que tiene que existir —
+        # pero con la misma regla que el resto: no vale un dato que está en
+        # su recibo, porque entonces no protege nada.
+        if update_data["pin_app"].strip() in _datos_publicos_del_cliente(cliente):
+            raise HTTPException(
+                status_code=400,
+                detail="Esa contraseña de app no se puede usar: es el documento o el "
+                       "teléfono del cliente, y cualquiera que los vea podría entrar.",
+            )
         update_data["pin_app"] = get_password_hash(update_data["pin_app"])
 
     for key, value in update_data.items():

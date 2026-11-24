@@ -83,6 +83,13 @@ services:
       LOGIN_MAX_INTENTOS: ${LOGIN_MAX_INTENTOS:-8}
       LOGIN_VENTANA_SEGUNDOS: ${LOGIN_VENTANA_SEGUNDOS:-300}
       LOGIN_BLOQUEO_SEGUNDOS: ${LOGIN_BLOQUEO_SEGUNDOS:-900}
+      LOGIN_MAX_INTENTOS_CUENTA: ${LOGIN_MAX_INTENTOS_CUENTA:-32}
+      # De quién se acepta la IP real del visitante. Si esto se deja mal, el
+      # freno de arriba se puede saltar falsificando una cabecera. Los
+      # valores por defecto valen para los dos perfiles de nginx/ del
+      # repositorio; ver el comentario en app/config.py antes de tocarlos.
+      PROXIES_DE_CONFIANZA: ${PROXIES_DE_CONFIANZA:-127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      IP_CABECERA_CONFIABLE: ${IP_CABECERA_CONFIABLE:-x-real-ip}
 
       # Consulta de nombres por DNI/RUC
       APISPERU_URL: ${APISPERU_URL:-https://dniruc.apisperu.com/api/v1}

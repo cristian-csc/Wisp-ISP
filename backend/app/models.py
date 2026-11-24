@@ -664,6 +664,43 @@ class UbicacionVendedor(Base):
     jornada = relationship("JornadaVendedor", back_populates="ubicaciones")
 
 
+class CodigoAccesoCliente(Base):
+    """El código de un solo uso que le da al cliente el control de su cuenta.
+
+    Hasta el 2026-11-23 la contraseña de la app del cliente era su DNI
+    mientras no la cambiara. Ocho dígitos que están en su recibo, en su
+    contrato y en cualquier foto de su documento: quien los tuviera entraba a
+    su cuenta y veía su dirección, su teléfono y su historial de pagos. No era
+    un descuido, estaba escrito en el código como decisión; pero el DNI no es
+    un secreto y por tanto no puede ser una credencial.
+
+    Ahora, para entrar la primera vez —o si olvidó su contraseña— el cliente
+    escribe su documento y el sistema le manda un código al WhatsApp que ya
+    tiene registrado. Con ese código elige su contraseña. El documento por sí
+    solo ya no abre nada: hace falta además el teléfono.
+
+    Hay como máximo una fila por cliente (pedir un código nuevo reemplaza el
+    anterior) y se guarda el hash, no el código: si alguien llegara a leer
+    esta tabla, no podría usar lo que ve.
+    """
+    __tablename__ = "codigos_acceso_cliente"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False)
+    codigo_hash = Column(String(255), nullable=False)
+    expira_en = Column(DateTime(timezone=True), nullable=False)
+    # Intentos fallidos con ESTE código. Al pasarse, el código ya no sirve y
+    # hay que pedir otro: si no, seis dígitos se adivinan probando.
+    intentos = Column(Integer, nullable=False, default=0)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+    cliente = relationship("Cliente")
+
+    __table_args__ = (
+        UniqueConstraint('cliente_id', name='uq_codigo_acceso_cliente'),
+    )
+
+
 class ConsultaDocumentoMes(Base):
     """Cuántas consultas de nombre se gastaron en un mes. Es una fila por mes,
     no un registro por consulta: así se lleva la cuota sin acumular datos

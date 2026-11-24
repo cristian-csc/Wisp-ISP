@@ -4,6 +4,7 @@ import {
   Platform, ActivityIndicator, ScrollView, Image, useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import Animated, {
@@ -66,6 +67,7 @@ function HiloDeFibra() {
 
 export default function LoginScreen() {
   const { signIn } = useSession();
+  const router = useRouter();
   const [usuario, setUsuario] = useState('');
   const [clave, setClave] = useState('');
   const [loading, setLoading] = useState(false);
@@ -99,13 +101,34 @@ export default function LoginScreen() {
         await signIn({ token: res.access_token, role: me.rol as any, nombre: me.nombre });
       } else {
         const res = await loginCliente(usuario.trim(), clave.trim());
-        await signIn({ token: res.access_token, role: 'cliente', nombre: res.nombre, clienteId: res.cliente_id });
+        await signIn({
+          token: res.access_token,
+          role: 'cliente',
+          nombre: res.nombre,
+          clienteId: res.cliente_id,
+          debeCambiarPin: res.debe_cambiar_pin === true,
+        });
       }
     } catch (e: any) {
+      // 409 no es un error de credenciales: es un cliente que todavía no
+      // tiene contraseña propia (antes entraba con su DNI, y eso se quitó).
+      // Se le lleva a crearla con el código que llega a su WhatsApp, con el
+      // documento ya escrito para no pedírselo dos veces.
+      if (!esStaff && e?.status === 409) {
+        irAlCodigo();
+        return;
+      }
       alerta('Error al ingresar', e.message ?? 'Credenciales incorrectas');
     } finally {
       setLoading(false);
     }
+  }
+
+  function irAlCodigo() {
+    router.push({
+      pathname: '/(auth)/codigo',
+      params: usuario.trim() ? { usuario: usuario.trim() } : {},
+    } as any);
   }
 
   return (
@@ -206,6 +229,22 @@ export default function LoginScreen() {
             )}
           </Pressable>
 
+          {/* Solo para clientes: el personal no entra por código, su
+              contraseña se la restablece un administrador desde el panel.
+              `esStaff` es false mientras el usuario sean solo dígitos, que es
+              justamente el documento de un cliente. */}
+          {!esStaff && (
+            <TouchableOpacity
+              style={s.enlaceCodigo}
+              onPress={irAlCodigo}
+              accessibilityRole="button"
+            >
+              <Text style={s.enlaceCodigoTexto}>
+                Primera vez, o olvidé mi contraseña
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <Text style={s.ayuda}>¿No puedes entrar? Contacta al administrador.</Text>
         </View>
       </ScrollView>
@@ -244,5 +283,7 @@ const s = StyleSheet.create({
   botonOcupado: { opacity: 0.7 },
   botonTexto: { fontFamily: FUENTES.boton, fontSize: 20, color: COLORS.brandForeground },
 
+  enlaceCodigo: { alignItems: 'center', paddingVertical: 14, marginTop: 6 },
+  enlaceCodigoTexto: { color: COLORS.brandStrong, fontSize: 15, fontWeight: '700' },
   ayuda: { textAlign: 'center', color: COLORS.mutedForeground, fontSize: 14, lineHeight: 20, marginTop: 20 },
 });

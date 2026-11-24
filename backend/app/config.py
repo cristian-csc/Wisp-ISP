@@ -25,6 +25,33 @@ class Settings(BaseSettings):
     LOGIN_MAX_INTENTOS: int = 8
     LOGIN_VENTANA_SEGUNDOS: int = 300
     LOGIN_BLOQUEO_SEGUNDOS: int = 900
+    # Segundo freno, por cuenta y sin mirar la IP. El de arriba cuenta por
+    # (IP + usuario) y no sirve contra un ataque repartido entre muchas
+    # direcciones; este cuenta los fallos de una misma cuenta vengan de donde
+    # vengan. Va mas alto a proposito: es la red de seguridad, no el freno
+    # normal, y no debe dejar fuera a nadie que simplemente se equivoco.
+    LOGIN_MAX_INTENTOS_CUENTA: int = 32
+
+    # ── De quien se acepta la IP real del visitante ──────────────────────────
+    #
+    # Detras de un proxy la conexion llega del proxy, asi que la IP del
+    # visitante viene en una cabecera. El problema es que una cabecera la
+    # escribe quien quiera: si se cree sin mas, el freno del login se puede
+    # saltar cambiandola en cada intento, y entonces no frena nada.
+    #
+    # Asi que la cabecera solo se cree cuando la conexion viene de una de
+    # estas redes. Por defecto, las privadas y localhost: ahi viven Nginx y
+    # el tunel de Cloudflare. Una peticion que llegue directa de internet al
+    # puerto 8000 NO esta en esta lista, y por tanto sus cabeceras se ignoran.
+    # Vacio = no se cree ninguna cabecera, nunca.
+    PROXIES_DE_CONFIANZA: str = "127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    # Que cabecera leer cuando la conexion si viene de un proxy de confianza.
+    # 'x-real-ip' sirve para los dos perfiles de Nginx del repositorio: los dos
+    # la escriben con $remote_addr, y en el perfil de Cloudflare $remote_addr
+    # ya es la IP real del visitante (real_ip_header CF-Connecting-IP).
+    # Si algun dia el backend queda directamente detras de Cloudflare, sin
+    # Nginx delante, aqui se pone 'cf-connecting-ip'.
+    IP_CABECERA_CONFIABLE: str = "x-real-ip"
 
     # Contrasena del primer administrador, solo se usa si la base esta vacia.
     # Si no se define, el sistema genera una al azar y la escribe en el log de

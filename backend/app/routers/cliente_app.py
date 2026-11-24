@@ -36,10 +36,28 @@ def cambiar_pin(
     if not valido:
         raise HTTPException(400, "Contraseña actual incorrecta")
 
-    if len(data.pin_nuevo.strip()) < 8:
+    nueva = data.pin_nuevo.strip()
+    if len(nueva) < 8:
         raise HTTPException(400, "La contraseña nueva debe tener al menos 8 caracteres")
 
-    cliente.pin_app = _pwd.hash(data.pin_nuevo.strip())
+    # Que la nueva no sea el DNI otra vez. Sin esto el cambio obligatorio no
+    # sirve de nada: el cliente «cambia» la contraseña por la que ya tenía y
+    # sigue entrando cualquiera que conozca su documento. Tampoco el RUC ni
+    # el teléfono, que están en el recibo y en la factura.
+    conocidos = {
+        (cliente.dni or "").strip(),
+        (cliente.ruc or "").strip(),
+        (cliente.telefono or "").strip(),
+        (cliente.telefono_whatsapp or "").strip(),
+    }
+    if nueva in {c for c in conocidos if c}:
+        raise HTTPException(
+            400,
+            "Esa contraseña no se puede usar: es un dato que aparece en tus "
+            "recibos y cualquiera que lo vea podría entrar. Elige otra.",
+        )
+
+    cliente.pin_app = _pwd.hash(nueva)
     db.commit()
     return {"ok": True}
 

