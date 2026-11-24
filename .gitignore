@@ -11,6 +11,16 @@
 MANUAL_PRIVADO_SEGURIDAD_WISP-ISP.md
 MANUAL_PRIVADO_*.md
 
+# Informes de auditoría y de revisión previa a producción. Por el mismo
+# motivo que el manual, y con más razón: listan los agujeros que todavía no
+# están tapados, con archivo y número de línea. Publicarlos es entregarle a
+# cualquiera la lista de por dónde entrar, ordenada por gravedad.
+# Comprobado el 2026-11-24: ninguno de los dos llegó a subirse nunca
+# (0 commits en todo el historial, en todas las ramas), así que no hay nada
+# que purgar del repositorio — solo que no entren de aquí en adelante.
+AUDITORIA_SEGURIDAD.md
+REVISION_PRODUCCION.md
+
 # Claves y certificados — nunca, bajo ningún nombre.
 *.pem
 *.key
