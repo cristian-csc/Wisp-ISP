@@ -478,6 +478,25 @@ def _generar_codigo() -> str:
     return "".join(secrets.choice(string.digits) for _ in range(6))
 
 
+def _ya_vencio(expira_en: datetime) -> bool:
+    """¿Pasó ya esa fecha? Comparando siempre en UTC.
+
+    `DateTime(timezone=True)` NO garantiza que la fecha vuelva con zona: eso
+    depende del motor. PostgreSQL la devuelve con tzinfo=UTC, pero SQLite la
+    guarda como texto sin zona y la devuelve «naive». Comparar una con zona
+    contra otra sin ella es un TypeError, así que la pantalla de canje del
+    código se caía con un 500 en cualquier instalación sobre SQLite — y en
+    las pruebas, que usan SQLite en memoria.
+
+    Se normaliza lo que venga: sin zona, se interpreta como UTC, que es lo que
+    se escribió. Así el mismo código vale para los dos motores y no depende de
+    un detalle del driver.
+    """
+    if expira_en.tzinfo is None:
+        expira_en = expira_en.replace(tzinfo=timezone.utc)
+    return expira_en <= datetime.now(timezone.utc)
+
+
 @router.post("/cliente/solicitar-codigo", response_model=schemas.SolicitarCodigoResponse)
 def solicitar_codigo_cliente(
     request: Request,
@@ -608,9 +627,7 @@ def verificar_codigo_cliente(
         _anotar_fallos(clave_freno)
         raise invalido
 
-    # Comparar con la hora en UTC y con tzinfo: la columna la guarda con zona,
-    # y restar una fecha con zona de otra sin ella es un TypeError.
-    if fila.expira_en <= datetime.now(timezone.utc) or fila.intentos >= _CODIGO_MAX_INTENTOS:
+    if _ya_vencio(fila.expira_en) or fila.intentos >= _CODIGO_MAX_INTENTOS:
         db.delete(fila)
         db.commit()
         _anotar_fallos(clave_freno)
