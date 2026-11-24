@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract, or_
+from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from datetime import date, datetime, timedelta
 import calendar
@@ -306,6 +307,27 @@ def list_pagos(
     }
 
 
+def _meses_ya_pagados(db: Session, cliente_id: int, meses: list[str]) -> list[str]:
+    """Cuáles de esos meses ya tienen un pago registrado para ese cliente."""
+    return [
+        p.mes_pagado for p in db.query(models.Pago).filter(
+            models.Pago.cliente_id == cliente_id,
+            models.Pago.mes_pagado.in_(meses),
+        ).all()
+    ]
+
+
+def _error_de_mes_repetido(detalle: str, varios: bool) -> HTTPException:
+    """El 400 de «ese mes ya está pagado», igual venga del SELECT o de la
+    restricción de la base."""
+    if not varios:
+        return HTTPException(status_code=400, detail=f"Ya existe un pago para {detalle}")
+    return HTTPException(
+        status_code=400,
+        detail=f"Estos meses ya están pagados: {detalle}. Ajusta el mes de inicio o la cantidad de meses.",
+    )
+
+
 @router.post("", response_model=schemas.PagoOut, status_code=201)
 def create_pago(
     data: schemas.PagoCreate,
@@ -335,21 +357,15 @@ def create_pago(
     meses = _meses_consecutivos(data.mes_pagado, data.meses)
 
     # Check duplicate (mismo cliente + mes) — en un adelanto, ninguno de los
-    # meses puede estar pagado ya, y se avisa cuáles para no dejarlo a medias
-    ya_pagados = [
-        p.mes_pagado for p in db.query(models.Pago).filter(
-            models.Pago.cliente_id == data.cliente_id,
-            models.Pago.mes_pagado.in_(meses),
-        ).all()
-    ]
+    # meses puede estar pagado ya, y se avisa cuáles para no dejarlo a medias.
+    #
+    # Esto es solo para el mensaje. Lo que de verdad impide el cobro doble es
+    # uq_pagos_cliente_mes en la base (ver models.py): entre este SELECT y el
+    # commit hay segundos —se genera un PDF y se espera a WhatsApp— y en esa
+    # ventana caben dos peticiones de un doble clic.
+    ya_pagados = _meses_ya_pagados(db, data.cliente_id, meses)
     if ya_pagados:
-        detalle = ", ".join(sorted(ya_pagados))
-        if len(meses) == 1:
-            raise HTTPException(status_code=400, detail=f"Ya existe un pago para {detalle}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Estos meses ya están pagados: {detalle}. Ajusta el mes de inicio o la cantidad de meses.",
-        )
+        raise _error_de_mes_repetido(", ".join(sorted(ya_pagados)), len(meses) > 1)
 
     # El número de operación es único en todo el sistema — evita que se
     # reutilice (a propósito o por error) el comprobante de un pago anterior.
@@ -463,7 +479,30 @@ def create_pago(
         # Ya pagó — el compromiso que tenía (si había) queda resuelto
         cliente.compromiso_pago_hasta = None
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Aquí llega el doble clic: la otra petición insertó el mismo mes
+        # mientras esta generaba su PDF, y uq_pagos_cliente_mes la paró.
+        #
+        # Para saber si fue ESA violación y no otra, se vuelve a preguntar por
+        # los meses en vez de leer el texto del error. Es a propósito: el
+        # mensaje lo redacta el driver, y no dicen lo mismo —PostgreSQL nombra
+        # la restricción, SQLite solo lista las columnas—, así que mirarlo
+        # funcionaría en el servidor y no en las pruebas, que es la peor forma
+        # de que algo funcione.
+        db.rollback()
+        repetidos = _meses_ya_pagados(db, data.cliente_id, meses)
+        if repetidos:
+            logger.info(
+                "Cobro doble evitado por la restricción — cliente %d, mes(es) %s",
+                data.cliente_id, ", ".join(sorted(repetidos)),
+            )
+            raise _error_de_mes_repetido(
+                ", ".join(sorted(repetidos)), len(meses) > 1,
+            ) from None
+        # No era un mes repetido: no se disfraza de otra cosa.
+        raise
     db.refresh(pago)
     db.refresh(cliente)
 

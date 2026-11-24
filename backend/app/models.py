@@ -534,6 +534,24 @@ class Pago(Base):
     cliente = relationship("Cliente", back_populates="pagos")
     registrador = relationship("Usuario", foreign_keys=[registrado_por])
 
+    __table_args__ = (
+        # Un cliente no puede tener dos pagos del mismo mes.
+        #
+        # El endpoint ya lo comprobaba con un SELECT antes de insertar, pero un
+        # SELECT no garantiza nada: dos peticiones a la vez —un doble clic, la
+        # cajera reintentando porque el navegador se quedó pensando— pasaban
+        # las dos la comprobación y hacían las dos el INSERT. Quedaban dos
+        # pagos del mismo mes y la fecha de vencimiento avanzaba DOS meses: un
+        # mes regalado y la caja descuadrada contra el informe.
+        #
+        # Y la ventana era grande: entre el SELECT y el commit el endpoint
+        # genera el PDF del recibo y espera a WhatsApp. Segundos.
+        #
+        # Esta restricción es la que de verdad garantiza. El SELECT se queda
+        # solo para dar un mensaje bonito, que es lo que sabe hacer.
+        UniqueConstraint("cliente_id", "mes_pagado", name="uq_pagos_cliente_mes"),
+    )
+
 
 class Gasto(Base):
     __tablename__ = "gastos"

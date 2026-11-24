@@ -38,6 +38,95 @@ def _payload_pago(cliente_id: int, mes: str, estado: str = "pagado", monto: floa
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
 
+class TestNoSePuedeCobrarDosVecesElMismoMes:
+    """El doble clic en «Registrar pago».
+
+    El guard de duplicados era un SELECT seguido de un INSERT, sin ninguna
+    restricción en la base que lo respaldara. Dos peticiones a la vez —un doble
+    clic, la cajera reintentando porque el navegador se quedó pensando, dos
+    personas cobrando al mismo cliente— pasaban las dos el SELECT y hacían las
+    dos el INSERT. Quedaban dos pagos del mismo mes y la fecha de vencimiento
+    avanzaba DOS meses: un mes regalado y la caja descuadrada.
+
+    Y la ventana no era teórica: entre el SELECT y el commit el endpoint genera
+    un PDF y espera a WhatsApp. Segundos, no milisegundos.
+    """
+
+    def test_la_base_rechaza_dos_pagos_del_mismo_mes(self, db, datos):
+        """La restricción es la que de verdad garantiza. Si esta prueba falla,
+        el SELECT se quedó solo otra vez."""
+        from sqlalchemy.exc import IntegrityError
+
+        zona, plan, _ = datos
+        cliente = crear_cliente(db, zona, plan)
+        db.add(models.Pago(
+            cliente_id=cliente.id, monto=50, mes_pagado="2026-07",
+            fecha_pago=date.today(), estado=models.EstadoPago.pagado,
+        ))
+        db.commit()
+
+        db.add(models.Pago(
+            cliente_id=cliente.id, monto=50, mes_pagado="2026-07",
+            fecha_pago=date.today(), estado=models.EstadoPago.pagado,
+        ))
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()
+
+    def test_el_mismo_mes_en_otro_cliente_si_se_puede(self, db, datos):
+        """La restricción es por cliente y mes, no por mes: en julio cobran
+        todos."""
+        zona, plan, _ = datos
+        uno = crear_cliente(db, zona, plan, usuario_pppoe="cli_uno")
+        otro = crear_cliente(db, zona, plan, usuario_pppoe="cli_otro")
+        for c in (uno, otro):
+            db.add(models.Pago(
+                cliente_id=c.id, monto=50, mes_pagado="2026-07",
+                fecha_pago=date.today(), estado=models.EstadoPago.pagado,
+            ))
+        db.commit()
+        assert db.query(models.Pago).count() == 2
+
+    def test_la_carrera_da_un_400_amable_y_no_un_500(self, client, db, datos, monkeypatch):
+        """Cuando el SELECT no llega a ver el pago de la otra petición, salta
+        la restricción. Quien cobra tiene que leer «ya existe un pago», no un
+        error del servidor."""
+        from app.routers import pagos as pagos_mod
+
+        zona, plan, _ = datos
+        cliente = crear_cliente(db, zona, plan)
+        db.add(models.Pago(
+            cliente_id=cliente.id, monto=50, mes_pagado="2026-07",
+            fecha_pago=date.today(), estado=models.EstadoPago.pagado,
+        ))
+        db.commit()
+
+        # Se simula la carrera con fidelidad: la PRIMERA consulta (el guard,
+        # antes de insertar) no ve nada, porque la otra petición todavía no
+        # hizo commit. La segunda —la que el endpoint hace al recuperarse del
+        # IntegrityError— sí lo ve, porque ya está. Devolver vacío siempre no
+        # sería una carrera: sería una base que miente.
+        real = pagos_mod._meses_ya_pagados
+        llamadas = {"n": 0}
+
+        def primera_vez_ciego(*a, **k):
+            llamadas["n"] += 1
+            return [] if llamadas["n"] == 1 else real(*a, **k)
+
+        monkeypatch.setattr(pagos_mod, "_meses_ya_pagados", primera_vez_ciego)
+
+        resp = client.post("/pagos", json=_payload_pago(cliente.id, "2026-07", "pagado", 50))
+        assert resp.status_code == 400, (
+            f"la carrera dio HTTP {resp.status_code}; se esperaba un 400 amable"
+        )
+        assert "ya existe" in resp.json()["detail"].lower()
+        # Y no quedó un segundo pago.
+        assert db.query(models.Pago).filter(
+            models.Pago.cliente_id == cliente.id,
+            models.Pago.mes_pagado == "2026-07",
+        ).count() == 1
+
+
 class TestTopeDeCero:
     """El guard que impide cobrar S/ 0 o menos.
 
