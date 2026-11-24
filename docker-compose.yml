@@ -108,6 +108,10 @@ services:
       # Rutas dentro del contenedor (los volúmenes de arriba)
       PHONE_CONTACTO: ${PHONE_CONTACTO:-990807069}
       BACKUP_DIR: ${BACKUP_DIR:-/backups}
+      # La copia FUERA del servidor. Vacias = apagado, y el respaldo
+      # nocturno se queda en el mismo disco que la base. Ver app/respaldos.py.
+      BACKUP_REMOTO_CMD: ${BACKUP_REMOTO_CMD:-}
+      BACKUP_CIFRADO_CLAVE: ${BACKUP_CIFRADO_CLAVE:-}
       MEDIA_DIR: ${MEDIA_DIR:-/media}
 
       # Datos impresos en el recibo. Los vacíos no se imprimen.

@@ -203,3 +203,50 @@ def test_un_respaldo_que_falla_se_anota_como_error(monkeypatch, caplog):
     assert any(r.levelno >= logging.ERROR for r in caplog.records), (
         "el fallo del respaldo no se anotó como ERROR"
     )
+
+
+def test_el_respaldo_nocturno_intenta_sacarlo_del_servidor(monkeypatch, caplog):
+    """El trabajo tiene que llamar al envío, no solo dejar el archivo aquí."""
+    from app.routers import admin as admin_mod
+    from app import respaldos
+
+    monkeypatch.setattr(admin_mod, "hacer_backup", lambda: {
+        "filename": "wisp_x.sql.gz", "size_kb": 1, "ruta": "/backups/wisp_x.sql.gz",
+    })
+    llamado = {}
+
+    def falso_enviar(ruta):
+        llamado["ruta"] = ruta
+        return True, "Enviado con scp"
+
+    monkeypatch.setattr(respaldos, "preparar_y_enviar", falso_enviar)
+
+    with caplog.at_level(logging.INFO):
+        resultado = asyncio.run(sched.job_backup_diario())
+
+    assert resultado["enviado_fuera"] is True
+    assert llamado["ruta"] == "/backups/wisp_x.sql.gz"
+    assert "fuera del servidor" in caplog.text
+
+
+def test_si_el_envio_falla_el_respaldo_local_sigue_hecho(monkeypatch, caplog):
+    """Un fallo al enviar no puede tirar el respaldo local, que es lo unico
+    que ya estaba garantizado."""
+    from app.routers import admin as admin_mod
+    from app import respaldos
+
+    monkeypatch.setattr(admin_mod, "hacer_backup", lambda: {
+        "filename": "wisp_x.sql.gz", "size_kb": 1, "ruta": "/backups/wisp_x.sql.gz",
+    })
+    monkeypatch.setattr(respaldos, "preparar_y_enviar",
+                        lambda ruta: (False, "Permission denied (publickey)"))
+    monkeypatch.setattr(sched.settings, "BACKUP_REMOTO_CMD", "scp {archivo} host:/x")
+
+    with caplog.at_level(logging.INFO):
+        resultado = asyncio.run(sched.job_backup_diario())
+
+    assert resultado["ok"] is True, "el respaldo local se dio por fallido"
+    assert resultado["enviado_fuera"] is False
+    assert any(r.levelno >= logging.ERROR for r in caplog.records), (
+        "un envio configurado que falla tiene que salir como ERROR"
+    )

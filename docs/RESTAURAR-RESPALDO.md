@@ -102,12 +102,60 @@ docker compose logs -f backend   # mirar que arranca sin errores
 #    último pago registrado está, y que el calendario de un cliente cuadra.
 ```
 
+## La copia fuera del servidor
+
+El mecanismo está hecho y probado, **pero apagado hasta que se configure el
+destino**. Mientras las dos variables estén vacías, el respaldo nocturno se
+queda en el mismo disco que la base y el log lo recuerda cada noche.
+
+En el `.env`:
+
+```sh
+# Adónde va. {archivo} es donde el sistema pone la ruta del respaldo.
+# scp y ssh ya están en la imagen; rclone o rsync habría que añadirlos
+# al backend/Dockerfile.
+BACKUP_REMOTO_CMD=scp -i /root/.ssh/respaldos -o StrictHostKeyChecking=accept-new {archivo} respaldos@otra-maquina:/srv/wisp/
+
+# Con qué se cifra ANTES de salir. El respaldo lleva los datos personales de
+# todos los clientes y su historial de pagos, y va a una máquina que ya no es
+# ésta.
+BACKUP_CIFRADO_CLAVE=<una clave larga, generada al azar>
+```
+
+**Guarda `BACKUP_CIFRADO_CLAVE` fuera de este servidor.** Si se pierde, los
+respaldos cifrados no se recuperan: no hay puerta de atrás, es el objetivo. Un
+gestor de contraseñas o un papel en una caja fuerte valen; el mismo disco que
+la base, no.
+
+Si se configura un destino y no una clave, el respaldo sale **sin cifrar** y
+queda avisado en el log. Es a propósito: tener la copia fuera sin cifrar es
+mejor que no tenerla, pero no debe pasar desapercibido.
+
+### Abrir un respaldo cifrado
+
+```sh
+export BACKUP_CIFRADO_CLAVE='...'
+python scripts/descifrar-respaldo.py wisp_20261124_033000.sql.gz.enc salida.sql.gz
+```
+
+Ese script no importa nada del proyecto y solo necesita Python y
+`cryptography` (`pip install cryptography`). Es a propósito: el día que haga
+falta el respaldo puede que no quede un contenedor en pie. Un respaldo que
+solo se abre desde dentro de lo que se perdió no sirve de nada.
+
+Una vez descifrado, se restaura como cualquier otro: los pasos de arriba.
+
+> Comprobado de punta a punta el 2026-11-24: respaldo → cifrado → envío →
+> descifrado con el script suelto → restauración en una base limpia, con las
+> mismas 146 filas de clientes, 7 de pagos, 14 de zonas y 11 de usuarios. Con
+> la clave equivocada se niega y no deja un archivo a medias.
+
 ## Lo que falta y conviene saber
 
-**Los respaldos están en el mismo disco que la base.** Un fallo de disco, un
-cifrado por ransomware o un `rm` desafortunado se lleva la base y los siete
-respaldos a la vez. El trabajo nocturno protege de los borrados por error, no
-de perder la máquina. Falta la copia fuera del servidor.
+**Hasta que se configure el destino, los respaldos están en el mismo disco que
+la base.** Un fallo de disco, un cifrado por ransomware o un `rm`
+desafortunado se lleva la base y los siete respaldos a la vez. El trabajo
+nocturno protege de los borrados por error, no de perder la máquina.
 
 **Aviso de versiones.** El contenedor del backend trae `pg_dump` 17 y el
 servidor es PostgreSQL 15 (Debian trixie solo empaqueta el cliente 17). La

@@ -88,6 +88,27 @@ class Settings(BaseSettings):
     BACKUP_DIR: str = "/backups"
     MEDIA_DIR: str = "/media"
 
+    # ── Sacar los respaldos del servidor ────────────────────────────────────
+    #
+    # Los siete respaldos que se guardan viven en el mismo disco que
+    # PostgreSQL: un fallo de disco o un ransomware se lleva la base y todas
+    # sus copias a la vez. Estas dos variables son la copia fuera. Vacias =
+    # apagado, y el respaldo nocturno se queda solo en este disco.
+    #
+    # El comando que manda el respaldo a otra parte, con {archivo} donde va la
+    # ruta. `scp` y `ssh` ya estan en la imagen; rclone o rsync habria que
+    # anadirlos al backend/Dockerfile. Ver app/respaldos.py.
+    #   scp -i /root/.ssh/respaldos {archivo} respaldos@otra-maquina:/srv/wisp/
+    BACKUP_REMOTO_CMD: str = ""
+    # Clave con la que se cifra el respaldo ANTES de salir. Lleva los datos
+    # personales de todos los clientes y su historial de pagos, y va a una
+    # maquina que ya no es esta.
+    #
+    # GUARDALA FUERA DE AQUI. Si se pierde, los respaldos cifrados no se
+    # recuperan: no hay puerta de atras, es el objetivo. Para abrirlos:
+    #   python scripts/descifrar-respaldo.py respaldo.sql.gz.enc salida.sql.gz
+    BACKUP_CIFRADO_CLAVE: str = ""
+
     # Consulta automatica de nombres por documento (APIs Peru).
     # El token vive SOLO aqui: si el movil llamara directo al proveedor, el
     # token viajaria dentro del APK y cualquiera podria extraerlo.

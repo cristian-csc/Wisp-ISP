@@ -167,7 +167,27 @@ async def job_backup_diario():
         "Respaldo diario listo — %s (%d KB)",
         resultado["filename"], resultado["size_kb"],
     )
-    return {"ok": True, **resultado}
+
+    # Y fuera del servidor, si está configurado. El respaldo en el disco de al
+    # lado de la base protege de un borrado por error; esto, de perder la
+    # máquina. Nunca lanza: un fallo al enviar no puede dejar el respaldo
+    # local sin hacer, que es lo único que ya está garantizado.
+    from . import respaldos
+
+    enviado, detalle = await asyncio.to_thread(
+        respaldos.preparar_y_enviar, resultado["ruta"],
+    )
+    if enviado:
+        logger.info("Respaldo enviado fuera del servidor — %s", detalle)
+    elif (settings.BACKUP_REMOTO_CMD or "").strip():
+        # Configurado y falló: eso sí es un problema que alguien debe ver.
+        logger.error("El respaldo NO salió del servidor — %s", detalle)
+    else:
+        # Sin configurar: se dice una vez por noche y sin alarmismo, para que
+        # no se olvide que la copia fuera no existe todavía.
+        logger.warning("Respaldo solo en este disco — %s", detalle)
+
+    return {"ok": True, "enviado_fuera": enviado, **resultado}
 
 
 scheduler = AsyncIOScheduler(timezone="America/Lima")
