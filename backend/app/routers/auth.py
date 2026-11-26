@@ -2,12 +2,12 @@ import ipaddress
 import logging
 import secrets
 import string
-import threading
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -29,13 +29,17 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 # por (IP + usuario) para que el ataque a una cuenta no deje fuera a las demás
 # personas que trabajan desde la misma oficina.
 #
-# Limitación conocida: el contador vive en memoria del proceso. Si el backend
-# se reinicia, o si algún día se levantan varios procesos, el conteo se reparte.
-# Para una instalación de un solo proceso —la actual— es suficiente; con varios
-# habría que moverlo a la base o a Redis.
-_intentos: dict[tuple[str, str], list[float]] = {}
-_bloqueados: dict[tuple[str, str], float] = {}   # clave -> momento en que se libera
-_candado = threading.Lock()
+# Los contadores viven en la tabla freno_login, no en memoria del proceso.
+# Hasta el 2026-11-26 eran dos diccionarios de modulo, con dos consecuencias:
+# un reinicio del backend los ponia a cero —y el freno de solicitudes de
+# codigo es el unico que protege la via de recuperacion de cuenta—, y con
+# varios trabajadores de uvicorn el conteo se repartia, de modo que el tope
+# real era `tope x procesos`. Hallazgo B-6 de la auditoria.
+#
+# La base ya estaba ahi: tiene healthcheck, respaldo nocturno y la carga de
+# esto son unas pocas filas diminutas por intento de login. Redis haria el
+# mismo trabajo mas rapido, pero habria que anadir un servicio al compose,
+# vigilarlo y respaldarlo, para un volumen que PostgreSQL ni nota.
 
 
 _REDES_CONFIABLES: Optional[tuple] = None
@@ -120,63 +124,131 @@ def _claves_del_intento(request: Request, usuario: str) -> list[tuple[tuple[str,
     ]
 
 
-def _segundos_de_espera(clave: tuple[str, str], tope: int) -> int:
+def _clave_texto(clave: tuple[str, str]) -> str:
+    """La clave compuesta, tal como se guarda en la tabla."""
+    return f"{clave[0]}|{clave[1]}"
+
+
+def _fila_del_freno(db: Session, clave: tuple[str, str], crear: bool = False):
+    """La fila de esa clave, bloqueada para escritura si hay que tocarla.
+
+    `with_for_update()` es lo que hace que esto siga siendo correcto con varios
+    trabajadores de uvicorn: sin el, dos peticiones simultaneas leerian el
+    mismo contador y una de las dos escrituras se perderia. SQLite —las
+    pruebas— lo ignora, y da igual, porque alli no hay concurrencia real.
+    """
+    consulta = db.query(models.FrenoLogin).filter(
+        models.FrenoLogin.clave == _clave_texto(clave)
+    )
+    if crear:
+        consulta = consulta.with_for_update()
+    return consulta.first()
+
+
+def _podar_freno(db: Session, ahora: float) -> None:
+    """Borra las filas que ya no cuentan para nada.
+
+    Sustituye al recorte que hacia el diccionario al pasar de 5000 claves. Se
+    llama de vez en cuando desde _anotar_fallo y, a fondo, desde el trabajo
+    nocturno del planificador.
+    """
+    viejo = ahora - max(
+        settings.LOGIN_BLOQUEO_SEGUNDOS, settings.LOGIN_VENTANA_SEGUNDOS
+    ) - 60
+    db.query(models.FrenoLogin).filter(
+        models.FrenoLogin.actualizado_en < viejo
+    ).delete(synchronize_session=False)
+
+
+def _segundos_de_espera(db: Session, clave: tuple[str, str], tope: int) -> int:
     """0 si puede intentar; si no, los segundos que le faltan para volver."""
     if tope <= 0:
         return 0
+    fila = _fila_del_freno(db, clave)
+    if fila is None or not fila.bloqueado_hasta:
+        return 0
     ahora = time.time()
-    with _candado:
-        hasta = _bloqueados.get(clave)
-        if hasta is None:
-            return 0
-        if ahora >= hasta:
-            # Cumplió el castigo: vuelve a empezar de cero.
-            _bloqueados.pop(clave, None)
-            _intentos.pop(clave, None)
-            return 0
-        return max(int(hasta - ahora), 1)
+    if ahora >= fila.bloqueado_hasta:
+        # Cumplio el castigo: vuelve a empezar de cero.
+        db.delete(fila)
+        db.commit()
+        return 0
+    return max(int(fila.bloqueado_hasta - ahora), 1)
 
 
-def _anotar_fallo(clave: tuple[str, str], tope: int) -> None:
-    """Apunta un intento fallido y bloquea si se pasó del límite.
+def _anotar_fallo(db: Session, clave: tuple[str, str], tope: int, _reintento: bool = False) -> None:
+    """Apunta un intento fallido y bloquea si se paso del limite.
 
-    Se cuentan los fallos de los últimos LOGIN_VENTANA_SEGUNDOS; al llegar al
+    Se cuentan los fallos de los ultimos LOGIN_VENTANA_SEGUNDOS; al llegar al
     tope la clave queda bloqueada LOGIN_BLOQUEO_SEGUNDOS enteros contados
     desde ese momento.
     """
     if tope <= 0:
         return
     ahora = time.time()
-    with _candado:
-        fallos = [t for t in _intentos.get(clave, []) if ahora - t < settings.LOGIN_VENTANA_SEGUNDOS]
-        fallos.append(ahora)
-        _intentos[clave] = fallos
-        if len(fallos) >= tope:
-            _bloqueados[clave] = ahora + settings.LOGIN_BLOQUEO_SEGUNDOS
-        # No dejar crecer los diccionarios sin límite.
-        if len(_intentos) > 5000:
-            for k, v in list(_intentos.items()):
-                if not v or ahora - v[-1] > settings.LOGIN_BLOQUEO_SEGUNDOS:
-                    _intentos.pop(k, None)
-                    _bloqueados.pop(k, None)
+    fila = _fila_del_freno(db, clave, crear=True)
+    if fila is None:
+        fila = models.FrenoLogin(
+            clave=_clave_texto(clave), momentos=[], actualizado_en=ahora,
+        )
+        db.add(fila)
+
+    recientes = [
+        t for t in (fila.momentos or [])
+        if ahora - t < settings.LOGIN_VENTANA_SEGUNDOS
+    ]
+    recientes.append(ahora)
+    # Lista nueva, no .append() sobre la vieja: SQLAlchemy no detecta el cambio
+    # dentro de una columna JSON si se muta en el sitio, y la escritura se
+    # perderia sin ruido.
+    fila.momentos = recientes
+    fila.actualizado_en = ahora
+    if len(recientes) >= tope:
+        fila.bloqueado_hasta = ahora + settings.LOGIN_BLOQUEO_SEGUNDOS
+
+    # Poda oportunista, barata: una de cada tantas escrituras. El trabajo
+    # nocturno hace la de verdad.
+    if int(ahora) % 20 == 0:
+        _podar_freno(db, ahora)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        # Dos peticiones a la vez con la misma clave y sin fila previa: ambas
+        # vieron "no existe" y ambas insertaron. with_for_update() no puede
+        # bloquear una fila que todavia no esta. Pasa solo en el primer fallo
+        # de una clave y solo con varios trabajadores —que es justamente el
+        # caso que este cambio viene a soportar—, asi que se reintenta una vez:
+        # a la segunda la fila ya existe y se toma el camino normal, con su
+        # bloqueo de fila.
+        db.rollback()
+        if _reintento:
+            # Si vuelve a chocar hay algo mas raro, y perder un intento
+            # contado es mejor que devolver un 500 a quien esta entrando.
+            logger.warning("No se pudo anotar el intento fallido de %s", clave[0])
+            return
+        _anotar_fallo(db, clave, tope, _reintento=True)
 
 
-def _limpiar_intentos(claves: list[tuple[tuple[str, str], int]]) -> None:
-    """Entró bien: se olvidan los fallos de los dos contadores."""
-    with _candado:
-        for clave, _ in claves:
-            _intentos.pop(clave, None)
-            _bloqueados.pop(clave, None)
+def _limpiar_intentos(db: Session, claves: list[tuple[tuple[str, str], int]]) -> None:
+    """Entro bien: se olvidan los fallos de los contadores que lo vigilaban."""
+    textos = [_clave_texto(c) for c, _ in claves]
+    db.query(models.FrenoLogin).filter(
+        models.FrenoLogin.clave.in_(textos)
+    ).delete(synchronize_session=False)
+    db.commit()
 
 
-def _anotar_fallos(claves: list[tuple[tuple[str, str], int]]) -> None:
+def _anotar_fallos(db: Session, claves: list[tuple[tuple[str, str], int]]) -> None:
     for clave, tope in claves:
-        _anotar_fallo(clave, tope)
+        _anotar_fallo(db, clave, tope)
 
 
-def _frenar_o_seguir(request: Request, usuario: str) -> list[tuple[tuple[str, str], int]]:
+def _frenar_o_seguir(
+    db: Session, request: Request, usuario: str,
+) -> list[tuple[tuple[str, str], int]]:
     claves = _claves_del_intento(request, usuario)
-    espera = max((_segundos_de_espera(c, t) for c, t in claves), default=0)
+    espera = max((_segundos_de_espera(db, c, t) for c, t in claves), default=0)
     if espera:
         logger.warning(
             "Login bloqueado por demasiados intentos — ip: %s", claves[0][0][0]
@@ -350,16 +422,16 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    clave = _frenar_o_seguir(request, form_data.username)
+    clave = _frenar_o_seguir(db, request, form_data.username)
     user = db.query(models.Usuario).filter(models.Usuario.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
-        _anotar_fallos(clave)
+        _anotar_fallos(db, clave)
         logger.warning("Login fallido — ip: %s", clave[0])
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales incorrectas")
     if not user.activo:
-        _anotar_fallos(clave)
+        _anotar_fallos(db, clave)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cuenta desactivada")
-    _limpiar_intentos(clave)
+    _limpiar_intentos(db, clave)
     token = create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -407,11 +479,11 @@ def cliente_login(request: Request, data: schemas.ClienteLoginRequest, db: Sessi
     WhatsApp (ver /cliente/solicitar-codigo) y con él elige una.
     """
     usuario = data.usuario.strip()
-    clave_freno = _frenar_o_seguir(request, f"cliente:{usuario}")
+    clave_freno = _frenar_o_seguir(db, request, f"cliente:{usuario}")
     cliente = _cliente_por_usuario(db, usuario)
 
     if not cliente:
-        _anotar_fallos(clave_freno)
+        _anotar_fallos(db, clave_freno)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario o contraseña incorrecta",
@@ -428,12 +500,12 @@ def cliente_login(request: Request, data: schemas.ClienteLoginRequest, db: Sessi
         )
 
     if not pwd_context.verify(data.pin.strip(), cliente.pin_app):
-        _anotar_fallos(clave_freno)
+        _anotar_fallos(db, clave_freno)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario o contraseña incorrecta",
         )
-    _limpiar_intentos(clave_freno)
+    _limpiar_intentos(db, clave_freno)
 
     if cliente.estado == models.EstadoCliente.anulado:
         raise HTTPException(
@@ -515,8 +587,8 @@ def solicitar_codigo_cliente(
     un cliente, además de gastar el número de la empresa.
     """
     usuario = data.usuario.strip()
-    clave_freno = _frenar_o_seguir(request, f"codigo:{usuario}")
-    _anotar_fallos(clave_freno)   # cada solicitud cuenta, acertada o no
+    clave_freno = _frenar_o_seguir(db, request, f"codigo:{usuario}")
+    _anotar_fallos(db, clave_freno)   # cada solicitud cuenta, acertada o no
 
     generico = (
         "Si el documento está registrado, en unos segundos llegará un código "
@@ -591,7 +663,7 @@ def verificar_codigo_cliente(
     """Comprueba el código, le pone al cliente la contraseña que eligió y lo
     deja dentro."""
     usuario = data.usuario.strip()
-    clave_freno = _frenar_o_seguir(request, f"codigo:{usuario}")
+    clave_freno = _frenar_o_seguir(db, request, f"codigo:{usuario}")
 
     # El mismo mensaje para «no existe», «caducó» y «no es el código»: cada
     # distinción es una pista para quien está probando.
@@ -602,7 +674,7 @@ def verificar_codigo_cliente(
 
     cliente = _cliente_por_usuario(db, usuario)
     if not cliente or cliente.estado == models.EstadoCliente.anulado:
-        _anotar_fallos(clave_freno)
+        _anotar_fallos(db, clave_freno)
         raise invalido
 
     nueva = data.pin_nuevo.strip()
@@ -624,26 +696,26 @@ def verificar_codigo_cliente(
         .first()
     )
     if fila is None:
-        _anotar_fallos(clave_freno)
+        _anotar_fallos(db, clave_freno)
         raise invalido
 
     if _ya_vencio(fila.expira_en) or fila.intentos >= _CODIGO_MAX_INTENTOS:
         db.delete(fila)
         db.commit()
-        _anotar_fallos(clave_freno)
+        _anotar_fallos(db, clave_freno)
         raise invalido
 
     if not pwd_context.verify(data.codigo.strip(), fila.codigo_hash):
         fila.intentos += 1
         db.commit()
-        _anotar_fallos(clave_freno)
+        _anotar_fallos(db, clave_freno)
         raise invalido
 
     # Acertó: la contraseña es suya y el código se gasta.
     cliente.pin_app = get_password_hash(nueva)
     db.delete(fila)
     db.commit()
-    _limpiar_intentos(clave_freno)
+    _limpiar_intentos(db, clave_freno)
 
     logger.info("Cliente id %d estrenó su contraseña con un código de WhatsApp", cliente.id)
     token = create_access_token({

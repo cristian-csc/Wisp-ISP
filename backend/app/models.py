@@ -875,3 +875,35 @@ class MovimientoMaterial(Base):
     tecnico = relationship("Usuario", foreign_keys=[tecnico_id])
     registrado_por = relationship("Usuario", foreign_keys=[registrado_por_id])
     presentacion = relationship("MaterialPresentacion")
+
+
+# ── El freno de fuerza bruta ──────────────────────────────────────────────────
+
+
+class FrenoLogin(Base):
+    """Los intentos fallidos de entrar, y el castigo cuando se pasan del tope.
+
+    Hasta el 2026-11-26 esto eran dos diccionarios en la memoria del proceso
+    (`_intentos` y `_bloqueados` en routers/auth.py). Funcionaba, con dos
+    agujeros: un reinicio del backend ponia todos los contadores a cero, y con
+    mas de un trabajador de uvicorn el conteo se repartia entre procesos, de
+    modo que el tope real pasaba a ser `tope x procesos`. Hallazgo B-6.
+
+    `momentos` guarda el instante de cada fallo reciente, igual que hacia la
+    lista en memoria: asi el conteo sigue siendo una ventana deslizante de
+    verdad y no un contador que se reinicia a horas en punto. Se poda en cada
+    escritura, asi que no crece.
+
+    Los dos instantes van en epoch (segundos, float) y no en DateTime a
+    proposito. Es lo que usa el resto del freno (`time.time()`), y evita de
+    raiz el problema que destapo N-1: `DateTime(timezone=True)` devuelve la
+    zona en PostgreSQL y no en SQLite, asi que comparar fechas de esa columna
+    funcionaba en el servidor y reventaba en las pruebas.
+    """
+    __tablename__ = "freno_login"
+
+    # "<ip>|<usuario>" o "*cuenta*|<usuario>". Lo arma _clave_texto() en auth.py.
+    clave = Column(String(200), primary_key=True)
+    momentos = Column(JSON, nullable=False, default=list)
+    bloqueado_hasta = Column(Float, index=True)
+    actualizado_en = Column(Float, nullable=False, index=True)

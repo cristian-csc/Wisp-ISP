@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import random
+import time
 from datetime import date, timedelta
 
 import httpx
@@ -190,6 +191,41 @@ async def job_backup_diario():
     return {"ok": True, "enviado_fuera": enviado, **resultado}
 
 
+async def job_podar_freno_login():
+    """Barre las filas del freno de fuerza bruta que ya no cuentan.
+
+    Desde que el freno vive en la tabla `freno_login` y no en la memoria del
+    proceso (hallazgo B-6), las filas se quedan ahi hasta que alguien las
+    borra. Cada intento fallido deja una, asi que sin esto la tabla crece con
+    cada ataque que reciba el login.
+
+    No es urgente —son filas diminutas y `_anotar_fallo` ya poda de vez en
+    cuando—, de ahi la hora tranquila. Lo que esto garantiza es que la poda
+    ocurre aunque nadie falle al entrar durante dias.
+    """
+    from .routers.auth import _podar_freno
+
+    def _barrer() -> int:
+        db = SessionLocal()
+        try:
+            antes = db.query(models.FrenoLogin).count()
+            _podar_freno(db, time.time())
+            db.commit()
+            return antes - db.query(models.FrenoLogin).count()
+        finally:
+            db.close()
+
+    try:
+        borradas = await asyncio.to_thread(_barrer)
+    except Exception as e:
+        logger.warning("No se pudo podar el freno de login: %s", e)
+        return {"ok": False, "error": str(e)}
+
+    if borradas:
+        logger.info("Freno de login podado — %d filas caducadas", borradas)
+    return {"ok": True, "borradas": borradas}
+
+
 scheduler = AsyncIOScheduler(timezone="America/Lima")
 
 
@@ -212,10 +248,16 @@ def init_scheduler():
         id="backup_diario",
         replace_existing=True,
     )
+    scheduler.add_job(
+        job_podar_freno_login,
+        CronTrigger(hour=4, minute=15, timezone="America/Lima"),
+        id="podar_freno_login",
+        replace_existing=True,
+    )
     scheduler.start()
     logger.info(
-        "Scheduler iniciado — respaldo 03:30, recordatorio 08:00, "
-        "corte automático 09:00 (hora Lima)"
+        "Scheduler iniciado — respaldo 03:30, poda del freno 04:15, "
+        "recordatorio 08:00, corte automático 09:00 (hora Lima)"
     )
 
 

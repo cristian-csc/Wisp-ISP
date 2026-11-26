@@ -149,17 +149,27 @@ def client_permisos():
 def reset_freno():
     """Vacía el freno de fuerza bruta entre pruebas.
 
-    Los contadores viven en variables de módulo, así que sin esto una prueba
-    que agota los intentos deja bloqueada a la siguiente y el fallo aparece
-    en un sitio que no tiene nada que ver. Es autouse porque el día que
-    alguien añada una prueba de login y no se acuerde de pedir la fixture, el
-    error sería dificilísimo de entender.
+    Sin esto, una prueba que agota los intentos deja bloqueada a la siguiente
+    y el fallo aparece en un sitio que no tiene nada que ver. Es autouse
+    porque el día que alguien añada una prueba de login y no se acuerde de
+    pedir la fixture, el error sería dificilísimo de entender.
+
+    Desde el 2026-11-26 el freno vive en la tabla freno_login y no en dos
+    diccionarios de módulo (hallazgo B-6), así que lo que hay que vaciar es la
+    tabla. reset_db ya recrea el esquema entre pruebas; esto cubre además el
+    caso de varias peticiones dentro de una misma prueba.
     """
-    auth_router._intentos.clear()
-    auth_router._bloqueados.clear()
     yield
-    auth_router._intentos.clear()
-    auth_router._bloqueados.clear()
+    sesion = TestingSessionLocal()
+    try:
+        sesion.query(models.FrenoLogin).delete()
+        sesion.commit()
+    except Exception:
+        # La tabla puede no existir todavía si la prueba fallo al montar el
+        # esquema; no es trabajo de esta fixture quejarse de eso.
+        sesion.rollback()
+    finally:
+        sesion.close()
 
 
 class BotFalso:
