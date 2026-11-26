@@ -413,6 +413,21 @@ def get_current_cliente(token: str = Depends(oauth2_scheme), db: Session = Depen
     cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
     if not cliente:
         raise credentials_exception
+
+    # El login ya rechaza a un cliente anulado, pero hasta el 2026-11-26 esta
+    # dependencia no lo volvia a mirar. Con ACCESS_TOKEN_EXPIRE_MINUTES en 480,
+    # un cliente al que se le daba de baja seguia viendo su ficha, su
+    # direccion y su historial de pagos ocho horas mas — y si la baja fue por
+    # un conflicto, ocho horas es justo el rato que importa. Hallazgo B-2.
+    #
+    # Solo cierra `anulado`, a proposito: un cliente suspendido por impago o
+    # en pausa tiene que poder entrar, que es cuando necesita ver lo que debe
+    # y como pagarlo. Es la misma distincion que hace el login.
+    if cliente.estado == models.EstadoCliente.anulado:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta cuenta ya no esta activa",
+        )
     return cliente
 
 

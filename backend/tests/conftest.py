@@ -17,6 +17,7 @@ from app.routers import pagos as pagos_router
 from app.routers import gastos as gastos_router
 from app.routers import whatsapp as whatsapp_router
 from app.routers import clientes as clientes_router
+from app.routers import cliente_app as cliente_app_router
 from app import acceso, mensajeria, models
 
 # ── Base de datos en memoria ──────────────────────────────────────────────────
@@ -86,6 +87,19 @@ def make_clientes_app() -> FastAPI:
     acceso.registrar_rutas(clientes_router.router, "/api/clientes")
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
+    return app
+
+
+def make_cliente_app_app() -> FastAPI:
+    """App con los endpoints de la app movil del cliente.
+
+    No se sustituye get_current_cliente: lo que se prueba es quien conserva la
+    sesion y quien la pierde.
+    """
+    app = FastAPI()
+    app.include_router(cliente_app_router.router, prefix="/api/cliente")
+    acceso.registrar_rutas(cliente_app_router.router, "/api/cliente")
+    app.dependency_overrides[get_db] = override_get_db
     return app
 
 
@@ -161,6 +175,14 @@ def client_auth():
 def client_clientes():
     """TestClient del router de clientes, con la sesion simulada."""
     app = make_clientes_app()
+    with TestClient(app) as c:
+        yield c
+
+
+@pytest.fixture
+def client_cliente_app():
+    """TestClient de la app movil del cliente, con la sesion REAL."""
+    app = make_cliente_app_app()
     with TestClient(app) as c:
         yield c
 
