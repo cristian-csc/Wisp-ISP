@@ -27,6 +27,15 @@ def cabeceras_bot() -> dict:
     """
     if settings.WHATSAPP_API_TOKEN:
         return {"X-API-Token": settings.WHATSAPP_API_TOKEN}
+    # Desde que el bot falla cerrado (whatsapp/auth.js), quedarse sin token no
+    # significa "va sin credencial": significa que TODO envio responde 401 y
+    # los avisos de cobro y de corte dejan de salir. Sin esta linea el sintoma
+    # seria "WhatsApp no manda nada" sin ninguna pista de por que.
+    logger.error(
+        "WHATSAPP_API_TOKEN no esta configurado en el backend: el bot "
+        "rechazara cada envio con 401. Pon el mismo valor que en el servicio "
+        "de WhatsApp."
+    )
     return {}
 
 

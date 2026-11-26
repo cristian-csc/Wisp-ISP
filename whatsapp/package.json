@@ -2,6 +2,9 @@
   "name": "wisp-whatsapp",
   "version": "2.0.0",
   "main": "server.js",
+  "scripts": {
+    "test": "node --test"
+  },
   "engines": {
     "node": ">=20.0.0"
   },

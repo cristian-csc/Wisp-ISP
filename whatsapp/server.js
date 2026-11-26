@@ -20,7 +20,8 @@ const qrcode = require('qrcode')
 const pino = require('pino')
 const fs = require('fs')
 const path = require('path')
-const crypto = require('crypto')
+
+const { exigirToken, middlewareToken } = require('./auth')
 
 const {
   default: makeWASocket,
@@ -40,27 +41,19 @@ const BIND_HOST = process.env.BIND_HOST || '127.0.0.1'
 // reinicios y no haya que escanear el QR cada vez.
 const SESSION_PATH = process.env.SESSION_PATH || '/app/sesion'
 
-// Clave compartida con el backend. Si está definida, toda petición debe
-// traerla en la cabecera X-API-Token.
-const API_TOKEN = (process.env.WHATSAPP_API_TOKEN || '').trim()
-
-/** Comparación en tiempo constante: evita adivinar el token midiendo cuánto
- *  tarda la respuesta en fallar. */
-function tokenValido(recibido) {
-  const a = Buffer.from(String(recibido || ''))
-  const b = Buffer.from(API_TOKEN)
-  if (a.length !== b.length) return false
-  return crypto.timingSafeEqual(a, b)
+// Clave compartida con el backend. Toda petición debe traerla en la cabecera
+// X-API-Token. Si no está configurada el servicio NO arranca, en vez de
+// quedarse abierto hasta que alguien se acuerde: ver auth.js.
+let API_TOKEN
+try {
+  API_TOKEN = exigirToken(process.env)
+} catch (err) {
+  console.error('No se puede arrancar el servicio de WhatsApp:')
+  console.error('  ' + err.message)
+  process.exit(1)
 }
 
-app.use((req, res, next) => {
-  if (!API_TOKEN) return next()
-  if (req.path === '/salud') return next()
-  if (!tokenValido(req.get('X-API-Token'))) {
-    return res.status(401).json({ error: 'No autorizado' })
-  }
-  next()
-})
+app.use(middlewareToken(API_TOKEN))
 
 // Sonda para saber si el servicio está vivo sin revelar nada.
 app.get('/salud', (req, res) => res.json({ ok: true }))
@@ -266,13 +259,5 @@ app.post('/send-file', async (req, res) => {
 
 app.listen(PORT, BIND_HOST, () => {
   console.log(`WhatsApp API escuchando en ${BIND_HOST}:${PORT}`)
-  if (!API_TOKEN) {
-    console.warn(
-      '  AVISO DE SEGURIDAD: WHATSAPP_API_TOKEN no está definido.\n' +
-      '  Sin token, cualquiera que alcance este puerto puede pedir el QR de\n' +
-      '  vinculación y enviar mensajes como la empresa. Defínelo en el .env\n' +
-      '  (el mismo valor en el backend) antes de publicar el sistema.'
-    )
-  }
   iniciar()
 })
