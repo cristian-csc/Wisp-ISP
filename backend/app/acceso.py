@@ -182,6 +182,72 @@ LECTURAS: dict[tuple[str, str], frozenset] = {
 }
 
 
+# ── De donde sale la ruta que se esta decidiendo ─────────────────────────────
+# Las reglas de arriba se indexan por la ruta COMPLETA (`/api/whatsapp/qr`).
+# Hasta el 2026-11-26 esa ruta se leia del objeto interno de Starlette:
+#
+#     getattr(request.scope.get("route"), "path", "")
+#
+# `path` no es parte del contrato publico de Starlette, y en las versiones
+# nuevas pasa a valer `/qr` en vez de `/api/whatsapp/qr`: include_router ya no
+# aplana las rutas en app.routes, las envuelve. El fallo no se habria visto, y
+# eso es lo peor que tiene: ninguna clave volveria a coincidir,
+# permite_lectura() devolveria True por no encontrar regla, y la capa de
+# modulos dejaria de aplicarse entera.
+#
+# Lo que se hace ahora: los prefijos se registran al montar cada router —son
+# los que main.py ya escribe— y la ruta completa se arma con `request.url.path`,
+# que si es publico. Funciona igual con `path` absoluto (fastapi viejo) y
+# relativo (fastapi nuevo), que es el punto.
+
+_PREFIJOS: list[str] = []
+_RUTAS_CONOCIDAS: set[tuple[str, str]] = set()
+
+
+def registrar_rutas(router, prefijo: str) -> None:
+    """Apunta el prefijo de un router y las rutas completas que aporta.
+
+    Se llama junto a cada include_router(). Las rutas conocidas solo se usan
+    para comprobar en las pruebas que ninguna regla apunta al vacio; la
+    decision en caliente la toma ruta_de().
+    """
+    if prefijo not in _PREFIJOS:
+        _PREFIJOS.append(prefijo)
+    for ruta in getattr(router, "routes", []):
+        for metodo in (getattr(ruta, "methods", None) or []):
+            _RUTAS_CONOCIDAS.add((metodo, prefijo + getattr(ruta, "path", "")))
+
+
+def _bajo(camino: str, prefijo: str) -> bool:
+    return camino == prefijo or camino.startswith(prefijo + "/")
+
+
+def ruta_de(request) -> str:
+    """La ruta completa con plantilla de la peticion, o "" si no se sabe.
+
+    Devolver "" a proposito y no una ruta a medias: sin coincidencia el
+    endpoint queda como lo diga require_roles(), que es el comportamiento
+    documentado arriba para un endpoint sin regla. Una ruta a medias podria
+    coincidir con la regla de otro endpoint, que es mucho peor.
+    """
+    ruta = request.scope.get("route") if hasattr(request, "scope") else None
+    camino = getattr(ruta, "path", "") or ""
+    if not camino:
+        return ""
+
+    # fastapi viejo: `path` ya viene completo.
+    if any(_bajo(camino, p) for p in _PREFIJOS):
+        return camino
+
+    # fastapi nuevo: `path` es relativo al router, y el prefijo se deduce de la
+    # URL que se pidio de verdad.
+    url = getattr(getattr(request, "url", None), "path", "") or ""
+    for prefijo in _PREFIJOS:
+        if _bajo(url, prefijo):
+            return prefijo + camino
+    return ""
+
+
 def permite_con_roles(
     perfil: str, es_superadmin: bool, modulos: set, permitidos: set, metodo: str, ruta: str,
 ) -> bool:

@@ -33,13 +33,15 @@ def test_las_rutas_estan_registradas():
     Un número exacto se rompería cada vez que se añade un endpoint, así que se
     comprueba un mínimo y que estén las de siempre.
     """
-    from app.main import app
+    from app import acceso
+    from app.main import app  # noqa: F401  — montar() llena el registro
 
-    rutas = {
-        (metodo, getattr(r, "path", ""))
-        for r in app.routes
-        for metodo in (getattr(r, "methods", None) or [])
-    }
+    # Las rutas se leen del registro de acceso.py y no de `app.routes`. Hasta
+    # el 2026-11-26 se recorria `app.routes` directamente, y al subir fastapi
+    # esta prueba paso a ver 9 rutas en vez de 180: include_router ya no las
+    # aplana ahi, las envuelve. Es el mismo atributo interno que hacia fragil
+    # la capa de permisos; ver tests/test_ruta_de_permisos.py.
+    rutas = set(acceso._RUTAS_CONOCIDAS) | {("GET", "/api/health")}
     assert len(rutas) > 150, f"solo se registraron {len(rutas)} rutas"
 
     imprescindibles = [
@@ -65,15 +67,12 @@ def test_las_reglas_de_permisos_apuntan_a_rutas_reales():
     y hacia el lado peligroso, que es la peor combinación.
     """
     from app import acceso
-    from app.main import app
+    from app.main import app  # noqa: F401  — montar() llena el registro
 
-    rutas = {
-        (metodo, getattr(r, "path", ""))
-        for r in app.routes
-        for metodo in (getattr(r, "methods", None) or [])
-    }
-
-    huerfanas = [k for k in {**acceso.REGLAS, **acceso.LECTURAS} if k not in rutas]
+    huerfanas = [
+        k for k in {**acceso.REGLAS, **acceso.LECTURAS}
+        if k not in acceso._RUTAS_CONOCIDAS
+    ]
     assert not huerfanas, (
         "estas reglas de permisos no corresponden a ninguna ruta real, "
         f"así que no protegen nada: {sorted(huerfanas)}"

@@ -327,7 +327,7 @@ def get_current_user(
     db: Session = Depends(get_db),
 ):
     user = usuario_del_token(token, db)
-    ruta = getattr(request.scope.get("route"), "path", "")
+    ruta = acceso.ruta_de(request)
     if (request.method, ruta) in acceso.LECTURAS:
         rol = rol_de_la_cuenta(db, user)
         if rol is not None and not acceso.permite_lectura(
@@ -362,7 +362,7 @@ def require_roles(*roles: models.RolUsuario):
                 modulos_del_rol(db, rol.id),
                 permitidos,
                 request.method,
-                getattr(request.scope.get("route"), "path", ""),
+                acceso.ruta_de(request),
             )
         if not permitido:
             raise _sin_permiso()

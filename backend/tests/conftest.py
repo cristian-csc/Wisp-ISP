@@ -17,7 +17,7 @@ from app.routers import pagos as pagos_router
 from app.routers import gastos as gastos_router
 from app.routers import whatsapp as whatsapp_router
 from app.routers import clientes as clientes_router
-from app import mensajeria, models
+from app import acceso, mensajeria, models
 
 # ── Base de datos en memoria ──────────────────────────────────────────────────
 
@@ -83,6 +83,7 @@ def make_clientes_app() -> FastAPI:
     """
     app = FastAPI()
     app.include_router(clientes_router.router, prefix="/api/clientes")
+    acceso.registrar_rutas(clientes_router.router, "/api/clientes")
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
     return app
@@ -98,6 +99,10 @@ def make_permisos_app() -> FastAPI:
     """
     app = FastAPI()
     app.include_router(whatsapp_router.router, prefix="/api/whatsapp")
+    # Igual que montar() en main.py. Sin esto, acceso.py no sabria que
+    # /api/whatsapp/qr es esa ruta y la regla de modulo no se aplicaria: la
+    # prueba de permisos pasaria por el motivo equivocado.
+    acceso.registrar_rutas(whatsapp_router.router, "/api/whatsapp")
     app.dependency_overrides[get_db] = override_get_db
     return app
 
@@ -111,6 +116,7 @@ def make_auth_app() -> FastAPI:
     """
     app = FastAPI()
     app.include_router(auth_router.router, prefix="/api/auth")
+    acceso.registrar_rutas(auth_router.router, "/api/auth")
     app.dependency_overrides[get_db] = override_get_db
     return app
 

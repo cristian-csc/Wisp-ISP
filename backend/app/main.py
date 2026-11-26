@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from . import models, registro
+from . import acceso
 from .config import es_produccion, origenes_cors, settings
 
 # Lo primero de todo, antes de que cualquier módulo pueda anotar algo: sin
@@ -74,26 +75,37 @@ async def cabeceras_de_seguridad(request: Request, call_next):
         respuesta.headers["Pragma"] = "no-cache"
     return respuesta
 
-app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
-app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
-app.include_router(clientes.router, prefix="/api/clientes", tags=["Clientes"])
-app.include_router(zonas.router, prefix="/api/zonas", tags=["Zonas"])
-app.include_router(pagos.router, prefix="/api/pagos", tags=["Pagos"])
-app.include_router(gastos.router, prefix="/api/gastos", tags=["Gastos"])
-app.include_router(whatsapp.router, prefix="/api/whatsapp", tags=["WhatsApp"])
-app.include_router(planes.router, prefix="/api/planes", tags=["Planes"])
-app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
-app.include_router(cliente_app.router, prefix="/api/cliente", tags=["App Cliente"])
-app.include_router(cajas_nap.router, prefix="/api/cajas-nap", tags=["Cajas NAP"])
-app.include_router(mufas.router, prefix="/api/mufas", tags=["Mufas"])
-app.include_router(onus.router, prefix="/api/onus", tags=["ONUs"])
-app.include_router(averias.router, prefix="/api/averias", tags=["Averías"])
-app.include_router(ordenes_retiro.router, prefix="/api/ordenes-retiro", tags=["Órdenes de retiro"])
-app.include_router(evidencias.router, prefix="/api/evidencias", tags=["Evidencias"])
-app.include_router(jornadas.router, prefix="/api/jornadas", tags=["Jornadas"])
-app.include_router(consultas.router, prefix="/api/consultas", tags=["Consultas"])
-app.include_router(permisos.router, prefix="/api/permisos", tags=["Roles y módulos"])
-app.include_router(materiales.router, prefix="/api/materiales", tags=["Materiales"])
+def montar(router, prefix: str, tags: list) -> None:
+    """Incluye un router y apunta la ruta completa de sus endpoints.
+
+    Las dos cosas van juntas a proposito. acceso.py decide los permisos de
+    modulo por la ruta completa, y un router incluido sin registrar deja de
+    aplicar sus reglas en silencio. Lo vigila tests/test_ruta_de_permisos.py.
+    """
+    app.include_router(router, prefix=prefix, tags=tags)
+    acceso.registrar_rutas(router, prefix)
+
+
+montar(auth.router, prefix="/api/auth", tags=["Auth"])
+montar(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
+montar(clientes.router, prefix="/api/clientes", tags=["Clientes"])
+montar(zonas.router, prefix="/api/zonas", tags=["Zonas"])
+montar(pagos.router, prefix="/api/pagos", tags=["Pagos"])
+montar(gastos.router, prefix="/api/gastos", tags=["Gastos"])
+montar(whatsapp.router, prefix="/api/whatsapp", tags=["WhatsApp"])
+montar(planes.router, prefix="/api/planes", tags=["Planes"])
+montar(admin.router, prefix="/api/admin", tags=["Admin"])
+montar(cliente_app.router, prefix="/api/cliente", tags=["App Cliente"])
+montar(cajas_nap.router, prefix="/api/cajas-nap", tags=["Cajas NAP"])
+montar(mufas.router, prefix="/api/mufas", tags=["Mufas"])
+montar(onus.router, prefix="/api/onus", tags=["ONUs"])
+montar(averias.router, prefix="/api/averias", tags=["Averías"])
+montar(ordenes_retiro.router, prefix="/api/ordenes-retiro", tags=["Órdenes de retiro"])
+montar(evidencias.router, prefix="/api/evidencias", tags=["Evidencias"])
+montar(jornadas.router, prefix="/api/jornadas", tags=["Jornadas"])
+montar(consultas.router, prefix="/api/consultas", tags=["Consultas"])
+montar(permisos.router, prefix="/api/permisos", tags=["Roles y módulos"])
+montar(materiales.router, prefix="/api/materiales", tags=["Materiales"])
 
 
 @app.get("/api/health")
