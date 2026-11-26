@@ -61,6 +61,7 @@ _JORNADA_PROPIA = _usar(_m("movil.jornada"))
 _APROBAR = _delegar("panel.clientes_pendientes")
 _CAJA = _delegar("panel.reporte_caja")
 _MATERIALES = _delegar("panel.materiales")
+_WHATSAPP = _usar(_m("panel.whatsapp"))
 
 # Endpoints protegidos con require_roles().
 REGLAS: dict[tuple[str, str], Regla] = {
@@ -141,6 +142,11 @@ REGLAS: dict[tuple[str, str], Regla] = {
     ("GET", "/api/planes/verificacion"): _PLANES,
     ("GET", "/api/planes/perfiles-de-zona/{zona_id}"): _PLANES,
 
+    # Vincular el WhatsApp de la empresa, y ver si esta vinculado. El modulo
+    # esta en SOLO_ADMINISTRADOR, asi que una cuenta que no sea de
+    # administrador no puede ni recibirlo (ver modulo_disponible()).
+    ("GET", "/api/whatsapp/qr"): _WHATSAPP,
+    ("GET", "/api/whatsapp/status"): _WHATSAPP,
     ("POST", "/api/whatsapp/aviso-cobro/{cliente_id}"): _PAGOS,
 
     ("GET", "/api/materiales"): _MATERIALES,

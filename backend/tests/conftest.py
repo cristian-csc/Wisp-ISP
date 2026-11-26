@@ -15,6 +15,7 @@ from app.routers.auth import get_current_user
 from app.routers import auth as auth_router
 from app.routers import pagos as pagos_router
 from app.routers import gastos as gastos_router
+from app.routers import whatsapp as whatsapp_router
 from app import mensajeria, models
 
 # ── Base de datos en memoria ──────────────────────────────────────────────────
@@ -73,6 +74,20 @@ def make_test_app() -> FastAPI:
     return app
 
 
+def make_permisos_app() -> FastAPI:
+    """App para probar quien puede llamar a que endpoint.
+
+    Como en make_auth_app(), aqui NO se sustituye get_current_user: lo que se
+    mide es justamente el permiso, asi que simular la sesion vaciaria la
+    prueba. El prefijo es el de produccion porque acceso.py indexa las reglas
+    por (metodo, ruta) y con otro prefijo no encontraria ninguna.
+    """
+    app = FastAPI()
+    app.include_router(whatsapp_router.router, prefix="/api/whatsapp")
+    app.dependency_overrides[get_db] = override_get_db
+    return app
+
+
 def make_auth_app() -> FastAPI:
     """App para probar la autenticación de verdad.
 
@@ -118,6 +133,14 @@ def client():
 def client_auth():
     """TestClient con la autenticación REAL, para probar quién entra."""
     app = make_auth_app()
+    with TestClient(app) as c:
+        yield c
+
+
+@pytest.fixture
+def client_permisos():
+    """TestClient con los permisos REALES, para probar quien entra."""
+    app = make_permisos_app()
     with TestClient(app) as c:
         yield c
 
@@ -239,3 +262,79 @@ def crear_cliente(
     db.commit()
     db.refresh(cliente)
     return cliente
+
+
+# ── Helpers de seed: roles, modulos y usuarios del personal ───────────────────
+# Sin filas en `roles`, rol_de_la_cuenta() devuelve None y require_roles() cae
+# al camino antiguo (solo el tipo de cuenta), que es justo el que NO se quiere
+# probar: la capa de modulos se saltaria sin que la prueba lo note.
+
+def crear_rol(
+    db,
+    clave: str,
+    perfil_base: str,
+    es_superadmin: bool = False,
+    modulos: tuple = (),
+) -> models.Rol:
+    rol = models.Rol(
+        clave=clave,
+        nombre=clave.title(),
+        es_superadmin=es_superadmin,
+        es_sistema=True,
+        perfil_base=perfil_base,
+    )
+    db.add(rol)
+    db.commit()
+    db.refresh(rol)
+
+    if modulos:
+        padre = db.query(models.ModuloPadre).filter(
+            models.ModuloPadre.nombre == "Pruebas",
+            models.ModuloPadre.plataforma == "panel",
+        ).first()
+        if padre is None:
+            padre = models.ModuloPadre(nombre="Pruebas", plataforma="panel")
+            db.add(padre)
+            db.commit()
+            db.refresh(padre)
+
+        for clave_modulo in modulos:
+            modulo = db.query(models.Modulo).filter(
+                models.Modulo.clave == clave_modulo
+            ).first()
+            if modulo is None:
+                modulo = models.Modulo(
+                    clave=clave_modulo,
+                    nombre=clave_modulo,
+                    modulo_padre_id=padre.id,
+                    plataforma="panel",
+                    activo=True,
+                )
+                db.add(modulo)
+                db.commit()
+                db.refresh(modulo)
+            db.add(models.RolModulo(rol_id=rol.id, modulo_id=modulo.id))
+        db.commit()
+
+    return rol
+
+
+def crear_usuario(db, email: str, rol: models.RolUsuario, rol_fila=None) -> models.Usuario:
+    usuario = models.Usuario(
+        nombre=email.split("@")[0],
+        email=email,
+        hashed_password="x",
+        rol=rol,
+        rol_id=rol_fila.id if rol_fila is not None else None,
+        activo=True,
+    )
+    db.add(usuario)
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
+def cabecera_de(usuario: models.Usuario) -> dict:
+    """La cabecera Authorization de una sesion real de ese usuario."""
+    token = auth_router.create_access_token({"sub": usuario.email})
+    return {"Authorization": f"Bearer {token}"}

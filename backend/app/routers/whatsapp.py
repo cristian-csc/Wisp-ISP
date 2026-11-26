@@ -9,7 +9,7 @@ from datetime import date, datetime
 
 from ..database import get_db, SessionLocal
 from .. import models, schemas
-from .auth import get_current_user, require_roles
+from .auth import require_roles
 from ..billing import monto_mensual
 from ..config import settings
 from ..mensajeria import cabeceras_bot
@@ -65,8 +65,22 @@ async def wa_request(method: str, path: str, json: dict = None):
         return r.json()
 
 
+# Los dos endpoints de abajo son la vinculacion del WhatsApp de la empresa, no
+# una consulta cualquiera: /qr entrega el codigo que, escaneado con un
+# telefono, deja a quien lo escanee escribiendo como la empresa y leyendo lo
+# que contestan los clientes. Hasta el 2026-11-26 pedian solo una sesion
+# valida, asi que todo tecnico y toda vendedora podian quedarse con el canal
+# (hallazgo A-1). Ahora hacen falta las dos capas: cuenta de administrador
+# aqui, y el modulo panel.whatsapp en app/acceso.py.
+#
+# /status va igual de cerrado a proposito: dice si la empresa tiene WhatsApp
+# vinculado y con que numero, y su unico consumidor es la pagina de
+# configuracion de WhatsApp, que ya es solo de administrador.
+
 @router.get("/status")
-async def get_status(current_user: models.Usuario = Depends(get_current_user)):
+async def get_status(
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
     try:
         data = await wa_request("GET", "/status")
         return data
@@ -75,7 +89,9 @@ async def get_status(current_user: models.Usuario = Depends(get_current_user)):
 
 
 @router.get("/qr")
-async def get_qr(current_user: models.Usuario = Depends(get_current_user)):
+async def get_qr(
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
     try:
         data = await wa_request("GET", "/qr")
         return data
