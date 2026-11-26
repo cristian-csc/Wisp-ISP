@@ -1,4 +1,9 @@
-fastapi==0.111.0
+# fastapi 0.111 arrastraba starlette 0.37, con CVE-2024-47874 (denegacion de
+# servicio por multipart) alcanzable sin autenticar. starlette se fija aqui
+# aunque sea dependencia transitiva: el CVE vive en ella, fastapi solo pide
+# >=1.6.0 sin tope, y un `pip install` futuro traeria lo que haya ese dia.
+fastapi==0.165.0
+starlette==1.10.0
 uvicorn[standard]==0.29.0
 sqlalchemy==2.0.30
 psycopg2-binary==2.9.9
@@ -6,8 +11,10 @@ alembic==1.13.1
 python-jose[cryptography]==3.3.0
 passlib==1.7.4
 bcrypt==4.0.1
-python-multipart==0.0.9
-pydantic[email]==2.7.1
+# CVE-2024-53981 y CVE-2026-42561, las dos de denegacion de servicio en el
+# parseo de formularios. La segunda se corrige en 0.0.27.
+python-multipart==0.0.34
+pydantic[email]==2.14.4
 pydantic-settings==2.2.1
 httpx==0.27.0
 websockets==12.0
