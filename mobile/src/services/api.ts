@@ -297,8 +297,9 @@ export async function getClientes(params?: {
 
 export type ClienteDetalle = ClienteListItem & {
   direccion: string | null;
-  password_pppoe: string;
-  pin_app: string | null;
+  // La contrasena PPPoE y el hash del PIN ya no vienen del API (hallazgo A-3
+  // de la auditoria): ninguna pantalla los usaba y se los llevaba todo tecnico
+  // y toda vendedora en la lista de clientes de su zona.
   motivo_rechazo?: string | null;
   motivo_no_instalado?: string | null;
 };

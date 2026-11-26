@@ -498,9 +498,21 @@ class ClienteOut(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     usuario_pppoe: str
-    password_pppoe: str
+    # password_pppoe y pin_app NO salen de aqui, y no es un olvido.
+    #
+    # GET /api/clientes esta en LECTURAS con _LEER_CLIENTES, que incluye los
+    # modulos moviles de tecnicos y vendedoras (acceso.py:156). Mientras
+    # estuvieron en este esquema, todo tecnico y toda vendedora recibia, en la
+    # lista de clientes de su zona, la contrasena PPPoE en claro de cada
+    # cliente y el hash bcrypt de la contrasena de su app. Hallazgo A-3.
+    #
+    # El dato sigue en el modelo: el backend lo necesita para configurar
+    # /ppp secret en el router. Lo que no hace falta es mandarlo al navegador,
+    # porque ninguna pantalla lo muestra. Si algun dia un tecnico necesita ver
+    # la clave PPPoE para reconfigurar un equipo, va en un endpoint aparte, con
+    # su propia regla en acceso.py y anotando en el historial quien la
+    # consulto. pin_app no debe salir nunca.
     ip_estatica: Optional[str] = None
-    pin_app: Optional[str] = None
     zona_id: Optional[int] = None
     plan_id: int
     cantidad_tv: int

@@ -80,7 +80,6 @@ export type ClienteOut = ClienteListItem & {
   direccion: string | null;
   lat: number | null;
   lng: number | null;
-  password_pppoe: string;
   zona_id: number | null;
   plan_id: number;
   motivo_rechazo: string | null;

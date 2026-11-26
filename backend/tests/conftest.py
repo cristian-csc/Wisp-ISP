@@ -16,6 +16,7 @@ from app.routers import auth as auth_router
 from app.routers import pagos as pagos_router
 from app.routers import gastos as gastos_router
 from app.routers import whatsapp as whatsapp_router
+from app.routers import clientes as clientes_router
 from app import mensajeria, models
 
 # ── Base de datos en memoria ──────────────────────────────────────────────────
@@ -69,6 +70,19 @@ def make_test_app() -> FastAPI:
     app = FastAPI()
     app.include_router(pagos_router.router, prefix="/pagos")
     app.include_router(gastos_router.router, prefix="/gastos")
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    return app
+
+
+def make_clientes_app() -> FastAPI:
+    """App con el router de clientes y la sesion simulada.
+
+    Aqui si se sustituye get_current_user: lo que se mide no es el permiso,
+    sino QUE datos salen en la respuesta.
+    """
+    app = FastAPI()
+    app.include_router(clientes_router.router, prefix="/api/clientes")
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
     return app
@@ -133,6 +147,14 @@ def client():
 def client_auth():
     """TestClient con la autenticación REAL, para probar quién entra."""
     app = make_auth_app()
+    with TestClient(app) as c:
+        yield c
+
+
+@pytest.fixture
+def client_clientes():
+    """TestClient del router de clientes, con la sesion simulada."""
+    app = make_clientes_app()
     with TestClient(app) as c:
         yield c
 
