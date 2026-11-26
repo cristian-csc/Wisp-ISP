@@ -77,3 +77,7 @@ Thumbs.db
 # Ajustes locales de Windows (ver docker-compose.override.yml)
 docker-compose.override.yml
 nginx/nginx.local.conf
+
+# Artefacto de compilacion incremental de TypeScript. Se regenera en cada
+# build y cambia en cada maquina: versionarlo solo produce conflictos.
+frontend/tsconfig.tsbuildinfo
