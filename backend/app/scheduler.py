@@ -2,7 +2,7 @@ import asyncio
 import logging
 import random
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -229,6 +229,42 @@ async def job_podar_freno_login():
 scheduler = AsyncIOScheduler(timezone="America/Lima")
 
 
+async def job_cerrar_jornadas_olvidadas():
+    """Cierra jornadas de campo que quedaron activas por un olvido.
+
+    El vendedor (o el técnico de prueba) se olvida de pulsar «Finalizar» y la
+    jornada sigue «en ruta» día tras día, sumando horas irreales —así fue como
+    aparecieron una de 188 h y otra de 186 h—. Hasta ahora solo se cerraban al
+    iniciar la siguiente; este barrido nocturno las cierra aunque nadie vuelva
+    a abrir una, y de paso sanea las que ya estaban colgadas.
+
+    Usa el mismo umbral de 12 h y la misma lógica que el cierre al iniciar.
+    """
+    from .routers.jornadas import cerrar_jornada_olvidada, HORAS_AUTOCIERRE
+
+    def _barrer() -> int:
+        db = SessionLocal()
+        try:
+            limite = datetime.utcnow() - timedelta(hours=HORAS_AUTOCIERRE)
+            viejas = db.query(models.JornadaVendedor).filter(
+                models.JornadaVendedor.estado == models.EstadoJornada.activa,
+                models.JornadaVendedor.iniciado_en < limite,
+            ).all()
+            for j in viejas:
+                cerrar_jornada_olvidada(db, j)
+            db.commit()
+            return len(viejas)
+        finally:
+            db.close()
+
+    try:
+        cerradas = await asyncio.to_thread(_barrer)
+        if cerradas:
+            logger.info("Jornadas olvidadas cerradas: %d", cerradas)
+    except Exception:
+        logger.exception("Falló el cierre de jornadas olvidadas")
+
+
 def init_scheduler():
     scheduler.add_job(
         job_recordatorio_preventivo,
@@ -254,10 +290,16 @@ def init_scheduler():
         id="podar_freno_login",
         replace_existing=True,
     )
+    scheduler.add_job(
+        job_cerrar_jornadas_olvidadas,
+        CronTrigger(hour=4, minute=30, timezone="America/Lima"),
+        id="cerrar_jornadas_olvidadas",
+        replace_existing=True,
+    )
     scheduler.start()
     logger.info(
         "Scheduler iniciado — respaldo 03:30, poda del freno 04:15, "
-        "recordatorio 08:00, corte automático 09:00 (hora Lima)"
+        "cierre de jornadas 04:30, recordatorio 08:00, corte automático 09:00 (hora Lima)"
     )
 
 

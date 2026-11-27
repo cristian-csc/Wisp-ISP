@@ -21,6 +21,26 @@ async function obtenerUbicacionActual(): Promise<{ lat: number; lng: number }> {
   return { lat: pos.coords.latitude, lng: pos.coords.longitude };
 }
 
+// Ubicación para CERRAR la jornada: nunca bloquea. Exigir un GPS nuevo de alta
+// precisión dejaba el botón «Finalizar» cargando para siempre bajo techo. Aquí
+// se intenta el último punto conocido (instantáneo) y, si no hay, un intento
+// rápido con tope de 5 s; si nada responde, se cierra igual sin coordenadas.
+async function ubicacionParaCierre(): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    const conocida = await Location.getLastKnownPositionAsync();
+    if (conocida) return { lat: conocida.coords.latitude, lng: conocida.coords.longitude };
+    const pos = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+    ]);
+    return pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null;
+  } catch {
+    return null;
+  }
+}
+
 type JornadaCtx = {
   jornada: Jornada | null;
   loading: boolean;
@@ -96,8 +116,8 @@ export function JornadaProvider({ children }: { children: ReactNode }) {
   }, [iniciarPings]);
 
   const finalizar = useCallback(async () => {
-    const { lat, lng } = await obtenerUbicacionActual();
-    const j = await finalizarJornada(lat, lng);
+    const u = await ubicacionParaCierre();
+    const j = await finalizarJornada(u?.lat ?? null, u?.lng ?? null);
     detenerPings();
     setJornada(j);
   }, [detenerPings]);

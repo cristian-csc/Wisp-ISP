@@ -30,6 +30,21 @@ def _ultima_ubicacion(db: Session, jornada_id: int) -> Optional[models.Ubicacion
     ).order_by(models.UbicacionVendedor.registrado_en.desc()).first()
 
 
+def cerrar_jornada_olvidada(db: Session, jornada: models.JornadaVendedor) -> None:
+    """Cierra una jornada que quedó activa por un olvido (no hace commit).
+
+    Como no se sabe cuándo dejó de trabajar de verdad, el fin se fija en su
+    último punto del recorrido —lo más cercano a la realidad— o, si no hay
+    ninguno, en la hora de inicio. Así una jornada olvidada no sigue sumando
+    horas para siempre ni termina mostrando 188 h en ruta.
+    """
+    ultima = _ultima_ubicacion(db, jornada.id)
+    jornada.estado = models.EstadoJornada.finalizada
+    jornada.finalizado_en = (ultima.registrado_en if ultima else None) or jornada.iniciado_en
+    jornada.lat_fin = ultima.lat if ultima else jornada.lat_inicio
+    jornada.lng_fin = ultima.lng if ultima else jornada.lng_inicio
+
+
 def _jornada_a_out(db: Session, j: models.JornadaVendedor) -> schemas.JornadaOut:
     ultima = _ultima_ubicacion(db, j.id)
     return schemas.JornadaOut(
@@ -60,11 +75,7 @@ def iniciar_jornada(
     activa = _jornada_activa(db, current_user.id)
     if activa:
         if activa.iniciado_en and activa.iniciado_en.replace(tzinfo=None) < datetime.utcnow() - timedelta(hours=HORAS_AUTOCIERRE):
-            ultima = _ultima_ubicacion(db, activa.id)
-            activa.estado = models.EstadoJornada.finalizada
-            activa.finalizado_en = activa.iniciado_en
-            activa.lat_fin = ultima.lat if ultima else activa.lat_inicio
-            activa.lng_fin = ultima.lng if ultima else activa.lng_inicio
+            cerrar_jornada_olvidada(db, activa)
             db.commit()
         else:
             raise HTTPException(400, "Ya tienes una jornada activa. Finalízala antes de iniciar una nueva.")
@@ -100,7 +111,7 @@ def ping_ubicacion(
 
 @router.post("/finalizar", response_model=schemas.JornadaOut)
 def finalizar_jornada(
-    data: schemas.JornadaPingRequest,
+    data: schemas.JornadaFinalizarRequest,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_roles(models.RolUsuario.vendedor_campo)),
 ):
@@ -110,8 +121,15 @@ def finalizar_jornada(
 
     jornada.estado = models.EstadoJornada.finalizada
     jornada.finalizado_en = datetime.utcnow()
-    jornada.lat_fin = data.lat
-    jornada.lng_fin = data.lng
+    # Si la app no pudo tomar un GPS al cerrar, no se bloquea el cierre: se usa
+    # el último punto del recorrido, y si ni eso hay, el de inicio.
+    if data.lat is not None and data.lng is not None:
+        jornada.lat_fin = data.lat
+        jornada.lng_fin = data.lng
+    else:
+        ultima = _ultima_ubicacion(db, jornada.id)
+        jornada.lat_fin = ultima.lat if ultima else jornada.lat_inicio
+        jornada.lng_fin = ultima.lng if ultima else jornada.lng_inicio
     db.commit()
     db.refresh(jornada)
     return _jornada_a_out(db, jornada)

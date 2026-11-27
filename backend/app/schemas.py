@@ -1130,6 +1130,13 @@ class JornadaPingRequest(BaseModel):
     lat: float
     lng: float
 
+class JornadaFinalizarRequest(BaseModel):
+    # Al CERRAR la jornada las coordenadas son opcionales a propósito: exigir un
+    # GPS nuevo para terminar dejaba el botón colgado bajo techo, esperando un
+    # fix que no llegaba. Si no vienen, el backend usa el último punto conocido.
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
 class UbicacionVendedorOut(BaseModel):
     lat: float
     lng: float

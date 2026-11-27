@@ -861,7 +861,8 @@ export async function pingJornada(lat: number, lng: number): Promise<UbicacionVe
   return request('/jornadas/ping', { method: 'POST', body: JSON.stringify({ lat, lng }) });
 }
 
-export async function finalizarJornada(lat: number, lng: number): Promise<Jornada> {
+export async function finalizarJornada(lat: number | null, lng: number | null): Promise<Jornada> {
+  // lat/lng pueden ir en null: cerrar la jornada no debe depender de un GPS.
   return request('/jornadas/finalizar', { method: 'POST', body: JSON.stringify({ lat, lng }) });
 }
 
