@@ -31,14 +31,6 @@ function AppNavigator() {
       return;
     }
 
-    // Cliente que sigue entrando con su DNI como contraseña: no pasa de aquí.
-    // El `return` es lo que cierra el candado — sin él, el efecto seguiría
-    // hasta la redirección de abajo y lo dejaría en su sección.
-    if (session.debeCambiarPin) {
-      if (segments[0] !== 'cambiar-clave') router.replace('/cambiar-clave' as any);
-      return;
-    }
-
     const seccionCorrecta = seccionDeRol(session.role);
     if (segments[0] !== seccionCorrecta) {
       router.replace(`/${seccionCorrecta}` as any);

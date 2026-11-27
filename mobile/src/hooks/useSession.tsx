@@ -5,7 +5,6 @@ import * as SecureStore from 'expo-secure-store';
 export type SessionRole =
   | 'tecnico'
   | 'vendedor_campo'
-  | 'cliente'
   | null;
 
 /** Roles que tienen permitido usar la app móvil. Administración y
@@ -20,8 +19,6 @@ export function seccionDeRol(role: SessionRole): string {
       return '(tecnico)';
     case 'vendedor_campo':
       return '(vendedor)';
-    case 'cliente':
-      return '(cliente)';
     default:
       return '(auth)';
   }
@@ -31,10 +28,6 @@ export type Session = {
   token: string;
   role: SessionRole;
   nombre: string;
-  clienteId?: number;
-  /** Cliente que sigue entrando con su DNI como contraseña. Mientras esté en
-   *  true, la app lo manda a cambiarla y no le deja ver sus datos. */
-  debeCambiarPin?: boolean;
 };
 
 const INACTIVITY_MS = 10 * 60 * 1000;
@@ -91,9 +84,6 @@ type SessionCtx = {
   loading: boolean;
   onboardingPendiente: boolean;
   completarOnboarding: () => Promise<void>;
-  /** Lo llama la pantalla de cambio obligatorio cuando el cliente ya puso su
-   *  propia contraseña. */
-  marcarPinCambiado: () => Promise<void>;
   signIn: (s: Session) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -111,19 +101,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const token = await storage.get('token');
         const role = await storage.get('role');
         const nombre = await storage.get('nombre');
-        const clienteId = await storage.get('clienteId');
-        const debeCambiarPin = await storage.get('debeCambiarPin');
         if (token && role) {
           setOnboardingPendiente(await faltaOnboarding(role as SessionRole));
           setSession({
             token,
             role: role as SessionRole,
             nombre: nombre ?? '',
-            clienteId: clienteId ? Number(clienteId) : undefined,
-            // Se guarda junto con la sesión: si el cliente cierra la app en
-            // la pantalla de cambio obligatorio, al volver sigue ahí y no
-            // entra por la puerta de atrás.
-            debeCambiarPin: debeCambiarPin === '1',
           });
         }
       } finally {
@@ -136,21 +119,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await storage.set('token', s.token);
     await storage.set('role', s.role ?? '');
     await storage.set('nombre', s.nombre);
-    if (s.clienteId) await storage.set('clienteId', String(s.clienteId));
-    await storage.set('debeCambiarPin', s.debeCambiarPin ? '1' : '0');
     // Antes de fijar la sesión, para que la app no alcance a pintar el inicio.
     setOnboardingPendiente(await faltaOnboarding(s.role));
     setSession(s);
-  }, []);
-
-  const marcarPinCambiado = useCallback(async () => {
-    try {
-      await storage.set('debeCambiarPin', '0');
-    } catch {
-      // Si no se pudo guardar, lo peor que pasa es que se le vuelva a pedir
-      // al reabrir la app; el servidor ya tiene su contraseña nueva.
-    }
-    setSession((actual) => (actual ? { ...actual, debeCambiarPin: false } : actual));
   }, []);
 
   const completarOnboarding = useCallback(async () => {
@@ -169,14 +140,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await storage.del('token');
     await storage.del('role');
     await storage.del('nombre');
-    await storage.del('clienteId');
-    await storage.del('debeCambiarPin');
     setOnboardingPendiente(false);
     setSession(null);
   }, []);
 
   return (
-    <SessionContext.Provider value={{ session, loading, onboardingPendiente, completarOnboarding, marcarPinCambiado, signIn, signOut }}>
+    <SessionContext.Provider value={{ session, loading, onboardingPendiente, completarOnboarding, signIn, signOut }}>
       {children}
     </SessionContext.Provider>
   );

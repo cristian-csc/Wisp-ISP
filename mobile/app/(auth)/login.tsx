@@ -4,7 +4,6 @@ import {
   Platform, ActivityIndicator, ScrollView, Image, useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import Animated, {
@@ -15,7 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSession, ROLES_MOBILE_PERMITIDOS } from '@/hooks/useSession';
-import { loginAdmin, loginCliente, getMeWithToken } from '@/services/api';
+import { loginAdmin, getMeWithToken } from '@/services/api';
 import { COLORS } from '@/theme/colors';
 import { FUENTES } from '@/theme/fonts';
 import { alerta } from '@/components/Aviso';
@@ -67,7 +66,6 @@ function HiloDeFibra() {
 
 export default function LoginScreen() {
   const { signIn } = useSession();
-  const router = useRouter();
   const [usuario, setUsuario] = useState('');
   const [clave, setClave] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,10 +75,8 @@ export default function LoginScreen() {
   const reducido = useReducedMotion();
   const tope = useTopeSeguro();
 
-  // El DNI del cliente siempre es solo dígitos; cualquier otra cosa (email
-  // o, en pruebas, un username corto sin @) se trata como login de staff.
-  const esStaff = usuario.trim().length > 0 && !/^\d+$/.test(usuario.trim());
-
+  // La app móvil es solo para el personal (técnico y vendedora de campo). Los
+  // clientes entran por el sistema web; su propia app llegará aparte.
   async function handleLogin() {
     if (!usuario.trim() || !clave.trim()) {
       alerta('Campos requeridos', 'Ingresa tu usuario y contraseña.');
@@ -88,47 +84,21 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      if (esStaff) {
-        const res = await loginAdmin(usuario.trim(), clave);
-        const me = await getMeWithToken(res.access_token);
-        if (!ROLES_MOBILE_PERMITIDOS.includes(me.rol as any)) {
-          alerta(
-            'Acceso no disponible aquí',
-            'Tu usuario debe ingresar desde el sistema web, no desde la app móvil.',
-          );
-          return;
-        }
-        await signIn({ token: res.access_token, role: me.rol as any, nombre: me.nombre });
-      } else {
-        const res = await loginCliente(usuario.trim(), clave.trim());
-        await signIn({
-          token: res.access_token,
-          role: 'cliente',
-          nombre: res.nombre,
-          clienteId: res.cliente_id,
-          debeCambiarPin: res.debe_cambiar_pin === true,
-        });
-      }
-    } catch (e: any) {
-      // 409 no es un error de credenciales: es un cliente que todavía no
-      // tiene contraseña propia (antes entraba con su DNI, y eso se quitó).
-      // Se le lleva a crearla con el código que llega a su WhatsApp, con el
-      // documento ya escrito para no pedírselo dos veces.
-      if (!esStaff && e?.status === 409) {
-        irAlCodigo();
+      const res = await loginAdmin(usuario.trim(), clave);
+      const me = await getMeWithToken(res.access_token);
+      if (!ROLES_MOBILE_PERMITIDOS.includes(me.rol as any)) {
+        alerta(
+          'Acceso no disponible aquí',
+          'Tu usuario debe ingresar desde el sistema web, no desde la app móvil.',
+        );
         return;
       }
+      await signIn({ token: res.access_token, role: me.rol as any, nombre: me.nombre });
+    } catch (e: any) {
       alerta('Error al ingresar', e.message ?? 'Credenciales incorrectas');
     } finally {
       setLoading(false);
     }
-  }
-
-  function irAlCodigo() {
-    router.push({
-      pathname: '/(auth)/codigo',
-      params: usuario.trim() ? { usuario: usuario.trim() } : {},
-    } as any);
   }
 
   return (
@@ -163,7 +133,7 @@ export default function LoginScreen() {
               onFocus={() => setCampoActivo('usuario')}
               onBlur={() => setCampoActivo(null)}
               onSubmitEditing={() => campoClave.current?.focus()}
-              placeholder="DNI o correo electrónico"
+              placeholder="Usuario o correo"
               placeholderTextColor={COLORS.placeholder}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -228,22 +198,6 @@ export default function LoginScreen() {
               </Animated.View>
             )}
           </Pressable>
-
-          {/* Solo para clientes: el personal no entra por código, su
-              contraseña se la restablece un administrador desde el panel.
-              `esStaff` es false mientras el usuario sean solo dígitos, que es
-              justamente el documento de un cliente. */}
-          {!esStaff && (
-            <TouchableOpacity
-              style={s.enlaceCodigo}
-              onPress={irAlCodigo}
-              accessibilityRole="button"
-            >
-              <Text style={s.enlaceCodigoTexto}>
-                Primera vez, o olvidé mi contraseña
-              </Text>
-            </TouchableOpacity>
-          )}
 
           <Text style={s.ayuda}>¿No puedes entrar? Contacta al administrador.</Text>
         </View>

@@ -39,16 +39,6 @@ async function request<T>(
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export type LoginAdminResponse = { access_token: string; token_type: string };
-export type LoginClienteResponse = {
-  access_token: string;
-  token_type: string;
-  role: string;
-  cliente_id: number;
-  nombre: string;
-  /** true mientras su contraseña siga siendo su DNI. La app no le deja pasar
-   *  del cambio de contraseña hasta que ponga una propia. */
-  debe_cambiar_pin?: boolean;
-};
 
 export async function loginAdmin(
   email: string,
@@ -139,39 +129,6 @@ async function requestSinSesion<T>(path: string, body: unknown): Promise<T> {
     throw new ApiError(res.status, datos?.detail ?? `Error ${res.status}`);
   }
   return datos as T;
-}
-
-export async function loginCliente(
-  usuario: string,
-  pin: string,
-): Promise<LoginClienteResponse> {
-  return requestSinSesion('/auth/cliente/login', { usuario, pin });
-}
-
-export type SolicitarCodigoResponse = {
-  enviado: boolean;
-  telefono: string | null;
-  mensaje: string;
-};
-
-/** Pide el código de un solo uso al WhatsApp registrado del cliente. */
-export async function solicitarCodigoCliente(
-  usuario: string,
-): Promise<SolicitarCodigoResponse> {
-  return requestSinSesion('/auth/cliente/solicitar-codigo', { usuario });
-}
-
-/** Canjea el código por una contraseña propia y deja al cliente dentro. */
-export async function verificarCodigoCliente(
-  usuario: string,
-  codigo: string,
-  pinNuevo: string,
-): Promise<LoginClienteResponse> {
-  return requestSinSesion('/auth/cliente/verificar-codigo', {
-    usuario,
-    codigo,
-    pin_nuevo: pinNuevo,
-  });
 }
 
 // ── Cliente (app móvil) ───────────────────────────────────────────────────────
