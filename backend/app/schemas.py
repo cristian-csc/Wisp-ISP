@@ -763,6 +763,7 @@ class OnuOut(BaseModel):
     cliente: Optional[OnuClienteOut] = None
     fecha_asignacion_tecnico: Optional[date] = None
     fecha_instalacion: Optional[date] = None
+    tiene_foto: bool = False
     class Config:
         from_attributes = True
 
@@ -1430,3 +1431,84 @@ class MaterialUpdate(BaseModel):
     se_recupera: Optional[bool] = None
     consumo_estandar: Optional[float] = Field(default=None, ge=0)
     activo: Optional[bool] = None
+
+
+# ── Unidades vehiculares ───────────────────────────────────────────────────────
+
+class UnidadBase(BaseModel):
+    placa: str
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    activo: bool = True
+
+    @field_validator("placa")
+    @classmethod
+    def _placa_limpia(cls, v: str) -> str:
+        v = (v or "").strip().upper()
+        if not v:
+            raise ValueError("La placa es obligatoria")
+        if len(v) > 20:
+            raise ValueError("La placa es muy larga")
+        return v
+
+
+class UnidadCreate(UnidadBase):
+    pass
+
+
+class UnidadUpdate(BaseModel):
+    placa: Optional[str] = None
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    activo: Optional[bool] = None
+
+    @field_validator("placa")
+    @classmethod
+    def _placa_limpia(cls, v):
+        if v is None:
+            return v
+        v = v.strip().upper()
+        if not v:
+            raise ValueError("La placa no puede quedar vacía")
+        return v
+
+
+class UnidadOut(BaseModel):
+    id: int
+    placa: str
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    activo: bool
+    tiene_foto: bool = False
+    creado_en: datetime
+    class Config:
+        from_attributes = True
+
+
+# ── Recargas de combustible ────────────────────────────────────────────────────
+
+class RecargaCombustibleOut(BaseModel):
+    id: int
+    unidad_id: int
+    monto: float
+    fecha: date
+    nota: Optional[str] = None
+    tiene_foto_surtidor: bool = False
+    tiene_foto_boleta: bool = False
+    registrado_por: Optional[int] = None
+    creado_en: datetime
+    # Datos del vehículo y de quién cargó, para la tabla del admin (se llenan
+    # en el router; no son columnas de la recarga).
+    unidad_placa: Optional[str] = None
+    registrado_por_nombre: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+
+class ReporteUnidadMes(BaseModel):
+    unidad_id: int
+    placa: str
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    total: float
+    recargas: int

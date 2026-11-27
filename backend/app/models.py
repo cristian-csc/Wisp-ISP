@@ -446,7 +446,13 @@ class Onu(Base):
     fecha_instalacion = Column(Date)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
 
+    foto_ruta = Column(String(500))
+
     cliente = relationship("Cliente", back_populates="onus")
+
+    @property
+    def tiene_foto(self) -> bool:
+        return bool(self.foto_ruta)
 
 
 class OrdenRetiro(Base):
@@ -907,3 +913,43 @@ class FrenoLogin(Base):
     momentos = Column(JSON, nullable=False, default=list)
     bloqueado_hasta = Column(Float, index=True)
     actualizado_en = Column(Float, nullable=False, index=True)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Unidades vehiculares y combustible
+#
+# La empresa tiene vehículos (carros/motos) que usan técnicos y vendedoras en
+# campo. Cada vez que uno echa combustible registra el monto y dos fotos
+# (surtidor + boleta) desde la app; gerencia ve el gasto mensual por unidad.
+# ──────────────────────────────────────────────────────────────────────────────
+
+class Unidad(Base):
+    __tablename__ = "unidades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    placa = Column(String(20), unique=True, nullable=False, index=True)
+    marca = Column(String(100))
+    modelo = Column(String(100))
+    foto_ruta = Column(String(500))
+    activo = Column(Boolean, default=True, nullable=False)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+    registrado_por = Column(Integer, ForeignKey("usuarios.id"))
+
+    recargas = relationship("RecargaCombustible", back_populates="unidad")
+
+
+class RecargaCombustible(Base):
+    __tablename__ = "recargas_combustible"
+
+    id = Column(Integer, primary_key=True, index=True)
+    unidad_id = Column(Integer, ForeignKey("unidades.id"), nullable=False, index=True)
+    monto = Column(Float, nullable=False)
+    # Fecha de la carga (se fija en el servidor con hora de Lima al registrar).
+    fecha = Column(Date, nullable=False, index=True)
+    foto_surtidor_ruta = Column(String(500))
+    foto_boleta_ruta = Column(String(500))
+    nota = Column(Text)
+    registrado_por = Column(Integer, ForeignKey("usuarios.id"), index=True)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+    unidad = relationship("Unidad", back_populates="recargas")

@@ -1,10 +1,12 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 
 from ..database import get_db
+from ..almacen_fotos import guardar_imagen, borrar_imagen
 from .. import models, schemas
 from .auth import get_current_user, require_roles
 
@@ -153,3 +155,42 @@ def marcar_onu(
     db.commit()
     db.refresh(onu)
     return onu
+
+
+# ── Foto del equipo (inventario) ───────────────────────────────────────────────
+
+@router.post("/{onu_id}/foto", response_model=schemas.OnuOut)
+def subir_foto_onu(
+    onu_id: int,
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(
+        require_roles(models.RolUsuario.admin, models.RolUsuario.tecnico)
+    ),
+):
+    onu = db.query(models.Onu).filter(models.Onu.id == onu_id).first()
+    if not onu:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    # El técnico solo toca la foto de un equipo suyo.
+    if current_user.rol == models.RolUsuario.tecnico and onu.tecnico_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No es un equipo asignado a ti")
+    nueva = guardar_imagen(archivo, "onus")
+    anterior = onu.foto_ruta
+    onu.foto_ruta = nueva
+    db.commit()
+    db.refresh(onu)
+    borrar_imagen(anterior)
+    return onu
+
+
+@router.get("/{onu_id}/foto")
+def ver_foto_onu(
+    onu_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user),
+):
+    import os
+    onu = db.query(models.Onu).filter(models.Onu.id == onu_id).first()
+    if not onu or not onu.foto_ruta or not os.path.isfile(onu.foto_ruta):
+        raise HTTPException(status_code=404, detail="Sin foto")
+    return FileResponse(onu.foto_ruta)

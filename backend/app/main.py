@@ -13,7 +13,7 @@ registro.configurar(settings.LOG_LEVEL)
 from .routers import (
     clientes, zonas, pagos, gastos, auth, whatsapp, dashboard, planes, admin,
     cliente_app, cajas_nap, onus, averias, ordenes_retiro, evidencias, mufas,
-    jornadas, consultas, permisos, materiales,
+    jornadas, consultas, permisos, materiales, unidades, combustible,
 )
 
 
@@ -106,6 +106,8 @@ montar(jornadas.router, prefix="/api/jornadas", tags=["Jornadas"])
 montar(consultas.router, prefix="/api/consultas", tags=["Consultas"])
 montar(permisos.router, prefix="/api/permisos", tags=["Roles y módulos"])
 montar(materiales.router, prefix="/api/materiales", tags=["Materiales"])
+montar(unidades.router, prefix="/api/unidades", tags=["Unidades"])
+montar(combustible.router, prefix="/api/combustible", tags=["Combustible"])
 
 
 @app.get("/api/health")
