@@ -854,3 +854,45 @@ export async function consultarDocumento(
   return request(`/consultas/documento?tipo=${tipo}&numero=${encodeURIComponent(numero)}`);
 }
 
+
+// ── Flota: unidades y combustible ─────────────────────────────────────────────
+
+export type UnidadMovil = {
+  id: number;
+  placa: string;
+  marca: string | null;
+  modelo: string | null;
+};
+
+/** Las unidades activas, para elegir cuál se cargó de combustible. */
+export async function getUnidades(): Promise<UnidadMovil[]> {
+  return request('/unidades?solo_activas=true');
+}
+
+/** Registra una recarga de combustible con sus dos fotos (surtidor y boleta).
+ *  Va como multipart: NO se pone Content-Type a mano, para que fetch arme el
+ *  "boundary" él solo; si se forza a application/json el servidor no lee el
+ *  formulario ni los archivos. */
+export async function registrarRecargaCombustible(params: {
+  unidadId: number;
+  monto: number;
+  fotoSurtidorUri: string;
+  fotoBoletaUri: string;
+}): Promise<void> {
+  const token = await getToken();
+  const fd = new FormData();
+  fd.append('unidad_id', String(params.unidadId));
+  fd.append('monto', String(params.monto));
+  fd.append('foto_surtidor', { uri: params.fotoSurtidorUri, name: 'surtidor.jpg', type: 'image/jpeg' } as any);
+  fd.append('foto_boleta', { uri: params.fotoBoletaUri, name: 'boleta.jpg', type: 'image/jpeg' } as any);
+
+  const res = await fetch(`${BASE_URL}/combustible`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Error de red' }));
+    throw new Error(err.detail ?? `Error ${res.status}`);
+  }
+}

@@ -52,6 +52,17 @@ export default function TecnicoCuentaScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color={COLORS.mutedForeground} />
         </TouchableOpacity>
+
+        <TouchableOpacity style={s.statCard} onPress={() => router.push('/(tecnico)/combustible' as any)} activeOpacity={0.8}>
+          <View style={[s.statIcon, { backgroundColor: COLORS.lightbrand }]}>
+            <Ionicons name="car-outline" size={20} color={COLORS.brand} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.statValue}>Cargar combustible</Text>
+            <Text style={s.statLabel}>Registrar una carga con sus fotos</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.mutedForeground} />
+        </TouchableOpacity>
       </CuentaScreen>
     </View>
   );
