@@ -163,6 +163,25 @@ const SidebarContent: MenuItem[] = [
     ],
   },
   {
+    heading: 'Flota',
+    children: [
+      {
+        name: 'Unidades',
+        icon: 'solar:bus-linear',
+        id: uniqueId(),
+        url: '/unidades',
+        roles: ['admin'],
+      },
+      {
+        name: 'Combustible',
+        icon: 'solar:gas-station-linear',
+        id: uniqueId(),
+        url: '/combustible',
+        roles: ['admin'],
+      },
+    ],
+  },
+  {
     heading: 'Administración',
     children: [
       {

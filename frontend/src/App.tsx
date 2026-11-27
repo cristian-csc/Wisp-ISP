@@ -29,6 +29,8 @@ import ModulosPadre from 'src/views/configuracion/ModulosPadre';
 import ReporteCaja from 'src/views/finanzas/ReporteCaja';
 import Perfil from 'src/views/perfil/Perfil';
 import Jornadas from 'src/views/jornadas/Jornadas';
+import Unidades from 'src/views/flota/Unidades';
+import Combustible from 'src/views/flota/Combustible';
 import { isAuthenticated } from 'src/lib/api';
 import Login from 'src/views/auth/Login';
 
@@ -101,6 +103,8 @@ function App() {
             <Route path="/configuracion/modulos-padre" element={<ModulosPadre />} />
             <Route path="/finanzas/reporte-caja" element={<ReporteCaja />} />
             <Route path="/jornadas" element={<Jornadas />} />
+            <Route path="/unidades" element={<Unidades />} />
+            <Route path="/combustible" element={<Combustible />} />
             <Route path="/perfil" element={<Perfil />} />
           </Route>
 

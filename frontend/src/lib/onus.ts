@@ -14,6 +14,7 @@ export type Onu = {
   cliente: { id: number; nombre: string; zona: { id: number; nombre: string } | null } | null;
   fecha_asignacion_tecnico: string | null;
   fecha_instalacion: string | null;
+  tiene_foto: boolean;
 };
 
 /** El N° de serie GPON trae de fábrica el prefijo del fabricante: ASKY = Askey,
