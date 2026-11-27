@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { getClientes, ClienteListItem } from '@/services/api';
 import { COLORS } from '@/theme/colors';
 
@@ -68,7 +68,9 @@ export default function MisInstalacionesScreen() {
     finally { setLoading(false); setRefreshing(false); }
   }, [esRegistros]);
 
-  useEffect(() => { load(); }, [load]);
+  // Al volver a esta pestaña (p. ej. después de que el admin aprobó una orden)
+  // se recarga sola. Antes cargaba una sola vez y había que salir y entrar.
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: COLORS.background }} color={COLORS.mutedForeground} size="large" />;
 

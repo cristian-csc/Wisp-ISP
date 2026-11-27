@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getClientes, noInstalarCliente, ClienteListItem } from '@/services/api';
 import { TecnicoNav } from '@/components/TecnicoNav';
@@ -85,7 +85,9 @@ export default function TecnicoOrdenesScreen() {
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // Se recarga cada vez que se vuelve al inicio, para que el trabajo recién
+  // aprobado aparezca sin tener que salir y entrar.
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   async function confirmarNoInstalar(motivo: string) {
     if (!noInstalarTarget) return;
