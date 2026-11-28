@@ -22,6 +22,9 @@ export type Material = {
   activo: boolean;
   /** No es una columna: el servidor lo calcula sumando movimientos. */
   en_almacen: number;
+  /** Si tiene una foto de presentación cargada. La imagen se baja aparte, con
+   *  sesión, por `getMaterialFotoBlobUrl`. */
+  tiene_foto: boolean;
   presentaciones: Presentacion[];
 };
 
@@ -130,4 +133,21 @@ export async function agregarPresentacion(
 export async function quitarPresentacion(presentacionId: number): Promise<{ desactivada: boolean; detalle?: string }> {
   const { data } = await api.delete(`/materiales/presentaciones/${presentacionId}`);
   return data;
+}
+
+// ── Foto de presentación del material ──────────────────────────────────────────
+
+/** Sube o reemplaza la foto de presentación. Devuelve el material actualizado. */
+export async function subirFotoMaterial(materialId: number, archivo: File): Promise<Material> {
+  const fd = new FormData();
+  fd.append('archivo', archivo);
+  const { data } = await api.post(`/materiales/${materialId}/foto`, fd);
+  return data;
+}
+
+/** Baja la foto como blob (vive tras la sesión; no se puede poner la URL directa
+ *  en un <img>). Recuerda soltar la URL con URL.revokeObjectURL al desmontar. */
+export async function getMaterialFotoBlobUrl(materialId: number): Promise<string> {
+  const { data } = await api.get(`/materiales/${materialId}/foto`, { responseType: 'blob' });
+  return URL.createObjectURL(data);
 }

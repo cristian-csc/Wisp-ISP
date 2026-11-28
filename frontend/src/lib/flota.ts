@@ -106,17 +106,3 @@ export async function getReporteCombustible(mes: string): Promise<ReporteUnidad[
   const { data } = await api.get('/combustible/reporte', { params: { mes } });
   return data;
 }
-
-// ── Foto del equipo en el inventario (ONUs) ───────────────────────────────────
-
-export async function subirFotoOnu(onuId: number, archivo: File): Promise<{ id: number; tiene_foto: boolean }> {
-  const fd = new FormData();
-  fd.append('archivo', archivo);
-  const { data } = await api.post(`/onus/${onuId}/foto`, fd);
-  return data;
-}
-
-export async function getOnuFotoBlobUrl(onuId: number): Promise<string> {
-  const { data } = await api.get(`/onus/${onuId}/foto`, { responseType: 'blob' });
-  return URL.createObjectURL(data);
-}

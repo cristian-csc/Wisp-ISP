@@ -763,7 +763,6 @@ class OnuOut(BaseModel):
     cliente: Optional[OnuClienteOut] = None
     fecha_asignacion_tecnico: Optional[date] = None
     fecha_instalacion: Optional[date] = None
-    tiene_foto: bool = False
     class Config:
         from_attributes = True
 
@@ -1371,6 +1370,7 @@ class MaterialOut(BaseModel):
     activo: bool
     # Calculado sumando movimientos; no existe como columna.
     en_almacen: float
+    tiene_foto: bool = False
     presentaciones: List[MaterialPresentacionOut] = []
 
 

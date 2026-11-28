@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, type ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import { Icon } from '@iconify/react';
 import PageHeader from 'src/components/shared/PageHeader';
 import SectionCard from 'src/components/shared/SectionCard';
 import CardBox from 'src/components/shared/CardBox';
+import FotoRemota from 'src/components/shared/FotoRemota';
 import EmptyState from 'src/components/shared/EmptyState';
 import LoadingState from 'src/components/shared/LoadingState';
 import { Button } from 'src/components/ui/button';
@@ -39,6 +40,8 @@ import {
   registrarMovimiento,
   crearMaterial,
   editarMaterial,
+  subirFotoMaterial,
+  getMaterialFotoBlobUrl,
   cantidad as fmt,
   type Material,
   type Movimiento,
@@ -91,6 +94,13 @@ const Materiales = () => {
   const [mEstandar, setMEstandar] = useState('');
   const [mPres, setMPres] = useState<{ nombre: string; equivale: string }[]>([]);
 
+  // Foto de presentación: un solo input oculto para toda la vista. Se sube al
+  // vuelo desde el formulario de edición y luego se refresca la tarjeta.
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+  const fotoMaterialId = useRef<number | null>(null);
+  const [versionFoto, setVersionFoto] = useState<Record<number, number>>({});
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+
   const [open, setOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +114,9 @@ const Materiales = () => {
 
   const material = materiales.find((m) => String(m.id) === materialId) ?? null;
   const presentacion = material?.presentaciones.find((p) => String(p.id) === presentacionId) ?? null;
+  // El material que se está editando, pero leído de la lista viva: así, tras
+  // subir una foto y recargar, el formulario refleja que ya tiene foto.
+  const matEdit = editando ? materiales.find((m) => m.id === editando.id) ?? editando : null;
 
   function reload() {
     setFallo(null);
@@ -131,6 +144,29 @@ const Materiales = () => {
     setMPres([]);
     setErrorMaterial(null);
     setMaterialOpen(true);
+  }
+
+  function pedirFotoMaterial(id: number) {
+    fotoMaterialId.current = id;
+    fotoInputRef.current?.click();
+  }
+
+  async function alElegirFotoMaterial(e: ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0];
+    e.target.value = '';
+    const id = fotoMaterialId.current;
+    if (!archivo || id == null) return;
+    setSubiendoFoto(true);
+    try {
+      await subirFotoMaterial(id, archivo);
+      setVersionFoto((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
+      toast.success('Foto del material actualizada');
+      reload();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? 'No se pudo subir la foto');
+    } finally {
+      setSubiendoFoto(false);
+    }
   }
 
   async function handleGuardarMaterial() {
@@ -280,11 +316,22 @@ const Materiales = () => {
         {materiales.map((m) => (
           <CardBox key={m.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="truncate text-base font-bold">{m.nombre}</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Se cuenta por {m.unidad === 'metro' ? 'metro' : 'unidad'}
-                </p>
+              <div className="flex min-w-0 items-start gap-3">
+                <FotoRemota
+                  cargar={m.tiene_foto ? () => getMaterialFotoBlobUrl(m.id) : null}
+                  clave={`${m.id}-${versionFoto[m.id] ?? 0}`}
+                  alt={`Foto de ${m.nombre}`}
+                  iconoVacio="solar:box-linear"
+                  ajuste="contain"
+                  ampliable={m.tiene_foto}
+                  className="size-16 shrink-0 rounded-lg border border-ld bg-muted/40"
+                />
+                <div className="min-w-0">
+                  <h3 className="truncate text-base font-bold">{m.nombre}</h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Se cuenta por {m.unidad === 'metro' ? 'metro' : 'unidad'}
+                  </p>
+                </div>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
                 <span
@@ -598,6 +645,39 @@ const Materiales = () => {
         {errorMaterial && <FormCallout tone="error">{errorMaterial}</FormCallout>}
 
         <FormGrid>
+          {editando && (
+            <FormField label="Foto del material" icon="tabler:photo" wide>
+              <div className="flex items-center gap-4">
+                <FotoRemota
+                  cargar={matEdit?.tiene_foto ? () => getMaterialFotoBlobUrl(editando.id) : null}
+                  clave={`${editando.id}-${versionFoto[editando.id] ?? 0}`}
+                  alt={`Foto de ${editando.nombre}`}
+                  iconoVacio="solar:box-linear"
+                  ajuste="contain"
+                  className="size-24 shrink-0 rounded-lg border border-ld bg-muted/40"
+                />
+                <div className="flex flex-col items-start gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => pedirFotoMaterial(editando.id)}
+                    disabled={subiendoFoto}
+                  >
+                    <Icon
+                      icon={subiendoFoto ? 'tabler:loader-2' : 'tabler:camera'}
+                      height={16}
+                      className={`mr-1 ${subiendoFoto ? 'animate-spin' : ''}`}
+                    />
+                    {matEdit?.tiene_foto ? 'Cambiar foto' : 'Añadir foto'}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    JPG, PNG o WebP. Máximo 8&nbsp;MB.
+                  </p>
+                </div>
+              </div>
+            </FormField>
+          )}
+
           <FormField label="Nombre" icon="tabler:tag" htmlFor="matNombre">
             <FieldIcon icon="tabler:tag">
               <Input
@@ -720,6 +800,9 @@ const Materiales = () => {
           )}
         </FormGrid>
       </FormDialog>
+
+      {/* Input compartido para la foto de presentación de un material. */}
+      <input ref={fotoInputRef} type="file" accept="image/*" hidden onChange={alElegirFotoMaterial} />
     </div>
   );
 };

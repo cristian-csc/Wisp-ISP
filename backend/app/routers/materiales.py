@@ -14,7 +14,10 @@ Qué suma y qué resta en el almacén:
 El `consumo` no toca el almacén: descuenta del saldo del técnico, que es
 quien ya tenía el material encima.
 """
-from fastapi import APIRouter, Depends, HTTPException
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, case, func
 from typing import List, Optional
@@ -25,6 +28,7 @@ import unicodedata
 from ..database import get_db
 from .. import models, schemas
 from .auth import require_roles
+from ..almacen_fotos import guardar_imagen, borrar_imagen
 
 router = APIRouter()
 
@@ -96,6 +100,7 @@ def _material_out(material: models.Material, saldo: Decimal) -> dict:
         "consumo_estandar": material.consumo_estandar,
         "activo": material.activo,
         "en_almacen": saldo,
+        "tiene_foto": bool(material.foto_ruta),
         "presentaciones": [
             {"id": p.id, "nombre": p.nombre, "equivale_a": p.equivale_a, "activo": p.activo}
             for p in material.presentaciones
@@ -194,6 +199,44 @@ def editar_material(
     db.commit()
     db.refresh(material)
     return _material_out(material, _saldos(db).get(material.id, Decimal(0)))
+
+
+# ── Foto de presentación del material ───────────────────────────────────────────
+# Una foto representativa del producto (cable drop, conector, roseta…). No toca
+# el stock ni los movimientos: es solo para reconocerlo de un vistazo. La imagen
+# se guarda en disco y se sirve con sesión, nunca por ruta directa.
+
+@router.post("/{material_id}/foto", response_model=schemas.MaterialOut)
+def subir_foto_material(
+    material_id: int,
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    material = db.query(models.Material).filter(models.Material.id == material_id).first()
+    if not material:
+        raise HTTPException(status_code=404, detail="Material no encontrado")
+    nueva = guardar_imagen(archivo, "materiales")
+    anterior = material.foto_ruta
+    material.foto_ruta = nueva
+    db.commit()
+    db.refresh(material)
+    # Se borra la anterior solo después de confirmar la nueva, para no quedar sin
+    # ninguna si algo falla a mitad.
+    borrar_imagen(anterior)
+    return _material_out(material, _saldos(db).get(material.id, Decimal(0)))
+
+
+@router.get("/{material_id}/foto")
+def ver_foto_material(
+    material_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(solo_admin),
+):
+    material = db.query(models.Material).filter(models.Material.id == material_id).first()
+    if not material or not material.foto_ruta or not os.path.isfile(material.foto_ruta):
+        raise HTTPException(status_code=404, detail="Sin foto")
+    return FileResponse(material.foto_ruta)
 
 
 @router.post("/{material_id}/presentaciones", response_model=schemas.MaterialPresentacionOut, status_code=201)

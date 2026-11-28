@@ -446,13 +446,7 @@ class Onu(Base):
     fecha_instalacion = Column(Date)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
 
-    foto_ruta = Column(String(500))
-
     cliente = relationship("Cliente", back_populates="onus")
-
-    @property
-    def tiene_foto(self) -> bool:
-        return bool(self.foto_ruta)
 
 
 class OrdenRetiro(Base):
@@ -822,6 +816,9 @@ class Material(Base):
     consumo_estandar = Column(Numeric(10, 2))
     activo = Column(Boolean, nullable=False, default=True, index=True)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
+    # Foto de presentación del material (cable drop, conector, roseta…). Se
+    # guarda la ruta en disco bajo MEDIA_DIR y se sirve solo con sesión.
+    foto_ruta = Column(String(500))
 
     presentaciones = relationship(
         "MaterialPresentacion",

@@ -14,6 +14,10 @@ type Props = {
   iconoVacio?: string;
   /** Si true, al tocar la foto se abre ampliada. */
   ampliable?: boolean;
+  /** Cómo encaja la foto en el recuadro. 'cover' (por defecto) recorta para
+   *  llenar; 'contain' la muestra entera sin recortar —mejor para productos
+   *  como cables o conectores, donde recortar pierde información. */
+  ajuste?: 'cover' | 'contain';
 };
 
 /**
@@ -27,6 +31,7 @@ export default function FotoRemota({
   className,
   iconoVacio = 'tabler:photo',
   ampliable = false,
+  ajuste = 'cover',
 }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [fallo, setFallo] = useState(false);
@@ -72,7 +77,7 @@ export default function FotoRemota({
     <img
       src={url!}
       alt={alt}
-      className={cn('h-full w-full object-cover', ampliable && 'cursor-zoom-in')}
+      className={cn('h-full w-full', ajuste === 'contain' ? 'object-contain' : 'object-cover', ampliable && 'cursor-zoom-in')}
       onClick={ampliable ? () => setAbierta(true) : undefined}
     />
   );

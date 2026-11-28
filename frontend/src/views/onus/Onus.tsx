@@ -32,9 +32,7 @@ import {
   FormGrid,
 } from 'src/components/shared/form';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from 'src/components/ui/tooltip';
-import FotoRemota from 'src/components/shared/FotoRemota';
 import { listOnus, createOnu, asignarOnu, marcarOnu, deleteOnu, detectarMarca, type Onu } from 'src/lib/onus';
-import { subirFotoOnu, getOnuFotoBlobUrl } from 'src/lib/flota';
 import { listUsuarios } from 'src/lib/usuarios';
 import type { Usuario } from 'src/lib/api';
 
@@ -71,33 +69,9 @@ const Onus = () => {
   const [error, setError] = useState<string | null>(null);
   const [borrando, setBorrando] = useState<Onu | null>(null);
   const macInputRef = useRef<HTMLInputElement>(null);
-  // Foto del equipo: un solo input de archivo para toda la tabla.
-  const fotoInputRef = useRef<HTMLInputElement>(null);
-  const fotoPara = useRef<number | null>(null);
-  const [versionFoto, setVersionFoto] = useState<Record<number, number>>({});
 
   async function reload() {
     setOnus(await listOnus());
-  }
-
-  function pedirFotoOnu(id: number) {
-    fotoPara.current = id;
-    fotoInputRef.current?.click();
-  }
-
-  async function alElegirFotoOnu(e: React.ChangeEvent<HTMLInputElement>) {
-    const archivo = e.target.files?.[0];
-    e.target.value = '';
-    const id = fotoPara.current;
-    if (!archivo || id == null) return;
-    try {
-      await subirFotoOnu(id, archivo);
-      setOnus((prev) => prev.map((o) => (o.id === id ? { ...o, tiene_foto: true } : o)));
-      setVersionFoto((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
-      toast.success('Foto del equipo actualizada');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'No se pudo subir la foto');
-    }
   }
 
   useEffect(() => {
@@ -189,7 +163,6 @@ const Onus = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Foto</TableHead>
             <TableHead>Serie</TableHead>
             <TableHead>MAC</TableHead>
             <TableHead>Marca</TableHead>
@@ -202,35 +175,13 @@ const Onus = () => {
         <TableBody>
           {onus.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                 No hay ONUs registradas.
               </TableCell>
             </TableRow>
           )}
           {onus.map((o) => (
             <TableRow key={o.id}>
-              <TableCell>
-                <div className="relative">
-                  <FotoRemota
-                    cargar={o.tiene_foto ? () => getOnuFotoBlobUrl(o.id) : null}
-                    clave={`${o.id}-${versionFoto[o.id] ?? 0}`}
-                    alt={`Foto del equipo ${o.numero_serie}`}
-                    iconoVacio="solar:camera-linear"
-                    ampliable={o.tiene_foto && !puedeGestionar}
-                    className="size-12 rounded-md"
-                  />
-                  {puedeGestionar && (
-                    <button
-                      type="button"
-                      onClick={() => pedirFotoOnu(o.id)}
-                      aria-label={o.tiene_foto ? 'Cambiar foto' : 'Añadir foto'}
-                      className="transition-ui absolute inset-0 grid place-items-center rounded-md bg-black/0 text-transparent hover:bg-black/45 hover:text-white"
-                    >
-                      <Icon icon="solar:camera-linear" width={16} />
-                    </button>
-                  )}
-                </div>
-              </TableCell>
               <TableCell className="font-medium">{o.numero_serie}</TableCell>
               <TableCell className="font-mono text-xs">{o.mac ?? '—'}</TableCell>
               <TableCell>{o.marca ?? '—'}</TableCell>
@@ -294,9 +245,6 @@ const Onus = () => {
           ))}
         </TableBody>
       </Table>
-
-      {/* Input de archivo compartido para la foto de cualquier equipo. */}
-      <input ref={fotoInputRef} type="file" accept="image/*" hidden onChange={alElegirFotoOnu} />
 
       <FormDialog
         open={openCreate}
