@@ -201,6 +201,17 @@ export default function InstalarScreen() {
         )}
         <Text style={s.infoSub}>{cliente.direccion ?? 'Sin dirección'}</Text>
         <Text style={s.infoSub}>Plan: {cliente.plan?.nombre ?? '—'} · Zona: {cliente.zona?.nombre ?? '—'}</Text>
+        {/* Informativo: el técnico no cobra. Solo para avisarle al cliente que
+            en su primer pago se le suma la instalación de esta zona. */}
+        {!esMigrado && (cliente.zona?.costo_instalacion ?? 0) > 0 && (
+          <View style={s.instalacionAviso}>
+            <Ionicons name="cash-outline" size={15} color={COLORS.brandStrong} />
+            <Text style={s.instalacionTexto}>
+              Esta zona cobra instalación: S/ {Number(cliente.zona?.costo_instalacion ?? 0).toFixed(2)}.
+              Se le suma al primer pago (lo registra caja).
+            </Text>
+          </View>
+        )}
         {cliente.lat != null && cliente.lng != null && (
           <TouchableOpacity
             style={s.ubicacionBtn}
@@ -421,6 +432,17 @@ const s = StyleSheet.create({
   infoNombre: { fontSize: 16, fontWeight: '800', color: COLORS.dark },
   infoLinea: { fontSize: 12, fontWeight: '700', color: COLORS.brand, marginTop: 2 },
   infoSub: { fontSize: 12, color: COLORS.mutedForeground, marginTop: 3 },
+  instalacionAviso: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: COLORS.lightbrand ?? 'rgba(255,132,42,0.12)',
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+  },
+  instalacionTexto: { flex: 1, fontSize: 12, fontWeight: '700', color: COLORS.brandStrong },
   ubicacionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 10, borderWidth: 1, borderColor: COLORS.dark, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
   ubicacionBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.dark },
   sectionTitle: { fontSize: 11, fontWeight: '800', color: COLORS.dark, letterSpacing: 1.5, marginBottom: 10 },

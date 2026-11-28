@@ -212,7 +212,7 @@ export type ClienteListItem = {
   tipo_conexion: 'fibra_optica' | 'inalambrico' | null;
   cantidad_tv: number;
   plan: { id: number; nombre: string; precio: number } | null;
-  zona: { id: number; nombre: string } | null;
+  zona: { id: number; nombre: string; costo_instalacion?: number } | null;
   fecha_instalacion: string | null;
   fecha_vencimiento: string | null;
   monto_mensual: number | null;
