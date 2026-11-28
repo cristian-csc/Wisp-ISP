@@ -165,9 +165,11 @@ export default function MapaJornadas({
         ...puntosRecorrido.map((p, idx): PuntoRecorrido => ({
           lat: p.lat,
           lng: p.lng,
-          t: Date.parse(p.registrado_en),
+          // La hora REAL de captura cuando existe; si no (punto antiguo), la de recepción.
+          t: Date.parse(p.capturado_en ?? p.registrado_en),
           tipo: 'punto',
           i: idx,
+          precision: p.precision_m ?? null,
         })),
         ...(jornadaSeleccionada.lat_fin != null && jornadaSeleccionada.lng_fin != null
           ? [
@@ -192,6 +194,7 @@ export default function MapaJornadas({
   const reciente = activa ? intermedios[intermedios.length - 1] : undefined;
   const huecosTiempo = procesado.huecos.filter((h) => h.razon === 'tiempo');
   const nPuntosGps = intermedios.length;
+  const nDescartes = procesado.descartados.length + procesado.imprecisos.length;
   const atenuar = modo === 'estimado';
 
   const centro: [number, number] =
@@ -212,6 +215,7 @@ export default function MapaJornadas({
         { color: COLOR.punto, texto: 'Puntos GPS' },
         { color: COLOR.recorrido, texto: `Recorrido · ${distanciaTexto}`, linea: true },
         ...(huecosTiempo.length > 0 ? [{ color: COLOR.sinDatos, texto: 'Tramo sin datos', linea: true }] : []),
+        ...(nDescartes > 0 ? [{ color: COLOR.sinDatos, texto: 'Punto descartado' }] : []),
         ...(modo === 'estimado' ? [{ color: COLOR.estimado, texto: 'Recorrido estimado (pendiente)', linea: true }] : []),
       ]
     : [{ color: COLOR.reciente, texto: 'Ubicación reciente' }];
@@ -258,11 +262,22 @@ export default function MapaJornadas({
               titulo="Lapsos sin registro GPS; no se dibuja línea por esos tramos."
             />
           )}
+          {nDescartes > 0 && (
+            <DatoRecorrido
+              etiqueta="Puntos descartados"
+              valor={String(nDescartes)}
+              acento
+              titulo="Puntos excluidos del recorrido por salto imposible o precisión GPS pobre."
+            />
+          )}
           <DatoRecorrido
             etiqueta={activa ? 'Última ubicación' : 'Último punto'}
             valor={
               jornadaSeleccionada.ultima_ubicacion
-                ? horaCorta(jornadaSeleccionada.ultima_ubicacion.registrado_en)
+                ? horaCorta(
+                    jornadaSeleccionada.ultima_ubicacion.capturado_en ??
+                      jornadaSeleccionada.ultima_ubicacion.registrado_en,
+                  )
                 : intermedios.length
                 ? horaCorta(new Date(intermedios[intermedios.length - 1].t).toISOString())
                 : '—'
@@ -410,7 +425,9 @@ export default function MapaJornadas({
                         <span className="text-xs text-muted-foreground">
                           Hora: {horaCorta(new Date(p.t).toISOString())}
                         </span>
-                        <span className="text-xs text-muted-foreground">Precisión: no disponible</span>
+                        <span className="text-xs text-muted-foreground">
+                          Precisión: {p.precision != null ? `±${Math.round(p.precision)} m` : 'no disponible'}
+                        </span>
                       </div>
                     </Popup>
                   </CircleMarker>
@@ -430,6 +447,29 @@ export default function MapaJornadas({
                       <b className="text-xs">Punto descartado</b>
                       <span className="text-xs text-muted-foreground">
                         Salto improbable — excluido del recorrido
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Hora: {horaCorta(new Date(p.t).toISOString())}
+                      </span>
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              ))}
+
+              {/* Puntos apartados por precisión GPS pobre: gris hueco, para
+                  diagnóstico — tampoco cuentan como recorrido. */}
+              {procesado.imprecisos.map((p) => (
+                <CircleMarker
+                  key={`impr-${p.i}`}
+                  center={[p.lat, p.lng]}
+                  radius={5}
+                  pathOptions={{ color: COLOR.sinDatos, fillColor: COLOR.sinDatos, fillOpacity: 0.15, weight: 1.5 }}
+                >
+                  <Popup>
+                    <div className="flex flex-col gap-0.5 min-w-[160px]">
+                      <b className="text-xs">Punto impreciso</b>
+                      <span className="text-xs text-muted-foreground">
+                        Precisión: ±{Math.round(p.precision ?? 0)} m — excluido del recorrido
                       </span>
                       <span className="text-xs text-muted-foreground">
                         Hora: {horaCorta(new Date(p.t).toISOString())}

@@ -23,6 +23,8 @@ export type PuntoRecorrido = {
   tipo: TipoPunto;
   /** Índice del punto en la lista original, para claves estables de React. */
   i: number;
+  /** Precisión del GPS en metros, si el aparato la reportó. */
+  precision?: number | null;
 };
 
 /**
@@ -40,6 +42,9 @@ export const UMBRAL = {
   dedupeMs: 90 * 1000,
   /** Salto grande sin diferencia de tiempo (mismo timestamp) = dato corrupto. */
   saltoSinTiempoM: 50,
+  /** Peor precisión aceptada (m). Un punto con precisión conocida peor que esto
+   *  no entra al recorrido válido: el GPS no sabe bien dónde está. */
+  precisionMaxM: 35,
 } as const;
 
 export type RazonCorte = 'tiempo' | 'salto';
@@ -62,6 +67,8 @@ export type RecorridoProcesado = {
   puntos: PuntoRecorrido[];
   /** Puntos aislados por un salto imposible a ambos lados: no son recorrido. */
   descartados: PuntoRecorrido[];
+  /** Puntos fuera del recorrido por precisión GPS pobre (se guardan para diagnóstico). */
+  imprecisos: PuntoRecorrido[];
   /** Cortes por falta de datos (tiempo). Se muestran como "tramo sin datos". */
   huecos: Hueco[];
   /** Metros sumados SOLO dentro de segmentos (nunca cruzando un corte). */
@@ -115,6 +122,7 @@ export function procesarRecorrido(entrada: PuntoRecorrido[]): RecorridoProcesado
     segmentos: [],
     puntos: [],
     descartados: [],
+    imprecisos: [],
     huecos: [],
     metros: 0,
     tramosSinDatos: 0,
@@ -125,10 +133,23 @@ export function procesarRecorrido(entrada: PuntoRecorrido[]): RecorridoProcesado
   //    sincronizado tarde tras perder señal podría llegar fuera de orden).
   const ordenados = [...entrada].sort((a, b) => a.t - b.t || a.i - b.i);
 
+  // 1.5. Apartar puntos con precisión conocida y pobre: el GPS no sabe bien
+  //      dónde estaba, así que no deben formar el trazo (sí se guardan para
+  //      diagnóstico). Las anclas inicio/fin nunca se apartan.
+  const imprecisos: PuntoRecorrido[] = [];
+  const precisos: PuntoRecorrido[] = [];
+  for (const p of ordenados) {
+    if (p.tipo === 'punto' && p.precision != null && p.precision > UMBRAL.precisionMaxM) {
+      imprecisos.push(p);
+    } else {
+      precisos.push(p);
+    }
+  }
+
   // 2. Fundir duplicados consecutivos (mismo lugar, casi la misma hora). Las
   //    anclas inicio/fin no se fusionan: marcan los extremos reales.
   const sinDuplicados: PuntoRecorrido[] = [];
-  for (const p of ordenados) {
+  for (const p of precisos) {
     const ult = sinDuplicados[sinDuplicados.length - 1];
     const esAncla = p.tipo !== 'punto';
     const ultEsAncla = ult && ult.tipo !== 'punto';
@@ -203,6 +224,7 @@ export function procesarRecorrido(entrada: PuntoRecorrido[]): RecorridoProcesado
     segmentos: segmentos.filter((s) => s.length >= 2),
     puntos: limpios,
     descartados,
+    imprecisos,
     huecos,
     metros,
     tramosSinDatos: huecos.length,

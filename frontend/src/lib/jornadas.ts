@@ -3,6 +3,10 @@ import { api } from './api';
 export type UbicacionVendedor = {
   lat: number;
   lng: number;
+  /** Precisión del GPS en metros; null en puntos antiguos o si el aparato no la dio. */
+  precision_m?: number | null;
+  /** Hora real del fix del GPS; null en puntos antiguos (se usa registrado_en). */
+  capturado_en?: string | null;
   registrado_en: string;
 };
 
