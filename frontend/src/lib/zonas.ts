@@ -17,6 +17,8 @@ export type Zona = {
   lng: number | null;
   descripcion: string | null;
   tiendas_pago: string | null;
+  /** Costo de instalación que cobra esta zona una sola vez. 0 = no cobra. */
+  costo_instalacion: number;
   activo: boolean;
   total_clientes: number;
   clientes_activos: number;
@@ -64,6 +66,8 @@ export async function updateZonaDatos(id: number, data: {
   lng?: number;
   descripcion?: string;
   tiendas_pago?: string;
+  /** Costo de instalación de la zona, en soles. 0 = no cobra instalación. */
+  costo_instalacion?: number;
   ip_lan?: string;
   usuario_mikrotik?: string;
   password_mikrotik?: string;

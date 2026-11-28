@@ -93,6 +93,9 @@ export async function createPago(input: {
   meses?: number;
   /** Rebaja aplicada, solo para dejar constancia: `monto` ya viene con ella descontada */
   descuento?: number;
+  /** Costo de instalación a cobrar junto con este pago (solo el primero). Si no
+   *  se manda, el backend lo pone cuando corresponde. 0 lo quita. */
+  cargo_instalacion?: number;
   /** Qué se está registrando. Sin esto el backend asume `pagado`, que es lo
    *  normal. Se manda explícitamente para marcar un mes de `corte_temporal`:
    *  un pago de S/ 0 que deja constancia de que el servicio estuvo cortado,
@@ -100,6 +103,16 @@ export async function createPago(input: {
   estado?: EstadoPago;
 }): Promise<Pago> {
   const { data } = await api.post('/pagos', input);
+  return data;
+}
+
+/** Le pregunta al servidor si a este cliente le toca cobro de instalación (solo
+ *  en su primer pago, de una zona que cobra, y no migrado) y cuánto, para
+ *  precargarlo editable en el formulario. No cobra nada: solo informa. */
+export async function instalacionSugerida(
+  clienteId: number,
+): Promise<{ aplica: boolean; costo: number }> {
+  const { data } = await api.get(`/pagos/instalacion-sugerida/${clienteId}`);
   return data;
 }
 

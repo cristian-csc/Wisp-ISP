@@ -182,6 +182,7 @@ const ZonaDetail = () => {
   const [editZonaNombre, setEditZonaNombre] = useState('');
   const [editZonaDescripcion, setEditZonaDescripcion] = useState('');
   const [editZonaTiendas, setEditZonaTiendas] = useState('');
+  const [editZonaCosto, setEditZonaCosto] = useState('0');
   const [editZonaIpLan, setEditZonaIpLan] = useState('');
   const [editZonaUsuarioMikrotik, setEditZonaUsuarioMikrotik] = useState('');
   const [editZonaPasswordMikrotik, setEditZonaPasswordMikrotik] = useState('');
@@ -259,6 +260,7 @@ const ZonaDetail = () => {
     setEditZonaNombre(zona.nombre);
     setEditZonaDescripcion(zona.descripcion ?? '');
     setEditZonaTiendas(zona.tiendas_pago ?? '');
+    setEditZonaCosto(String(zona.costo_instalacion ?? 0));
     setEditZonaIpLan(zona.ip_lan ?? '');
     setEditZonaUsuarioMikrotik(zona.usuario_mikrotik ?? '');
     setEditZonaPasswordMikrotik('');
@@ -278,11 +280,17 @@ const ZonaDetail = () => {
       setEditZonaError('El nombre es obligatorio.');
       return;
     }
+    const costo = editZonaCosto.trim() === '' ? 0 : Number(editZonaCosto);
+    if (!Number.isFinite(costo) || costo < 0) {
+      setEditZonaError('El costo de instalación debe ser un número de 0 o más.');
+      return;
+    }
     try {
       await updateZonaDatos(Number(id), {
         nombre: editZonaNombre.trim(),
         descripcion: editZonaDescripcion.trim() || undefined,
         tiendas_pago: editZonaTiendas.trim() || undefined,
+        costo_instalacion: costo,
         ip_lan: editZonaIpLan.trim() || undefined,
         usuario_mikrotik: editZonaUsuarioMikrotik.trim() || undefined,
         password_mikrotik: editZonaPasswordMikrotik.trim() || undefined,
@@ -1251,6 +1259,22 @@ const ZonaDetail = () => {
                 value={editZonaTiendas}
                 onChange={(e) => setEditZonaTiendas(e.target.value)}
               />
+            </FormField>
+            <FormField
+              label="Costo de instalación (S/)"
+              htmlFor="editZonaCosto"
+              hint="Se cobra una sola vez, con el primer pago. 0 = esta zona no cobra instalación."
+            >
+              <FieldIcon icon="tabler:cash">
+                <Input
+                  id="editZonaCosto"
+                  type="number"
+                  min={0}
+                  step="0.5"
+                  value={editZonaCosto}
+                  onChange={(e) => setEditZonaCosto(e.target.value)}
+                />
+              </FieldIcon>
             </FormField>
           </FormSection>
 

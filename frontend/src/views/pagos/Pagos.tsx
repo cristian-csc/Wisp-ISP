@@ -41,6 +41,7 @@ import ReciboDialog from 'src/components/apps/pagos/ReciboDialog';
 import {
   listPagos,
   createPago,
+  instalacionSugerida,
   deletePago,
   subirComprobantePago,
   getComprobanteBlobUrl,
@@ -184,6 +185,10 @@ const Pagos = () => {
   const [subtotal, setSubtotal] = useState('');
   // Rebaja que decide quien cobra; el total a pagar sale de restarla
   const [descuento, setDescuento] = useState('0');
+  // Costo de instalación: solo aparece en el primer pago de un cliente de una
+  // zona que lo cobra. Precargado por el servidor y editable (0 lo quita).
+  const [cargoInstalacion, setCargoInstalacion] = useState('');
+  const [aplicaInstalacion, setAplicaInstalacion] = useState(false);
   const [mesPagado, setMesPagado] = useState(mesActual);
   const [fechaPago, setFechaPago] = useState(hoy);
   const [metodoPago, setMetodoPago] = useState('efectivo');
@@ -249,8 +254,27 @@ const Pagos = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesSel, anioSel, estadoFiltro]);
 
+  /** Pregunta al servidor si a este cliente le toca cobro de instalación y lo
+   *  precarga (editable). Solo informa; no cobra nada. */
+  async function cargarInstalacion(c: ClienteListItem | null) {
+    if (!c) {
+      setAplicaInstalacion(false);
+      setCargoInstalacion('');
+      return;
+    }
+    try {
+      const s = await instalacionSugerida(c.id);
+      setAplicaInstalacion(s.aplica);
+      setCargoInstalacion(s.aplica ? String(s.costo) : '');
+    } catch {
+      setAplicaInstalacion(false);
+      setCargoInstalacion('');
+    }
+  }
+
   function abrirRegistrarPago(clientePreseleccionado?: ClienteListItem) {
     setClienteSel(clientePreseleccionado ?? null);
+    cargarInstalacion(clientePreseleccionado ?? null);
     setSubtotal(
       clientePreseleccionado?.monto_mensual != null
         ? clientePreseleccionado.monto_mensual.toFixed(2)
@@ -275,6 +299,10 @@ const Pagos = () => {
   const subtotalNum = Number(subtotal) || 0;
   const descuentoNum = Number(descuento) || 0;
   const totalAPagar = subtotalNum - descuentoNum;
+  // El costo de instalación va aparte de la mensualidad: no entra en el
+  // descuento ni en el `monto`, se suma al total que entra a caja.
+  const cargoInstalacionNum = aplicaInstalacion ? Number(cargoInstalacion) || 0 : 0;
+  const totalACobrar = totalAPagar + cargoInstalacionNum;
 
   /** Al agregar o quitar un mes, el subtotal se recalcula con la cuota. */
   function cambiarMeses(cantidad: number) {
@@ -303,6 +331,10 @@ const Pagos = () => {
         numero_operacion: numeroOperacion || undefined,
         meses: mesesNum,
         descuento: descuentoNum,
+        // Solo cuando la zona cobra instalación y es el primer pago. Se manda
+        // explícito (incluido 0 si quien cobra lo quitó) para que lo guardado
+        // coincida con lo que vio en pantalla.
+        cargo_instalacion: aplicaInstalacion ? cargoInstalacionNum : undefined,
       });
       if (comprobanteFile) {
         try {
@@ -791,6 +823,7 @@ const Pagos = () => {
                 setDescuento('0');
                 setMesPagado(mesQueDebe(c));
                 setMesesPago('1');
+                cargarInstalacion(c);
               }}
               placeholder="Buscar por nombre, DNI o usuario…"
             />
@@ -869,13 +902,40 @@ const Pagos = () => {
                 />
               </FormField>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ld bg-card px-4 py-3 md:col-span-2">
-                <span className="text-sm font-medium">Total a pagar</span>
-                <span
-                  className={`text-xl font-bold tabular-nums ${totalAPagar > 0 ? 'text-success-text' : 'text-error-text'}`}
+              {aplicaInstalacion && (
+                <FormField
+                  label="Costo de instalación (S/)"
+                  htmlFor="cargoInstalacion"
+                  wide
+                  hint="Primera instalación en esta zona. Se cobra una sola vez. Déjalo en 0 si a este cliente no le cobras instalación."
                 >
-                  S/ {totalAPagar.toFixed(2)}
-                </span>
+                  <FieldIcon icon="tabler:tool">
+                    <Input
+                      id="cargoInstalacion"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={cargoInstalacion}
+                      onChange={(e) => setCargoInstalacion(e.target.value)}
+                    />
+                  </FieldIcon>
+                </FormField>
+              )}
+
+              <div className="flex flex-col gap-1 rounded-xl border border-ld bg-card px-4 py-3 md:col-span-2">
+                {aplicaInstalacion && cargoInstalacionNum > 0 && (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Mensualidad S/ {totalAPagar.toFixed(2)} · Instalación S/ {cargoInstalacionNum.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-medium">Total a cobrar</span>
+                  <span
+                    className={`text-xl font-bold tabular-nums ${totalACobrar > 0 ? 'text-success-text' : 'text-error-text'}`}
+                  >
+                    S/ {totalACobrar.toFixed(2)}
+                  </span>
+                </div>
               </div>
             </FormSection>
 

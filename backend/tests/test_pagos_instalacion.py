@@ -119,6 +119,24 @@ def test_instalacion_en_pago_que_no_es_el_primero_da_400(client, db, datos):
     assert "primer pago" in segundo.json()["detail"].lower()
 
 
+def test_endpoint_sugerencia_antes_y_despues_del_primer_pago(client, db, datos):
+    zona, plan, _ = datos
+    zona.costo_instalacion = 120.0
+    db.commit()
+    cliente = crear_cliente(db, zona, plan)
+
+    # Antes de pagar: le toca instalación.
+    antes = client.get(f"/pagos/instalacion-sugerida/{cliente.id}")
+    assert antes.status_code == 200
+    assert antes.json() == {"aplica": True, "costo": 120.0}
+
+    # Tras el primer pago: ya no.
+    client.post("/pagos", json=_payload(cliente.id, "2026-07"))
+    despues = client.get(f"/pagos/instalacion-sugerida/{cliente.id}")
+    assert despues.status_code == 200
+    assert despues.json()["aplica"] is False
+
+
 def test_el_recibo_suma_instalacion_al_importe_pagado(client, db, datos):
     zona, plan, _ = datos
     zona.costo_instalacion = 100.0

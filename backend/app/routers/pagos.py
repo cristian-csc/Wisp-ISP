@@ -338,6 +338,44 @@ def _error_de_mes_repetido(detalle: str, varios: bool) -> HTTPException:
     )
 
 
+def _instalacion_sugerida(db: Session, cliente: models.Cliente) -> tuple[bool, float]:
+    """(aplica, costo) del cargo de instalación para el PRÓXIMO pago del cliente.
+
+    Aplica una sola vez: en el primer pago de un cliente NO migrado de una zona
+    que cobra instalación. Es la misma regla que usa el cobro, para que lo que
+    la pantalla muestra coincida con lo que se guarda.
+    """
+    ya_pago = (
+        db.query(models.Pago).filter(models.Pago.cliente_id == cliente.id).first() is not None
+    )
+    if ya_pago or cliente.migrado:
+        return False, 0.0
+    zona = (
+        db.query(models.Zona).filter(models.Zona.id == cliente.zona_id).first()
+        if cliente.zona_id
+        else None
+    )
+    costo = round((zona.costo_instalacion or 0) if zona else 0, 2)
+    return (costo > 0), costo
+
+
+@router.get("/instalacion-sugerida/{cliente_id}")
+def instalacion_sugerida(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(
+        require_roles(models.RolUsuario.admin, models.RolUsuario.atencion_cliente)
+    ),
+):
+    """Le dice a la caja si a este cliente le toca cobro de instalación y cuánto,
+    para precargarlo (editable) en el formulario de pago. Solo informa."""
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    aplica, costo = _instalacion_sugerida(db, cliente)
+    return {"aplica": aplica, "costo": costo}
+
+
 @router.post("", response_model=schemas.PagoOut, status_code=201)
 def create_pago(
     data: schemas.PagoCreate,
@@ -412,18 +450,9 @@ def create_pago(
     )
     if "cargo_instalacion" in data.model_fields_set:
         cargo_instalacion = round(data.cargo_instalacion or 0, 2) or None
-    elif (
-        es_primer_pago
-        and not cliente.migrado
-        and data.estado == models.EstadoPago.pagado
-    ):
-        zona = (
-            db.query(models.Zona).filter(models.Zona.id == cliente.zona_id).first()
-            if cliente.zona_id
-            else None
-        )
-        costo = round((zona.costo_instalacion or 0) if zona else 0, 2)
-        cargo_instalacion = costo or None
+    elif data.estado == models.EstadoPago.pagado:
+        aplica, costo = _instalacion_sugerida(db, cliente)
+        cargo_instalacion = costo if aplica else None
     else:
         cargo_instalacion = None
 
