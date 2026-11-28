@@ -800,6 +800,146 @@ def reporte_caja(
     return _datos_caja(db, fecha, zona_id)
 
 
+@router.get("/reporte-instalaciones")
+def reporte_instalaciones(
+    desde: date = Query(default=None),
+    hasta: date = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(models.RolUsuario.admin)),
+):
+    """Ingresos por COSTO DE INSTALACIÓN en un período, aparte del ingreso
+    mensual. Es un cobro único (no recurrente): mezclarlo con las cuotas
+    infla el mes y miente sobre la tendencia real, así que va en su reporte.
+
+    Incluye un control de fugas: en las zonas que cobran instalación, cada
+    cliente activado en el período debería tener su cargo; los que no lo
+    tienen se listan para revisarlos (plata que se pudo escapar o un cobro
+    mal registrado).
+    """
+    hoy = date.today()
+    if desde is None:
+        desde = date(hoy.year, hoy.month, 1)
+    if hasta is None:
+        hasta = hoy
+
+    # Cargos de instalación cobrados en el período (solo pagos reales).
+    base = (
+        db.query(models.Pago)
+        .join(models.Cliente, models.Cliente.id == models.Pago.cliente_id)
+        .filter(
+            models.Pago.cargo_instalacion.isnot(None),
+            models.Pago.cargo_instalacion > 0,
+            models.Pago.estado == models.EstadoPago.pagado,
+            models.Pago.fecha_pago >= desde,
+            models.Pago.fecha_pago <= hasta,
+        )
+    )
+
+    total_q = base.with_entities(
+        func.coalesce(func.sum(models.Pago.cargo_instalacion), 0),
+        func.count(models.Pago.id),
+    ).first()
+    total = round(float(total_q[0] or 0), 2)
+    cantidad = int(total_q[1] or 0)
+    promedio = round(total / cantidad, 2) if cantidad else 0.0
+
+    # Por zona.
+    por_zona = [
+        {
+            "zona_id": zid,
+            "zona_nombre": nombre,
+            "cantidad": int(cant),
+            "total": round(float(suma or 0), 2),
+        }
+        for zid, nombre, cant, suma in (
+            base.join(models.Zona, models.Zona.id == models.Cliente.zona_id)
+            .with_entities(
+                models.Zona.id,
+                models.Zona.nombre,
+                func.count(models.Pago.id),
+                func.sum(models.Pago.cargo_instalacion),
+            )
+            .group_by(models.Zona.id, models.Zona.nombre)
+            .all()
+        )
+    ]
+    por_zona.sort(key=lambda x: -x["total"])
+
+    # Por técnico instalador (para conciliar quién instaló).
+    por_tecnico = [
+        {
+            "tecnico_id": tid,
+            "tecnico_nombre": nombre or "Sin registrar",
+            "cantidad": int(cant),
+            "total": round(float(suma or 0), 2),
+        }
+        for tid, nombre, cant, suma in (
+            base.outerjoin(
+                models.Usuario, models.Usuario.id == models.Cliente.tecnico_instalador_id
+            )
+            .with_entities(
+                models.Cliente.tecnico_instalador_id,
+                models.Usuario.nombre,
+                func.count(models.Pago.id),
+                func.sum(models.Pago.cargo_instalacion),
+            )
+            .group_by(models.Cliente.tecnico_instalador_id, models.Usuario.nombre)
+            .all()
+        )
+    ]
+    por_tecnico.sort(key=lambda x: -x["total"])
+
+    # Control de fugas: clientes activados en el período, de zonas que cobran,
+    # no migrados, que NO tienen ningún cargo de instalación registrado.
+    con_cargo = {
+        cid
+        for (cid,) in db.query(models.Pago.cliente_id)
+        .filter(models.Pago.cargo_instalacion.isnot(None), models.Pago.cargo_instalacion > 0)
+        .distinct()
+        .all()
+    }
+    activados = (
+        db.query(models.Cliente, models.Zona)
+        .join(models.Zona, models.Zona.id == models.Cliente.zona_id)
+        .filter(
+            models.Zona.costo_instalacion > 0,
+            models.Cliente.migrado.isnot(True),
+            models.Cliente.fecha_ultima_activacion >= desde,
+            models.Cliente.fecha_ultima_activacion <= hasta,
+        )
+        .all()
+    )
+    fugas = [
+        {
+            "cliente_id": c.id,
+            "cliente_nombre": c.nombre,
+            "zona_nombre": z.nombre,
+            "fecha_activacion": c.fecha_ultima_activacion.isoformat()
+            if c.fecha_ultima_activacion
+            else None,
+            "costo_zona": round(float(z.costo_instalacion or 0), 2),
+        }
+        for c, z in activados
+        if c.id not in con_cargo
+    ]
+    fugas.sort(key=lambda x: x["fecha_activacion"] or "")
+
+    return {
+        "desde": desde.isoformat(),
+        "hasta": hasta.isoformat(),
+        "resumen": {
+            "total": total,
+            "cantidad": cantidad,
+            "promedio": promedio,
+            "activaciones_zonas_con_cobro": len(activados),
+            "sin_cargo": len(fugas),
+        },
+        "por_zona": por_zona,
+        "por_tecnico": por_tecnico,
+        "fugas": fugas,
+    }
+
+
 def _datos_zonas(db: Session, mes: Optional[str]) -> list[dict]:
     """Cuánto se recaudó ese mes en cada zona — para comparar de un vistazo
     qué zonas rinden más."""

@@ -206,6 +206,37 @@ export type ReporteCaja = {
   pagos: ReporteCajaPago[];
 };
 
+export type ReporteInstalaciones = {
+  desde: string;
+  hasta: string;
+  resumen: {
+    total: number;
+    cantidad: number;
+    promedio: number;
+    activaciones_zonas_con_cobro: number;
+    sin_cargo: number;
+  };
+  por_zona: { zona_id: number; zona_nombre: string; cantidad: number; total: number }[];
+  por_tecnico: { tecnico_id: number | null; tecnico_nombre: string; cantidad: number; total: number }[];
+  fugas: {
+    cliente_id: number;
+    cliente_nombre: string;
+    zona_nombre: string;
+    fecha_activacion: string | null;
+    costo_zona: number;
+  }[];
+};
+
+/** Ingresos por costo de instalación en un período (aparte del ingreso
+ *  mensual), con el control de fugas. Solo admin. */
+export async function getReporteInstalaciones(
+  desde?: string,
+  hasta?: string,
+): Promise<ReporteInstalaciones> {
+  const { data } = await api.get('/pagos/reporte-instalaciones', { params: { desde, hasta } });
+  return data;
+}
+
 export async function getReporteCaja(fecha: string, zonaId?: number): Promise<ReporteCaja> {
   const { data } = await api.get('/pagos/reporte-caja', { params: { fecha, zona_id: zonaId } });
   return data;

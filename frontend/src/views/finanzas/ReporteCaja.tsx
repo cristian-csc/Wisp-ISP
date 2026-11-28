@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { Icon } from '@iconify/react';
 import SectionCard from 'src/components/shared/SectionCard';
 import StatCard from 'src/components/shared/StatCard';
@@ -110,14 +111,23 @@ const ReporteCajaView = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lightprimary">
-          <Icon icon="tabler:report-money" width={22} className="text-primary" />
-        </span>
-        <div>
-          <h1 className="text-2xl">Reporte de Caja</h1>
-          <p className="text-sm text-muted-foreground">Corte de caja diario y recaudación mensual por zona</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lightprimary">
+            <Icon icon="tabler:report-money" width={22} className="text-primary" />
+          </span>
+          <div>
+            <h1 className="text-2xl">Reporte de Caja</h1>
+            <p className="text-sm text-muted-foreground">Corte de caja diario y recaudación mensual por zona</p>
+          </div>
         </div>
+        <Link
+          to="/finanzas/reporte-instalaciones"
+          className="transition-ui inline-flex items-center gap-2 rounded-lg border border-ld px-3 py-2 text-sm hover:border-primary/40 hover:text-primary"
+        >
+          <Icon icon="tabler:tool" width={17} />
+          Ingresos por instalación
+        </Link>
       </div>
 
       {/* ── Corte de caja diario ── */}

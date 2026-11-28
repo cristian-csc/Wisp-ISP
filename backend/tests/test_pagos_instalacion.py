@@ -137,6 +137,35 @@ def test_endpoint_sugerencia_antes_y_despues_del_primer_pago(client, db, datos):
     assert despues.json()["aplica"] is False
 
 
+def test_reporte_instalaciones_suma_y_detecta_fugas(client, db, datos):
+    zona, plan, _ = datos
+    zona.costo_instalacion = 100.0
+    db.commit()
+
+    # Cliente A: se le cobró la instalación (pago dentro del período).
+    a = crear_cliente(db, zona, plan, usuario_pppoe="a")
+    client.post("/pagos", json=_payload(a.id, "2026-07", fecha_pago="2026-07-15"))
+
+    # Cliente B: activado en el período pero SIN cargo cobrado → fuga.
+    b = crear_cliente(
+        db, zona, plan, usuario_pppoe="b",
+        fecha_instalacion=date(2026, 7, 10),
+    )
+    b.fecha_ultima_activacion = date(2026, 7, 10)
+    a.fecha_ultima_activacion = date(2026, 7, 5)
+    db.commit()
+
+    rep = client.get("/pagos/reporte-instalaciones?desde=2026-07-01&hasta=2026-07-31")
+    assert rep.status_code == 200, rep.json()
+    data = rep.json()
+    assert data["resumen"]["total"] == 100.0
+    assert data["resumen"]["cantidad"] == 1
+    # B está activado en zona que cobra y no tiene cargo → aparece como fuga.
+    nombres_fuga = {f["cliente_id"] for f in data["fugas"]}
+    assert b.id in nombres_fuga
+    assert a.id not in nombres_fuga
+
+
 def test_el_recibo_suma_instalacion_al_importe_pagado(client, db, datos):
     zona, plan, _ = datos
     zona.costo_instalacion = 100.0

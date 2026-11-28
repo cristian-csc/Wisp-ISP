@@ -27,6 +27,7 @@ import ConfiguracionWhatsapp from 'src/views/configuracion/ConfiguracionWhatsapp
 import RolesModulos from 'src/views/configuracion/RolesModulos';
 import ModulosPadre from 'src/views/configuracion/ModulosPadre';
 import ReporteCaja from 'src/views/finanzas/ReporteCaja';
+import ReporteInstalaciones from 'src/views/finanzas/ReporteInstalaciones';
 import Perfil from 'src/views/perfil/Perfil';
 import Jornadas from 'src/views/jornadas/Jornadas';
 import Unidades from 'src/views/flota/Unidades';
@@ -102,6 +103,7 @@ function App() {
             <Route path="/configuracion/roles" element={<RolesModulos />} />
             <Route path="/configuracion/modulos-padre" element={<ModulosPadre />} />
             <Route path="/finanzas/reporte-caja" element={<ReporteCaja />} />
+            <Route path="/finanzas/reporte-instalaciones" element={<ReporteInstalaciones />} />
             <Route path="/jornadas" element={<Jornadas />} />
             <Route path="/unidades" element={<Unidades />} />
             <Route path="/combustible" element={<Combustible />} />
