@@ -184,6 +184,10 @@ class Zona(Base):
     lng = Column(Float)
     descripcion = Column(Text)
     tiendas_pago = Column(Text)
+    # Costo de instalación que se cobra UNA sola vez, al registrar el primer
+    # pago de un cliente recién instalado de esta zona. 0 = la zona no cobra
+    # instalación. Lo fija el admin del negocio en el panel.
+    costo_instalacion = Column(Float, nullable=False, server_default="0")
     activo = Column(Boolean, default=True)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -528,6 +532,11 @@ class Pago(Base):
     # Rebaja que hizo la empresa por pagar adelantado, en soles. Se guarda
     # solo en el primer pago del grupo: es del cobro completo, no del mes.
     descuento = Column(Float)
+    # Costo de instalación cobrado UNA vez, junto con el primer pago del
+    # cliente. No es una cuota de mes: va aparte del `monto` para que los
+    # informes de ingreso recurrente no lo mezclen. Vacío = este pago no
+    # llevó cargo de instalación. Se guarda solo en el primer pago del grupo.
+    cargo_instalacion = Column(Float)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     registrado_por = Column(Integer, ForeignKey("usuarios.id"))
 

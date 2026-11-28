@@ -147,6 +147,8 @@ class ZonaBase(BaseModel):
     lng: Optional[float] = None
     descripcion: Optional[str] = None
     tiendas_pago: Optional[str] = None
+    # Costo de instalación que cobra esta zona una sola vez. 0 = no cobra.
+    costo_instalacion: float = 0
 
 # ── Campos del túnel: se comprueban al entrar ────────────────────────────────
 #
@@ -228,6 +230,15 @@ class ZonaDatosUpdate(BaseModel):
     ip_lan: Optional[str] = None
     usuario_mikrotik: Optional[str] = None
     password_mikrotik: Optional[str] = None
+    # Costo de instalación de la zona (negocio). 0 = no cobra instalación.
+    costo_instalacion: Optional[float] = None
+
+    @field_validator('costo_instalacion')
+    @classmethod
+    def _costo_no_negativo(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError('El costo de instalación no puede ser negativo')
+        return v
     router_mikrotik: Optional[str] = None
     ip_router: Optional[str] = None
     pool_pppoe: Optional[str] = None
@@ -936,6 +947,12 @@ class PagoCreate(PagoBase):
     no se vuelve a restar de nada."""
     meses: int = Field(1, ge=1, le=12, description="Meses que paga de una vez")
     descuento: Optional[float] = Field(None, ge=0, description="Rebaja aplicada, en soles")
+    # Costo de instalación a cobrar junto con ESTE pago. Si no se manda, el
+    # servidor lo pone solo cuando corresponde (primer pago de un cliente
+    # recién instalado de una zona que cobra instalación). Mandar 0 lo quita.
+    cargo_instalacion: Optional[float] = Field(
+        None, ge=0, description="Costo de instalación cobrado una sola vez, en soles"
+    )
 
 class ClienteNombre(BaseModel):
     id: int
@@ -961,6 +978,8 @@ class PagoOut(PagoBase):
     ruta_comprobante: Optional[str] = None
     grupo_adelanto: Optional[str] = None
     descuento: Optional[float] = None
+    # Costo de instalación cobrado con este pago (solo el primero del grupo).
+    cargo_instalacion: Optional[float] = None
     # Solo viene con dato cuando el pago es parte de un cobro adelantado
     adelanto: Optional[AdelantoResumen] = None
     cliente: Optional[ClienteNombre] = None

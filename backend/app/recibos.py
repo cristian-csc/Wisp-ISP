@@ -119,13 +119,15 @@ class DatosRecibo:
     lineas: list[LineaRecibo] = field(default_factory=list)
     mensualidad: float = 0.0
     otros: float = 0.0
+    # Costo de instalación cobrado una sola vez. 0 en casi todos los recibos.
+    instalacion: float = 0.0
     descuento: float = 0.0
     pagado: float = 0.0
     observaciones: Optional[str] = None
 
     @property
     def imp_total(self) -> float:
-        return round(self.mensualidad + self.otros, 2)
+        return round(self.mensualidad + self.otros + self.instalacion, 2)
 
 
 def etiqueta_mes(mes: str) -> str:
@@ -298,6 +300,9 @@ def _dibujar(destino: BytesIO, d: DatosRecibo, alto: float) -> float:
     # Totales
     L.par("MENSUALIDAD:", f"S/ {d.mensualidad:.2f}")
     L.par("IMP. OTROS:", f"S/ {d.otros:.2f}")
+    # La instalación solo aparece cuando se cobró (el primer recibo del cliente).
+    if d.instalacion:
+        L.par("INSTALACION:", f"S/ {d.instalacion:.2f}")
     L.par("IMP. TOTAL:", f"S/ {d.imp_total:.2f}")
     L.par("DESCUENTO:", f"S/ {d.descuento:.2f}")
     L.saltar(0.6)

@@ -367,6 +367,7 @@ def _zona_to_dict(
         "lng": zona.lng,
         "descripcion": zona.descripcion,
         "tiendas_pago": zona.tiendas_pago,
+        "costo_instalacion": zona.costo_instalacion or 0,
         "activo": zona.activo,
         "total_clientes": total,
         "clientes_activos": activos,

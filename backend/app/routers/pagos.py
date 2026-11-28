@@ -106,9 +106,12 @@ def _datos_recibo(db: Session, pago: models.Pago) -> DatosRecibo:
     ).first()
     plan = db.query(models.Plan).filter(models.Plan.id == cliente.plan_id).first() if cliente else None
 
-    pagado = round(sum(p.monto for p in grupo), 2)
+    pagado_meses = round(sum(p.monto for p in grupo), 2)
     descuento = round(next((p.descuento for p in grupo if p.descuento), 0) or 0, 2)
-    subtotal = round(pagado + descuento, 2)
+    # El costo de instalación va aparte de la mensualidad: no es un mes, es un
+    # cobro único que se suma al importe pagado pero no al desglose por mes.
+    instalacion = round(next((p.cargo_instalacion for p in grupo if p.cargo_instalacion), 0) or 0, 2)
+    subtotal = round(pagado_meses + descuento, 2)
     meses = len(grupo)
 
     # Lo que no es mensualidad (televisores adicionales, por ejemplo) sale del
@@ -165,8 +168,10 @@ def _datos_recibo(db: Session, pago: models.Pago) -> DatosRecibo:
         lineas=lineas,
         mensualidad=mensualidad,
         otros=otros,
+        instalacion=instalacion,
         descuento=descuento,
-        pagado=pagado,
+        # Lo que de verdad entró a caja: los meses más la instalación.
+        pagado=round(pagado_meses + instalacion, 2),
         observaciones=primero.notas,
     )
 
@@ -189,6 +194,11 @@ def _mensaje_confirmacion_pago(cliente: models.Cliente, datos: DatosRecibo) -> s
         linea_mes,
         f"\u2705 Importe mensual: {datos.mensualidad:.2f}",
         f"\u2705 Imp. otros: {datos.otros:.2f}",
+        *(
+            [f"\u2705 Instalaci\u00f3n: {datos.instalacion:.2f}"]
+            if datos.instalacion
+            else []
+        ),
         f"\u2705 Imp. total: {datos.imp_total:.2f}",
         f"\u2705 Descuento: {datos.descuento:.2f}",
         f"\u2705 Importe pagado: {datos.pagado:.2f}",
@@ -387,10 +397,43 @@ def create_pago(
                 ),
             )
 
-    datos_pago = data.model_dump(exclude={"meses", "descuento"})
+    datos_pago = data.model_dump(exclude={"meses", "descuento", "cargo_instalacion"})
     datos_pago["numero_operacion"] = numero_operacion
 
     plan_cliente = db.query(models.Plan).filter(models.Plan.id == cliente.plan_id).first()
+
+    # ── Costo de instalación ─────────────────────────────────────────────────
+    # Se cobra UNA sola vez, en el primer pago de un cliente recién instalado
+    # de una zona que lo cobra. Automático pero editable: si quien cobra manda
+    # el campo (incluido 0 para quitarlo), manda su valor; si no lo manda, el
+    # servidor lo deduce. Los migrados quedan fuera: ya estaban instalados.
+    es_primer_pago = (
+        db.query(models.Pago).filter(models.Pago.cliente_id == cliente.id).first() is None
+    )
+    if "cargo_instalacion" in data.model_fields_set:
+        cargo_instalacion = round(data.cargo_instalacion or 0, 2) or None
+    elif (
+        es_primer_pago
+        and not cliente.migrado
+        and data.estado == models.EstadoPago.pagado
+    ):
+        zona = (
+            db.query(models.Zona).filter(models.Zona.id == cliente.zona_id).first()
+            if cliente.zona_id
+            else None
+        )
+        costo = round((zona.costo_instalacion or 0) if zona else 0, 2)
+        cargo_instalacion = costo or None
+    else:
+        cargo_instalacion = None
+
+    # El cargo de instalación solo puede ir en el PRIMER pago del cliente: así
+    # no se cobra dos veces aunque quien registra lo mande por error más tarde.
+    if cargo_instalacion and not es_primer_pago:
+        raise HTTPException(
+            status_code=400,
+            detail="El costo de instalación solo se cobra en el primer pago del cliente.",
+        )
 
     # La rebaja la decide quien cobra y viene en el propio pedido — si mandó 0,
     # es que no hubo rebaja y no hay que inventar ninguna. Solo cuando el campo
@@ -418,6 +461,8 @@ def create_pago(
             **datos,
             grupo_adelanto=grupo,
             descuento=descuento if i == 0 else None,
+            # El cargo de instalación va una sola vez, en el primer mes del grupo.
+            cargo_instalacion=cargo_instalacion if i == 0 else None,
             registrado_por=current_user.id,
         )
         db.add(p)
