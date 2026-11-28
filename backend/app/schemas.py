@@ -1148,6 +1148,10 @@ class JornadaIniciarRequest(BaseModel):
 class JornadaPingRequest(BaseModel):
     lat: float
     lng: float
+    # Opcionales por compatibilidad: un APK viejo no los manda y el punto se
+    # guarda igual (precisión desconocida, hora = la de recepción).
+    precision_m: Optional[float] = None
+    capturado_en: Optional[datetime] = None
 
 class JornadaFinalizarRequest(BaseModel):
     # Al CERRAR la jornada las coordenadas son opcionales a propósito: exigir un
@@ -1159,6 +1163,8 @@ class JornadaFinalizarRequest(BaseModel):
 class UbicacionVendedorOut(BaseModel):
     lat: float
     lng: float
+    precision_m: Optional[float] = None
+    capturado_en: Optional[datetime] = None
     registrado_en: datetime
     class Config:
         from_attributes = True

@@ -686,6 +686,12 @@ class UbicacionVendedor(Base):
     jornada_id = Column(Integer, ForeignKey("jornadas_vendedor.id"), nullable=False, index=True)
     lat = Column(Float, nullable=False)
     lng = Column(Float, nullable=False)
+    # Precisión que reportó el GPS (metros). Nulo = el aparato no la informó o
+    # es un punto anterior a este campo.
+    precision_m = Column(Float)
+    # Hora REAL del fix del GPS; puede ser anterior al envío si el punto se
+    # guardó sin señal y se sincronizó después. Nulo en los puntos antiguos.
+    capturado_en = Column(DateTime(timezone=True))
     registrado_en = Column(DateTime(timezone=True), server_default=func.now())
 
     jornada = relationship("JornadaVendedor", back_populates="ubicaciones")

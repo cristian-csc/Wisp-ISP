@@ -24,10 +24,20 @@ def _jornada_activa(db: Session, vendedor_id: int) -> Optional[models.JornadaVen
     ).first()
 
 
+# Para ordenar en el tiempo se usa la hora REAL de captura cuando existe, y si
+# no (puntos antiguos), la de recepción. Así un punto que se guardó sin señal y
+# se sincronizó tarde cae en su lugar real, no al final.
+def _orden_tiempo():
+    return sa_func.coalesce(
+        models.UbicacionVendedor.capturado_en,
+        models.UbicacionVendedor.registrado_en,
+    )
+
+
 def _ultima_ubicacion(db: Session, jornada_id: int) -> Optional[models.UbicacionVendedor]:
     return db.query(models.UbicacionVendedor).filter(
         models.UbicacionVendedor.jornada_id == jornada_id,
-    ).order_by(models.UbicacionVendedor.registrado_en.desc()).first()
+    ).order_by(_orden_tiempo().desc()).first()
 
 
 def cerrar_jornada_olvidada(db: Session, jornada: models.JornadaVendedor) -> None:
@@ -102,7 +112,24 @@ def ping_ubicacion(
     if not jornada:
         raise HTTPException(400, "No tienes una jornada activa.")
 
-    ubicacion = models.UbicacionVendedor(jornada_id=jornada.id, lat=data.lat, lng=data.lng)
+    # Sincronización sin duplicados: si el móvil reenvía un punto que ya se
+    # guardó (misma jornada y misma hora real de captura), se devuelve el que
+    # ya existe en vez de duplicarlo. Solo aplica cuando viene `capturado_en`.
+    if data.capturado_en is not None:
+        existente = db.query(models.UbicacionVendedor).filter(
+            models.UbicacionVendedor.jornada_id == jornada.id,
+            models.UbicacionVendedor.capturado_en == data.capturado_en,
+        ).first()
+        if existente:
+            return existente
+
+    ubicacion = models.UbicacionVendedor(
+        jornada_id=jornada.id,
+        lat=data.lat,
+        lng=data.lng,
+        precision_m=data.precision_m,
+        capturado_en=data.capturado_en,
+    )
     db.add(ubicacion)
     db.commit()
     db.refresh(ubicacion)
@@ -316,7 +343,7 @@ def recorrido_jornada(
 
     puntos = db.query(models.UbicacionVendedor).filter(
         models.UbicacionVendedor.jornada_id == jornada_id,
-    ).order_by(models.UbicacionVendedor.registrado_en.asc()).all()
+    ).order_by(_orden_tiempo().asc()).all()
 
     return schemas.JornadaRecorridoOut(
         jornada=_jornada_a_out(db, jornada),
