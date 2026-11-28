@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { crearCliente, subirFotoFachada, getZonas, getPlanes, consultarDocumento, verificarDni, type ConsultaLineas } from '@/services/api';
-import { useSession } from '@/hooks/useSession';
 import { UbicacionPickerModal } from './UbicacionPickerModal';
 import { SelectorZona } from './SelectorZona';
 import { elegirFoto } from '@/services/fotos';
@@ -76,18 +75,17 @@ function PlanChip({ plan, selected, onSelect }: { plan: Opcion; selected: boolea
  * `pendiente_aprobacion` hasta que un administrador lo apruebe. El negocio
  * es exclusivamente fibra óptica, así que no hay opción de conexión inalámbrica. */
 export function ClienteRegistroForm({ onDone }: { onDone: (nombre: string) => void }) {
-  const { session } = useSession();
-  // Solo al técnico se le exige la foto: cuando él registra a alguien está
-  // en la puerta de la casa, siempre.
+  // La foto de la fachada es OPCIONAL al registrar, para todos —técnico y
+  // vendedora por igual—. El registro es solo la captación: muchas veces se
+  // hace sin estar frente a la vivienda. El técnico anda por la zona pero en
+  // otra dirección y deja al cliente agendado para otro día; la vendedora
+  // reparte volantes y la llaman después desde su casa. Exigir la foto aquí
+  // les impedía registrar al cliente justo cuando lo acaban de conseguir.
   //
-  // A la vendedora no. Reparte volantes y muchas veces la llaman después,
-  // desde su propia casa, para pedir el servicio: ahí no tiene ninguna
-  // fachada que fotografiar. Exigírsela la dejaba sin poder registrar al
-  // cliente justo cuando acaba de conseguirlo.
-  //
-  // La foto no se pierde por esto: al instalar se sigue exigiendo, y ese es
-  // el momento en que alguien SÍ está frente a la vivienda.
-  const fotoObligatoria = session?.role === 'tecnico';
+  // La foto no se pierde por esto: al INSTALAR sigue siendo obligatoria
+  // (pantalla instalar/[id].tsx), y ese es el momento en que alguien SÍ está
+  // frente a la vivienda.
+  const fotoObligatoria = false;
 
   const [zonas,  setZonas]  = useState<Opcion[]>([]);
   const [planes, setPlanes] = useState<Opcion[]>([]);
