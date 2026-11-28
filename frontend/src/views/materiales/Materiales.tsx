@@ -314,63 +314,70 @@ const Materiales = () => {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {materiales.map((m) => (
-          <CardBox key={m.id} className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-start gap-3">
-                <FotoRemota
-                  cargar={m.tiene_foto ? () => getMaterialFotoBlobUrl(m.id) : null}
-                  clave={`${m.id}-${versionFoto[m.id] ?? 0}`}
-                  alt={`Foto de ${m.nombre}`}
-                  iconoVacio="solar:box-linear"
-                  ajuste="contain"
-                  ampliable={m.tiene_foto}
-                  className="size-16 shrink-0 rounded-lg border border-ld bg-muted/40"
-                />
+          <CardBox key={m.id} className="flex-row gap-4 p-4">
+            {/* Foto del material a la izquierda. object-contain: no deforma ni
+                recorta cables, conectores ni rosetas. Sin foto → placeholder
+                neutro con un icono (Lucide). */}
+            <FotoRemota
+              cargar={m.tiene_foto ? () => getMaterialFotoBlobUrl(m.id) : null}
+              clave={`${m.id}-${versionFoto[m.id] ?? 0}`}
+              alt={`Foto de ${m.nombre}`}
+              iconoVacio="lucide:package"
+              ajuste="contain"
+              ampliable={m.tiene_foto}
+              className="h-[125px] w-[115px] shrink-0 self-start rounded-xl border border-ld bg-muted/30"
+            />
+
+            {/* Datos a la derecha */}
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="truncate text-base font-bold">{m.nombre}</h3>
+                  <h3 className="truncate text-base font-bold leading-tight">{m.nombre}</h3>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     Se cuenta por {m.unidad === 'metro' ? 'metro' : 'unidad'}
                   </p>
                 </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      m.se_recupera ? 'bg-lightsuccess text-success-text' : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {m.se_recupera ? 'Se recupera' : 'No vuelve'}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Editar ${m.nombre}`}
+                    onClick={() => abrirMaterial(m)}
+                  >
+                    <Icon icon="tabler:pencil" height={16} />
+                  </Button>
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                    m.se_recupera ? 'bg-lightsuccess text-success-text' : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {m.se_recupera ? 'Se recupera' : 'No vuelve'}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Editar ${m.nombre}`}
-                  onClick={() => abrirMaterial(m)}
-                >
-                  <Icon icon="tabler:pencil" height={16} />
-                </Button>
-              </div>
-            </div>
 
-            <p className="mt-3 text-2xl font-bold leading-none">
-              {fmt(m.en_almacen, m.unidad)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">en almacén</p>
+              <p className="mt-2 text-2xl font-bold leading-none">
+                {fmt(m.en_almacen, m.unidad)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">en almacén</p>
 
-            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-ld pt-3">
-              {m.consumo_estandar != null && (
-                <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                  {fmt(m.consumo_estandar)} por instalación
-                </span>
+              {(m.consumo_estandar != null || m.presentaciones.length > 0) && (
+                <div className="mt-auto flex flex-wrap gap-1.5 pt-3">
+                  {m.consumo_estandar != null && (
+                    <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                      {fmt(m.consumo_estandar)} por instalación
+                    </span>
+                  )}
+                  {m.presentaciones.map((p) => (
+                    <span
+                      key={p.id}
+                      className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+                    >
+                      {p.nombre}
+                    </span>
+                  ))}
+                </div>
               )}
-              {m.presentaciones.map((p) => (
-                <span
-                  key={p.id}
-                  className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
-                >
-                  {p.nombre}
-                </span>
-              ))}
             </div>
           </CardBox>
         ))}
@@ -652,7 +659,7 @@ const Materiales = () => {
                   cargar={matEdit?.tiene_foto ? () => getMaterialFotoBlobUrl(editando.id) : null}
                   clave={`${editando.id}-${versionFoto[editando.id] ?? 0}`}
                   alt={`Foto de ${editando.nombre}`}
-                  iconoVacio="solar:box-linear"
+                  iconoVacio="lucide:package"
                   ajuste="contain"
                   className="size-24 shrink-0 rounded-lg border border-ld bg-muted/40"
                 />
