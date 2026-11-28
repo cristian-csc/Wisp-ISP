@@ -787,7 +787,13 @@ export async function subirEvidenciaRetiro(ordenId: number, fotoUri: string, des
 
 // ── Jornadas de vendedor de campo ──────────────────────────────────────────────
 
-export type UbicacionVendedor = { lat: number; lng: number; registrado_en: string };
+export type UbicacionVendedor = {
+  lat: number;
+  lng: number;
+  precision_m?: number | null;
+  capturado_en?: string | null;
+  registrado_en: string;
+};
 
 export type Jornada = {
   id: number;
@@ -814,8 +820,16 @@ export async function iniciarJornada(lat: number, lng: number, zonaId?: number |
   });
 }
 
-export async function pingJornada(lat: number, lng: number): Promise<UbicacionVendedor> {
-  return request('/jornadas/ping', { method: 'POST', body: JSON.stringify({ lat, lng }) });
+export async function pingJornada(punto: {
+  lat: number;
+  lng: number;
+  /** Precisión del GPS en metros, si el aparato la reportó. */
+  precision_m?: number | null;
+  /** Hora real del fix (ISO). Permite que un punto sincronizado tarde conserve
+   *  su hora verdadera y que el servidor deduplique reenvíos. */
+  capturado_en?: string;
+}): Promise<UbicacionVendedor> {
+  return request('/jornadas/ping', { method: 'POST', body: JSON.stringify(punto) });
 }
 
 export async function finalizarJornada(lat: number | null, lng: number | null): Promise<Jornada> {
